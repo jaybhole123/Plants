@@ -5,6 +5,7 @@ import {
   useStockStore,
   useTransferStore,
   useProductionStore,
+  useProduction2Store,
   useSaudaScaleStore,
   useSaudaPurchaseStore
 } from '../store/useStore'
@@ -37,7 +38,7 @@ const MisReport = () => {
   // Get data from all stores
   const stockItems = useStockStore(state => state.items)
   const { incomingList, outgoingList } = useTransferStore()
-  const productionEntries = useProductionStore(state => state.entries)
+  const production2FilesData = useProduction2Store(state => state.filesData)
   const saudaScaleEntries = useSaudaScaleStore(state => state.entries)
   const saudaPurchaseEntries = useSaudaPurchaseStore(state => state.entries)
 
@@ -91,35 +92,28 @@ const MisReport = () => {
 
   // 4. PRODUCTION AGGREGATION
   const productionSummary = useMemo(() => {
-    const summary = {
-      'SPONGE PROD. (MT)': { k1: 0, k2: 0, total: 0 },
-      '"A" GRADE': { k1: 0, k2: 0, total: 0 },
-      '"B" GRADE': { k1: 0, k2: 0, total: 0 }
-    }
+    const summary = {}
     
-    productionEntries.forEach(entry => {
-      // Aggregate all rows in this entry
-      let index = 0
-      while(entry[`metricRow_${index}`] !== undefined) {
-        let rawMetric = entry[`metricRow_${index}`] || ''
-        let metric = rawMetric.toUpperCase().trim()
-        let normalized = metric.replace(/[^A-Z]/g, '')
-        
+    production2FilesData.forEach(f => {
+      f.items.forEach(item => {
+        let label = item.label.toUpperCase().trim()
         let finalMetric = null;
-        if (normalized.includes('AGRADE')) finalMetric = '"A" GRADE'
-        else if (normalized.includes('BGRADE')) finalMetric = '"B" GRADE'
-        else if (normalized.includes('SPONGE')) finalMetric = 'SPONGE PROD. (MT)'
+        if (label.includes('"A" GRADE')) finalMetric = '"A" GRADE (80%)'
+        else if (label.includes('"B" GRADE')) finalMetric = '"B" GRADE (20%)'
         
-        if (finalMetric && summary[finalMetric]) {
-          summary[finalMetric].k1 += Number(entry[`k1Row_${index}`]) || 0
-          summary[finalMetric].k2 += Number(entry[`k2Row_${index}`]) || 0
-          summary[finalMetric].total += Number(entry[`totalRow_${index}`]) || 0
+        if (finalMetric) {
+          if (!summary[finalMetric]) {
+             summary[finalMetric] = { k1: 0, k2: 0, total: 0 }
+          }
+          summary[finalMetric].k1 += Number(item.kiln1) || 0
+          summary[finalMetric].k2 += Number(item.kiln2) || 0
+          summary[finalMetric].total += Number(item.total) || 0
         }
-        index++
-      }
+      })
     })
+
     return summary
-  }, [productionEntries])
+  }, [production2FilesData])
 
   // Calculate totals for production
   const prodTotalK1 = Object.values(productionSummary).reduce((sum, val) => sum + val.k1, 0)
@@ -131,7 +125,7 @@ const MisReport = () => {
   const saudaSaleSummary = useMemo(() => {
     const summary = {}
     saudaScaleEntries.forEach(item => {
-      const material = item.itemName?.toUpperCase().trim() || 'UNKNOWN'
+      const material = (item.mainHeading || item.itemName)?.toUpperCase().trim() || 'UNKNOWN'
       summary[material] = (summary[material] || 0) + (Number(item.balPending) || 0)
     })
     // Convert object to array for easier rendering
@@ -145,13 +139,27 @@ const MisReport = () => {
   const saudaPurchaseSummary = useMemo(() => {
     const summary = {}
     saudaPurchaseEntries.forEach(item => {
-      const material = item.itemName?.toUpperCase().trim() || 'UNKNOWN'
+      const material = (item.mainHeading || item.itemName)?.toUpperCase().trim() || 'UNKNOWN'
       if (!summary[material]) summary[material] = 0
       summary[material] += Number(item.balPending) || 0
     })
+
+    // Merge all COAL variants into a single "COAL" row
+    let coalTotal = 0
+    const nonCoalSummary = {}
+    Object.entries(summary).forEach(([key, val]) => {
+      if (key.includes('COAL')) {
+        coalTotal += val
+      } else {
+        nonCoalSummary[key] = val
+      }
+    })
+    if (coalTotal > 0) {
+      nonCoalSummary['COAL'] = coalTotal
+    }
     
     // Convert object to array for easier rendering
-    return Object.entries(summary).map(([itemName, balPending]) => ({
+    return Object.entries(nonCoalSummary).map(([itemName, balPending]) => ({
       itemName,
       balPending
     }))
@@ -348,15 +356,15 @@ const MisReport = () => {
             {filteredIncoming.length > 0 ? (
               <tr>
                 <td contentEditable suppressContentEditableWarning colSpan="3" className="p-0 border border-slate-400">
-                  <table className="w-full border-collapse">
+                  <table className="w-full border-collapse table-fixed">
                     <thead>
                       <tr>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-12">S.No</th>
+                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-[50px]">S.No</th>
                         <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-left bg-white">Party Name</th>
                         <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-left bg-white">Material Name</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-24">Vehicle No</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-24">Qty.</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b border-slate-400 font-bold p-1 text-center bg-white w-28">RATE 18 %</th>
+                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-[120px]">Vehicle No</th>
+                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-[120px]">Qty.</th>
+                        <th contentEditable suppressContentEditableWarning className="border-b border-slate-400 font-bold p-1 text-center bg-white w-[120px]">RATE 18 %</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -390,15 +398,15 @@ const MisReport = () => {
             {filteredOutgoing.length > 0 ? (
               <tr>
                 <td contentEditable suppressContentEditableWarning colSpan="3" className="p-0 border border-slate-400">
-                  <table className="w-full border-collapse">
+                  <table className="w-full border-collapse table-fixed">
                     <thead>
                       <tr>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-12">S.No</th>
+                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-[50px]">S.No</th>
                         <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-left bg-white">Party Name</th>
                         <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-left bg-white">Material Name</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-24">Vehicle No</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-24">Qty.</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b border-slate-400 font-bold p-1 text-center bg-white w-28">RATE 18 %</th>
+                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-[120px]">Vehicle No</th>
+                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-[120px]">Qty.</th>
+                        <th contentEditable suppressContentEditableWarning className="border-b border-slate-400 font-bold p-1 text-center bg-white w-[120px]">RATE 18 %</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -432,13 +440,13 @@ const MisReport = () => {
             {filteredProduction.length > 0 ? (
               <tr>
                 <td contentEditable suppressContentEditableWarning colSpan="3" className="p-0 border border-slate-400">
-                  <table className="w-full border-collapse">
+                  <table className="w-full border-collapse table-fixed">
                     <thead>
                       <tr>
                         <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white">GRADE</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center w-[150px] bg-white">KILN 1</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center w-[150px] bg-white">KILN 2</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b border-slate-400 font-bold p-1 text-center w-[150px] bg-white">TOTAL</th>
+                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center w-[120px] bg-white">KILN 1</th>
+                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center w-[120px] bg-white">KILN 2</th>
+                        <th contentEditable suppressContentEditableWarning className="border-b border-slate-400 font-bold p-1 text-center w-[120px] bg-white">TOTAL</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -450,13 +458,27 @@ const MisReport = () => {
                           </td>
                           <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 font-bold p-1 text-center">{formatNumber(values.k1)}</td>
                           <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 font-bold p-1 text-center">{formatNumber(values.k2)}</td>
-                          <td contentEditable suppressContentEditableWarning className="font-bold p-1 text-center">{formatNumber(values.total)}</td>
+                          <td contentEditable suppressContentEditableWarning className="font-bold p-1 text-center">
+                            <div>{formatNumber(values.total)}</div>
+                            {metric.includes('"A" GRADE') && <div className="text-[9px] text-slate-500 font-normal uppercase mt-0.5">A GRADE TOTAL</div>}
+                            {metric.includes('"B" GRADE') && <div className="text-[9px] text-slate-500 font-normal uppercase mt-0.5">B GRADE TOTAL</div>}
+                          </td>
                         </tr>
                       ))}
                       {/* Sub-total for production */}
-                      <tr className="bg-[#B4C6E7]">
-                        <td contentEditable suppressContentEditableWarning colSpan="3" className="border-t-[2px] border-r border-slate-400 font-bold p-1 text-center uppercase">TOTAL</td>
-                        <td contentEditable suppressContentEditableWarning className="border-t border-slate-400 font-bold p-1 text-center">{formatNumber(prodTotalAllFiltered)}</td>
+                      <tr className="bg-[#B4C6E7]" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                        <td contentEditable suppressContentEditableWarning className="border-t-[2px] border-r border-slate-400 font-bold py-2 px-1 text-center uppercase">Sponge Total</td>
+                        <td contentEditable suppressContentEditableWarning className="border-t-[2px] border-r border-slate-400 font-bold py-2 px-1 text-center">
+                          <div className="text-[9px] text-slate-600 font-normal uppercase leading-tight">KILN-1 TOTAL</div>
+                          {formatNumber(prodTotalK1Filtered)}
+                        </td>
+                        <td contentEditable suppressContentEditableWarning className="border-t-[2px] border-r border-slate-400 font-bold py-2 px-1 text-center">
+                          <div className="text-[9px] text-slate-600 font-normal uppercase leading-tight">KILN-2 TOTAL</div>
+                          {formatNumber(prodTotalK2Filtered)}
+                        </td>
+                        <td contentEditable suppressContentEditableWarning className="border-t-[2px] border-slate-400 font-bold py-2 px-1 text-center">
+                          {formatNumber(prodTotalAllFiltered)}
+                        </td>
                       </tr>
                     </tbody>
                   </table>
