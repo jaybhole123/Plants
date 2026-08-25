@@ -92,24 +92,39 @@ const MisReport = () => {
 
   // 4. PRODUCTION AGGREGATION
   const productionSummary = useMemo(() => {
-    const summary = {}
-    
+    // Track raw totals and the most recent percent per grade key
+    const rawData = {
+      '"A" GRADE': { k1: 0, k2: 0, total: 0, percent: null },
+      '"B" GRADE': { k1: 0, k2: 0, total: 0, percent: null },
+    }
+
     production2FilesData.forEach(f => {
       f.items.forEach(item => {
-        let label = item.label.toUpperCase().trim()
-        let finalMetric = null;
-        if (label.includes('"A" GRADE')) finalMetric = '"A" GRADE (80%)'
-        else if (label.includes('"B" GRADE')) finalMetric = '"B" GRADE (20%)'
-        
-        if (finalMetric) {
-          if (!summary[finalMetric]) {
-             summary[finalMetric] = { k1: 0, k2: 0, total: 0 }
+        const label = item.label.toUpperCase().trim()
+        let gradeKey = null
+        if (label.includes('"A" GRADE')) gradeKey = '"A" GRADE'
+        else if (label.includes('"B" GRADE')) gradeKey = '"B" GRADE'
+
+        if (gradeKey) {
+          rawData[gradeKey].k1 += Number(item.kiln1) || 0
+          rawData[gradeKey].k2 += Number(item.kiln2) || 0
+          rawData[gradeKey].total += Number(item.total) || 0
+          // Use most recent percent (overwrite each file so last file wins)
+          if (item.percent !== null && item.percent !== undefined) {
+            rawData[gradeKey].percent = item.percent
           }
-          summary[finalMetric].k1 += Number(item.kiln1) || 0
-          summary[finalMetric].k2 += Number(item.kiln2) || 0
-          summary[finalMetric].total += Number(item.total) || 0
         }
       })
+    })
+
+    // Build final summary with dynamic percentage label
+    const summary = {}
+    Object.entries(rawData).forEach(([gradeKey, val]) => {
+      if (val.total > 0 || val.k1 > 0 || val.k2 > 0) {
+        const pct = val.percent !== null ? `${val.percent}%` : ''
+        const finalLabel = pct ? `${gradeKey} (${pct})` : gradeKey
+        summary[finalLabel] = { k1: val.k1, k2: val.k2, total: val.total }
+      }
     })
 
     return summary
