@@ -63,7 +63,7 @@ const navItems = [
   },
 ]
 
-const Sidebar = ({ isOpen, onClose }) => {
+const Sidebar = ({ isOpen, onClose, isCollapsed, toggleCollapse }) => {
   return (
     <>
       {/* Mobile overlay */}
@@ -77,24 +77,27 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Sidebar panel */}
       <aside
         className={`
-          fixed top-0 left-0 z-30 h-full w-64 flex flex-col
+          fixed top-0 left-0 z-30 h-full flex flex-col
           bg-white border-r border-slate-200 shadow-xl
-          transition-transform duration-300 ease-in-out
+          transition-all duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0
+          ${isCollapsed ? 'w-20' : 'w-64'}
         `}
       >
         {/* Logo / Brand */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-200">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md shadow-emerald-500/30">
+        <div className={`flex items-center ${isCollapsed ? 'justify-center flex-col gap-2' : 'gap-3'} px-5 py-5 border-b border-slate-200 relative`}>
+          <div className="flex shrink-0 items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md shadow-blue-500/30">
             <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Platform</p>
-            <h2 className="text-sm font-semibold text-slate-800 leading-tight">Traders Hub</h2>
-          </div>
+          {!isCollapsed && (
+            <div className="overflow-hidden">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 truncate">Plant</p>
+              <h2 className="text-sm font-semibold text-slate-800 leading-tight truncate">Nandan Smillter</h2>
+            </div>
+          )}
 
           {/* Close button (mobile only) */}
           <button
@@ -108,11 +111,23 @@ const Sidebar = ({ isOpen, onClose }) => {
           </button>
         </div>
 
+        {/* Desktop collapse button */}
+        <button
+          onClick={toggleCollapse}
+          className={`absolute -right-3.5 top-9 flex items-center justify-center w-7 h-7 rounded-full bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 shadow-sm hover:shadow-md transition-all duration-300 z-[100] ${isCollapsed ? 'rotate-180' : ''}`}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
         {/* Nav links */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          <p className="px-3 mb-3 text-[10px] uppercase tracking-[0.22em] text-slate-500 font-semibold">
-            Navigation
-          </p>
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto overflow-x-hidden">
+          {!isCollapsed && (
+            <p className="px-3 mb-3 text-[10px] uppercase tracking-[0.22em] text-slate-500 font-semibold truncate">
+              Navigation
+            </p>
+          )}
           {navItems.map(({ path, label, icon }) => (
             <NavLink
               key={path}
@@ -120,7 +135,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               end={path === '/'}
               onClick={onClose}
               className={({ isActive }) =>
-                `group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                `group flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                   isActive
                     ? 'bg-blue-50 text-blue-700 border border-blue-200'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent'
@@ -129,12 +144,12 @@ const Sidebar = ({ isOpen, onClose }) => {
             >
               {({ isActive }) => (
                 <>
-                  <span className={`transition-colors ${isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-700'}`}>
+                  <span className={`transition-colors shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-700'}`}>
                     {icon}
                   </span>
-                  {label}
-                  {isActive && (
-                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.18)]" />
+                  {!isCollapsed && <span className="truncate">{label}</span>}
+                  {!isCollapsed && isActive && (
+                    <span className="ml-auto shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.18)]" />
                   )}
                 </>
               )}
@@ -143,17 +158,22 @@ const Sidebar = ({ isOpen, onClose }) => {
         </nav>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-slate-200">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center text-xs font-semibold text-slate-700">
-              TA
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-medium text-slate-800">Trading Admin</span>
-              <span className="text-[10px] text-slate-500">Administrator</span>
-            </div>
-            <span className="ml-auto h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]" />
+        <div className={`px-5 py-4 border-t border-slate-200 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+          <div className="w-8 h-8 rounded-full shrink-0 bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center text-xs font-semibold text-slate-700 relative">
+            TA
+            {isCollapsed && (
+               <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)] border-2 border-white" />
+            )}
           </div>
+          {!isCollapsed && (
+            <>
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-xs font-medium text-slate-800 truncate">Trading Admin</span>
+                <span className="text-[10px] text-slate-500 truncate">Administrator</span>
+              </div>
+              <span className="ml-auto shrink-0 h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]" />
+            </>
+          )}
         </div>
       </aside>
     </>

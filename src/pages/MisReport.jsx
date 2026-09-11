@@ -42,29 +42,30 @@ const MisReport = () => {
   const saudaScaleEntries = useSaudaScaleStore(state => state.entries)
   const saudaPurchaseEntries = useSaudaPurchaseStore(state => state.entries)
 
-  // 1. STOCK AGGREGATION
-  const stockSummary = useMemo(() => {
+  // 1. STOCK AGGREGATION — split into Raw Material and Coal Detail
+  const rawMaterialSummary = useMemo(() => {
     const summary = {}
-    
     const categoryLabels = {
       '': 'RAW IRON ORE',
       'rawPelletOre': 'RAW PELLET ORE',
       'processedIronOre': 'PROCESSED IRON ORE (3-18)',
       'ironFines': 'IRON FINES (0-3)'
     }
-
     stockItems.forEach(item => {
-      let key;
-      if (item.type === 'coal_detail') {
-        key = item.material?.toUpperCase().trim() || 'COAL MATERIAL'
-      } else {
-        let cat = item.category === undefined ? 'UNKNOWN' : item.category
-        if (categoryLabels[cat] !== undefined) {
-          cat = categoryLabels[cat]
-        }
-        key = cat.toUpperCase().trim() || 'RAW IRON ORE'
-      }
+      if (item.type === 'coal_detail') return // skip coal
+      let cat = item.category === undefined ? 'UNKNOWN' : item.category
+      if (categoryLabels[cat] !== undefined) cat = categoryLabels[cat]
+      const key = cat.toUpperCase().trim() || 'RAW IRON ORE'
+      summary[key] = (summary[key] || 0) + (Number(item.closingStock) || 0)
+    })
+    return summary
+  }, [stockItems])
 
+  const coalStockSummary = useMemo(() => {
+    const summary = {}
+    stockItems.forEach(item => {
+      if (item.type !== 'coal_detail') return // only coal
+      const key = item.material?.toUpperCase().trim() || 'COAL MATERIAL'
       summary[key] = (summary[key] || 0) + (Number(item.closingStock) || 0)
     })
     return summary
@@ -181,7 +182,8 @@ const MisReport = () => {
   }, [saudaPurchaseEntries])
 
   // Filtered Lists for Hiding Rows
-  const filteredStock = Object.entries(stockSummary).filter(([m]) => !hiddenRows.has(`stock-${m}`))
+  const filteredRawStock = Object.entries(rawMaterialSummary).filter(([m]) => !hiddenRows.has(`rawstock-${m}`))
+  const filteredCoalStock = Object.entries(coalStockSummary).filter(([m]) => !hiddenRows.has(`coalstock-${m}`))
   const filteredIncoming = incomingList.filter((item, idx) => !hiddenRows.has(`inc-${item.id || idx}`))
   const filteredOutgoing = outgoingList.filter((item, idx) => !hiddenRows.has(`out-${item.id || idx}`))
   const filteredProduction = Object.entries(productionSummary).filter(([m]) => !hiddenRows.has(`prod-${m}`))
@@ -192,14 +194,16 @@ const MisReport = () => {
   const filteredSaudaPurchase = saudaPurchaseSummary.filter((item, idx) => !hiddenRows.has(`pur-${item.itemName || idx}`))
 
   // Local ordered states
-  const [orderedStock, setOrderedStock] = useState(filteredStock)
+  const [orderedRawStock, setOrderedRawStock] = useState(filteredRawStock)
+  const [orderedCoalStock, setOrderedCoalStock] = useState(filteredCoalStock)
   const [orderedIncoming, setOrderedIncoming] = useState(filteredIncoming)
   const [orderedOutgoing, setOrderedOutgoing] = useState(filteredOutgoing)
   const [orderedProduction, setOrderedProduction] = useState(filteredProduction)
   const [orderedSaudaSale, setOrderedSaudaSale] = useState(filteredSaudaSale)
   const [orderedSaudaPurchase, setOrderedSaudaPurchase] = useState(filteredSaudaPurchase)
 
-  useEffect(() => setOrderedStock(filteredStock), [JSON.stringify(filteredStock)])
+  useEffect(() => setOrderedRawStock(filteredRawStock), [JSON.stringify(filteredRawStock)])
+  useEffect(() => setOrderedCoalStock(filteredCoalStock), [JSON.stringify(filteredCoalStock)])
   useEffect(() => setOrderedIncoming(filteredIncoming), [JSON.stringify(filteredIncoming)])
   useEffect(() => setOrderedOutgoing(filteredOutgoing), [JSON.stringify(filteredOutgoing)])
   useEffect(() => setOrderedProduction(filteredProduction), [JSON.stringify(filteredProduction)])
@@ -335,29 +339,54 @@ const MisReport = () => {
           </thead>
           
           <tbody>
-            {/* STOCK SECTION */}
-            {orderedStock.length > 0 && (
+            {/* RAW MATERIAL STOCK SECTION */}
+            {orderedRawStock.length > 0 ? (
               <>
-                {orderedStock.map(([material, qty], idx) => (
-                  <tr key={`stock-${material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'stock')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'stock', orderedStock, setOrderedStock)}>
+                {orderedRawStock.map(([material, qty], idx) => (
+                  <tr key={`rawstock-${material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'rawstock')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'rawstock', orderedRawStock, setOrderedRawStock)}>
                     {idx === 0 && (
-                      <td contentEditable suppressContentEditableWarning rowSpan={orderedStock.length} className="font-bold border border-slate-400 p-1 align-top w-[120px]">
-                        STOCK
+                      <td contentEditable suppressContentEditableWarning rowSpan={orderedRawStock.length} className="font-bold border border-slate-400 p-1 align-top w-[120px]">
+                        RAW MATERIAL STOCK
                       </td>
                     )}
                     <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 relative">
-                      <HideButton rowKey={`stock-${material}`} />
+                      <HideButton rowKey={`rawstock-${material}`} />
                       {material}
                     </td>
                     <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 text-right">{formatNumber(qty)}</td>
                   </tr>
                 ))}
               </>
-            )}
-            {filteredStock.length === 0 && (
+            ) : (
               <tr>
-                <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 align-top w-[120px]">STOCK</td>
-                <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1 text-center text-slate-500">No stock data found.</td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 align-top w-[120px]">RAW MATERIAL STOCK</td>
+                <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1 text-center text-slate-500">No raw material stock found.</td>
+                <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1"></td>
+              </tr>
+            )}
+
+            {/* COAL DETAIL STOCK SECTION */}
+            {orderedCoalStock.length > 0 ? (
+              <>
+                {orderedCoalStock.map(([material, qty], idx) => (
+                  <tr key={`coalstock-${material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'coalstock')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'coalstock', orderedCoalStock, setOrderedCoalStock)}>
+                    {idx === 0 && (
+                      <td contentEditable suppressContentEditableWarning rowSpan={orderedCoalStock.length} className="font-bold border border-slate-400 p-1 align-top w-[120px]">
+                        COAL STOCK
+                      </td>
+                    )}
+                    <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 relative">
+                      <HideButton rowKey={`coalstock-${material}`} />
+                      {material}
+                    </td>
+                    <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 text-right">{formatNumber(qty)}</td>
+                  </tr>
+                ))}
+              </>
+            ) : (
+              <tr>
+                <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 align-top w-[120px]">COAL STOCK</td>
+                <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1 text-center text-slate-500">No coal stock found.</td>
                 <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1"></td>
               </tr>
             )}
