@@ -473,26 +473,30 @@ const Stock = () => {
     const parsedData = parseStockOCR(extractedText)
     const newRow = { ...initialForm, ...parsedData, category: rowsCategory || '' }
     setRows([newRow])
-    setToast({ type: 'success', message: 'OCR data extracted successfully.' })
+    setActiveTab('raw_material')
+    setIsModalOpen(true)
+    setToast({ type: 'success', message: 'OCR extracted successfully. Please review the details.' })
   }
 
   const handleCoalOcr = (extractedText) => {
     const parsedData = parseCoalStockOCR(extractedText)
-    const newRow = { 
-      material: parsedData.material, 
-      openingStock: parsedData.openingStock, 
-      inward: parsedData.inward, 
-      consumption: parsedData.consumption, 
-      fc: parsedData.fc, 
-      moistLossPct: parsedData.moistLossPct, 
-      dispatch: parsedData.dispatch, 
-      landedCost: parsedData.landedCost, 
+    const newRow = {
+      material: parsedData.material,
+      openingStock: parsedData.openingStock,
+      inward: parsedData.inward,
+      consumption: parsedData.consumption,
+      fc: parsedData.fc,
+      moistLossPct: parsedData.moistLossPct,
+      dispatch: parsedData.dispatch,
+      landedCost: parsedData.landedCost,
       closingStock: parsedData.closingStock,
       category: coalCategory || 'COAL DETAILS',
       remarks: ''
     }
     setCoalRows([newRow])
-    setToast({ type: 'success', message: 'OCR data extracted successfully.' })
+    setActiveTab('coal_detail')
+    setIsModalOpen(true)
+    setToast({ type: 'success', message: 'OCR extracted successfully. Please review the details.' })
   }
 
   const addCoalRow = () => setCoalRows((s) => ([...s, { material: '', openingStock: '', inward: '', consumption: '', fc: '', moistLossPct: '', dispatch: '', landedCost: '', closingStock: '' }]))

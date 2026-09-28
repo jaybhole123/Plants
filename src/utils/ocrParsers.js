@@ -302,17 +302,18 @@ export const parseProductionOCR = (rawText) => {
       continue
     }
 
-    // Skip header lines
-    if (line.toUpperCase().includes('PRODUCTION') || 
-        line.toUpperCase().includes('METRIC') || 
-        line.toUpperCase().includes('GRADE') && line.toUpperCase().includes('K-')) {
-      continue
-    }
-
     // Try to parse data rows: "Label Number Number Number Number"
     const tokens = line.split(/\s+/)
     const numberTokens = tokens.filter(t => /^-?[\d,]+(\.\d+)?%?$/.test(t))
-    
+
+    // Skip header/title lines (no numeric data on the line)
+    if (numberTokens.length === 0 && (
+        line.toUpperCase().includes('PRODUCTION') ||
+        line.toUpperCase().includes('METRIC') ||
+        (line.toUpperCase().includes('GRADE') && line.toUpperCase().includes('K-')))) {
+      continue
+    }
+
     if (numberTokens.length >= 2) {
       const labelTokens = tokens.filter(t => !/^-?[\d,]+(\.\d+)?%?$/.test(t))
       const label = labelTokens.join(' ') || line
