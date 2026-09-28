@@ -3,12 +3,10 @@ import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import {
   useStockStore,
-  useTransferStore,
   useProductionStore,
-  useProduction2Store,
-  useSaudaScaleStore,
-  useSaudaPurchaseStore
+  useProduction2Store
 } from '../store/useStore'
+import { supabase } from '../supabase'
 
 const formatNumber = (value) => {
   if (value === undefined || value === null || isNaN(value)) return '0.000'
@@ -37,10 +35,65 @@ const MisReport = () => {
 
   // Get data from all stores
   const stockItems = useStockStore(state => state.items)
-  const { incomingList, outgoingList } = useTransferStore()
+  
+  const [incomingList, setIncomingList] = useState([])
+  const [outgoingList, setOutgoingList] = useState([])
+  const [saudaSaleEntries, setSaudaSaleEntries] = useState([])
+  const [saudaPurchaseEntries, setSaudaPurchaseEntries] = useState([])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // Fetch item transfers
+      const { data: transfers, error: transferError } = await supabase
+        .from('item_transfers')
+        .select('*')
+        .eq('report_date', reportDate)
+        
+      if (!transferError && transfers) {
+        const incoming = transfers.filter(d => d.entry_type === 'incoming').map(item => ({
+          id: item.id,
+          partyName: item.party_name,
+          materialName: item.material_name,
+          vehicleNo: item.vehicle_no,
+          qty: item.qty,
+          rate: item.rate
+        }))
+        const outgoing = transfers.filter(d => d.entry_type === 'outgoing').map(item => ({
+          id: item.id,
+          partyName: item.party_name,
+          materialName: item.material_name,
+          vehicleNo: item.vehicle_no,
+          qty: item.qty,
+          rate: item.rate
+        }))
+        setIncomingList(incoming)
+        setOutgoingList(outgoing)
+      }
+
+      // Fetch Sauda Sale
+      const { data: saleData } = await supabase.from('sauda_sale').select('*')
+      if (saleData) {
+        setSaudaSaleEntries(saleData.map(item => ({
+          mainHeading: item.main_heading,
+          itemName: item.item_name,
+          balPending: item.bal_pending
+        })))
+      }
+
+      // Fetch Sauda Purchase
+      const { data: purchaseData } = await supabase.from('sauda_purchase').select('*')
+      if (purchaseData) {
+        setSaudaPurchaseEntries(purchaseData.map(item => ({
+          mainHeading: item.main_heading,
+          itemName: item.item_name,
+          balPending: item.bal_pending
+        })))
+      }
+    }
+    fetchData()
+  }, [reportDate])
+
   const production2FilesData = useProduction2Store(state => state.filesData)
-  const saudaScaleEntries = useSaudaScaleStore(state => state.entries)
-  const saudaPurchaseEntries = useSaudaPurchaseStore(state => state.entries)
 
   // 1. STOCK AGGREGATION — split into Raw Material and Coal Detail
   const rawMaterialSummary = useMemo(() => {
@@ -68,7 +121,24 @@ const MisReport = () => {
       const key = item.material?.toUpperCase().trim() || 'COAL MATERIAL'
       summary[key] = (summary[key] || 0) + (Number(item.closingStock) || 0)
     })
-    return summary
+
+    let coalTotal = 0
+    const finalSummary = {}
+    Object.entries(summary).forEach(([key, val]) => {
+      if (key.includes('COAL')) {
+        coalTotal += val
+      } else {
+        finalSummary[key] = val
+      }
+    })
+    
+    const orderedSummary = {}
+    if (coalTotal > 0) {
+      orderedSummary['COAL'] = coalTotal
+    }
+    Object.assign(orderedSummary, finalSummary)
+
+    return orderedSummary
   }, [stockItems])
 
   // 2. INCOMING AGGREGATION
@@ -140,7 +210,7 @@ const MisReport = () => {
   // 5. SAUDA SALE AGGREGATION
   const saudaSaleSummary = useMemo(() => {
     const summary = {}
-    saudaScaleEntries.forEach(item => {
+    saudaSaleEntries.forEach(item => {
       const material = (item.mainHeading || item.itemName)?.toUpperCase().trim() || 'UNKNOWN'
       summary[material] = (summary[material] || 0) + (Number(item.balPending) || 0)
     })
@@ -149,7 +219,7 @@ const MisReport = () => {
       itemName,
       balPending
     }))
-  }, [saudaScaleEntries])
+  }, [saudaSaleEntries])
 
   // 6. SAUDA PURCHASE AGGREGATION
   const saudaPurchaseSummary = useMemo(() => {

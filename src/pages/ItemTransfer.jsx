@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import { useTransferStore } from '../store/useStore'
+import { useState, useEffect } from 'react'
+import { supabase } from '../supabase'
 import { CsvDropzone } from '../components/CsvDropzone'
+import OCRImageUploader from '../components/OCRImageUploader'
+import { parseItemTransferOCR } from '../utils/ocrParsers'
 
 const initialUnifiedForm = {
   type: 'incoming', // 'incoming' or 'outgoing'
@@ -39,7 +41,48 @@ const ItemTransfer = () => {
   // --- State Management ---
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   
-  const { incomingList, setIncomingList, outgoingList, setOutgoingList } = useTransferStore()
+  const [incomingList, setIncomingList] = useState([])
+  const [outgoingList, setOutgoingList] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  const fetchTransfers = async () => {
+    setIsLoading(true)
+    const { data, error } = await supabase
+      .from('item_transfers')
+      .select('*')
+      .eq('report_date', date)
+      
+    if (error) {
+      console.error('Error fetching transfers:', error)
+      showToast('Error loading data', 'error')
+    } else if (data) {
+      const incoming = data.filter(d => d.entry_type === 'incoming').map(item => ({
+        id: item.id,
+        mainHeading: '',
+        partyName: item.party_name,
+        materialName: item.material_name,
+        vehicleNo: item.vehicle_no,
+        qty: item.qty,
+        rate: item.rate
+      }))
+      const outgoing = data.filter(d => d.entry_type === 'outgoing').map(item => ({
+        id: item.id,
+        mainHeading: '',
+        partyName: item.party_name,
+        materialName: item.material_name,
+        vehicleNo: item.vehicle_no,
+        qty: item.qty,
+        rate: item.rate
+      }))
+      setIncomingList(incoming)
+      setOutgoingList(outgoing)
+    }
+    setIsLoading(false)
+  }
+
+  useEffect(() => {
+    fetchTransfers()
+  }, [date])
   
   const [unifiedForm, setUnifiedForm] = useState(initialUnifiedForm)
   const [editingIncomingId, setEditingIncomingId] = useState(null)
@@ -66,41 +109,44 @@ const ItemTransfer = () => {
     setEditingId(null)
   }
 
-  const handleUnifiedSubmit = (e) => {
+  const handleUnifiedSubmit = async (e) => {
     e.preventDefault()
     if (!unifiedForm.partyName.trim() || !unifiedForm.materialName.trim()) {
       showToast('Party Name and Material are required.', 'error')
       return
     }
 
-    const newEntry = {
-      id: editingId || Date.now(),
-      mainHeading: unifiedForm.mainHeading,
-      partyName: unifiedForm.partyName,
-      materialName: unifiedForm.materialName,
-      vehicleNo: unifiedForm.vehicleNo,
-      qty: unifiedForm.qty,
-      rate: unifiedForm.rate,
+    const payload = {
+      report_date: date,
+      entry_type: unifiedForm.type,
+      party_name: unifiedForm.partyName,
+      material_name: unifiedForm.materialName,
+      vehicle_no: unifiedForm.vehicleNo || null,
+      qty: Number(unifiedForm.qty) || 0,
+      rate: Number(unifiedForm.rate) || 0
     }
 
+    setIsLoading(true)
     if (editingId) {
-      if (unifiedForm.type === 'incoming') {
-        setIncomingList(prev => prev.map(item => item.id === editingId ? newEntry : item))
-        setOutgoingList(prev => prev.filter(item => item.id !== editingId))
+      const { error } = await supabase.from('item_transfers').update(payload).eq('id', editingId)
+      if (error) {
+        showToast('Failed to update entry', 'error')
+        console.error(error)
       } else {
-        setOutgoingList(prev => prev.map(item => item.id === editingId ? newEntry : item))
-        setIncomingList(prev => prev.filter(item => item.id !== editingId))
+        showToast('Entry updated successfully.')
+        await fetchTransfers()
       }
-      showToast('Entry updated successfully.')
     } else {
-      if (unifiedForm.type === 'incoming') {
-        setIncomingList(prev => [...prev, newEntry])
-        showToast('Incoming entry added successfully.')
+      const { error } = await supabase.from('item_transfers').insert([payload])
+      if (error) {
+        showToast('Failed to add entry', 'error')
+        console.error(error)
       } else {
-        setOutgoingList(prev => [...prev, newEntry])
-        showToast('Outgoing entry added successfully.')
+        showToast(`${unifiedForm.type === 'incoming' ? 'Incoming' : 'Outgoing'} entry added successfully.`)
+        await fetchTransfers()
       }
     }
+    setIsLoading(false)
     
     setUnifiedForm(prev => ({ ...initialUnifiedForm, type: prev.type }))
     setEditingId(null)
@@ -131,11 +177,18 @@ const ItemTransfer = () => {
     }
   }
 
-  const handleDeleteIncoming = (id) => {
+  const handleDeleteIncoming = async (id) => {
     if (window.confirm('Delete this incoming entry?')) {
-      setIncomingList(prev => prev.filter(item => item.id !== id))
-      showToast('Incoming entry removed.')
-      if (editingId === id) resetUnifiedForm()
+      setIsLoading(true)
+      const { error } = await supabase.from('item_transfers').delete().eq('id', id)
+      if (error) {
+        showToast('Failed to delete entry', 'error')
+      } else {
+        showToast('Incoming entry removed.')
+        await fetchTransfers()
+        if (editingId === id) resetUnifiedForm()
+      }
+      setIsLoading(false)
     }
   }
 
@@ -156,11 +209,18 @@ const ItemTransfer = () => {
     }
   }
 
-  const handleDeleteOutgoing = (id) => {
+  const handleDeleteOutgoing = async (id) => {
     if (window.confirm('Delete this outgoing entry?')) {
-      setOutgoingList(prev => prev.filter(item => item.id !== id))
-      showToast('Outgoing entry removed.')
-      if (editingId === id) resetUnifiedForm()
+      setIsLoading(true)
+      const { error } = await supabase.from('item_transfers').delete().eq('id', id)
+      if (error) {
+        showToast('Failed to delete entry', 'error')
+      } else {
+        showToast('Outgoing entry removed.')
+        await fetchTransfers()
+        if (editingId === id) resetUnifiedForm()
+      }
+      setIsLoading(false)
     }
   }
 
@@ -240,6 +300,17 @@ const ItemTransfer = () => {
     if (e.target && e.target.value !== undefined) {
       e.target.value = '' 
     }
+  }
+
+  // --- OCR Upload Handler ---
+  const handleOcrUpload = (extractedText) => {
+    const parsedData = parseItemTransferOCR(extractedText)
+    setUnifiedForm(prev => ({
+      ...prev,
+      ...parsedData
+    }))
+    setIsUnifiedModalOpen(true)
+    showToast('OCR extracted successfully. Please review the details.')
   }
 
   // --- Render Table (Reusable) ---
@@ -354,6 +425,11 @@ const ItemTransfer = () => {
           </svg>
           <span className="hidden sm:inline">AI Prompt</span>
         </button>
+
+        <OCRImageUploader 
+          onTextExtracted={handleOcrUpload} 
+          className="px-4 py-3 bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 font-bold rounded-lg" 
+        />
       </div>
 
       {isUnifiedModalOpen && (
@@ -490,7 +566,27 @@ const ItemTransfer = () => {
                 Preview Incoming Data
               </h2>
               <div className="flex gap-1.5">
-                <button onClick={() => { setIncomingList(prev => [...prev, ...incomingCsvPreview]); setIncomingCsvPreview([]); showToast('Data saved to incoming successfully.') }} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md transition-all shadow-sm active:scale-[0.98]">Save Data</button>
+                <button onClick={async () => { 
+                  setIsLoading(true);
+                  const payloads = incomingCsvPreview.map(r => ({
+                    report_date: date,
+                    entry_type: 'incoming',
+                    party_name: r.partyName,
+                    material_name: r.materialName,
+                    vehicle_no: r.vehicleNo || null,
+                    qty: Number(r.qty) || 0,
+                    rate: Number(r.rate) || 0
+                  }));
+                  const { error } = await supabase.from('item_transfers').insert(payloads);
+                  if (error) {
+                    showToast('Failed to save incoming data', 'error');
+                  } else {
+                    setIncomingCsvPreview([]); 
+                    showToast('Data saved to incoming successfully.');
+                    await fetchTransfers();
+                  }
+                  setIsLoading(false);
+                }} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md transition-all shadow-sm active:scale-[0.98]">Save Data</button>
                 <button onClick={() => setIncomingCsvPreview([])} className="px-5 py-2.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-100 font-medium rounded-md transition-all active:scale-[0.98]">Cancel</button>
               </div>
             </div>
@@ -526,7 +622,27 @@ const ItemTransfer = () => {
                 Preview Outgoing Data
               </h2>
               <div className="flex gap-1.5">
-                <button onClick={() => { setOutgoingList(prev => [...prev, ...outgoingCsvPreview]); setOutgoingCsvPreview([]); showToast('Data saved to outgoing successfully.') }} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md transition-all shadow-sm active:scale-[0.98]">Save Data</button>
+                <button onClick={async () => { 
+                  setIsLoading(true);
+                  const payloads = outgoingCsvPreview.map(r => ({
+                    report_date: date,
+                    entry_type: 'outgoing',
+                    party_name: r.partyName,
+                    material_name: r.materialName,
+                    vehicle_no: r.vehicleNo || null,
+                    qty: Number(r.qty) || 0,
+                    rate: Number(r.rate) || 0
+                  }));
+                  const { error } = await supabase.from('item_transfers').insert(payloads);
+                  if (error) {
+                    showToast('Failed to save outgoing data', 'error');
+                  } else {
+                    setOutgoingCsvPreview([]); 
+                    showToast('Data saved to outgoing successfully.');
+                    await fetchTransfers();
+                  }
+                  setIsLoading(false);
+                }} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md transition-all shadow-sm active:scale-[0.98]">Save Data</button>
                 <button onClick={() => setOutgoingCsvPreview([])} className="px-5 py-2.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-100 font-medium rounded-md transition-all active:scale-[0.98]">Cancel</button>
               </div>
             </div>

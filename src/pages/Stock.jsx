@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useStockStore } from '../store/useStore'
 import { FileUploader } from '../components/FileUploader'
 import { CsvDropzone } from '../components/CsvDropzone'
+import OCRImageUploader from '../components/OCRImageUploader'
+import { parseStockOCR, parseCoalStockOCR } from '../utils/ocrParsers'
+import { supabase } from '../supabase'
 
 const initialForm = {
   category: '',
@@ -57,10 +60,216 @@ const getCategoryLabel = (category) => {
 }
 
 const Stock = () => {
-  const items = useStockStore((state) => state.items)
-  const addItem = useStockStore((state) => state.addItem)
-  const updateItem = useStockStore((state) => state.updateItem)
-  const deleteItem = useStockStore((state) => state.deleteItem)
+  const storeItems = useStockStore((state) => state.items)
+  const storeAddItem = useStockStore((state) => state.addItem)
+  const storeUpdateItem = useStockStore((state) => state.updateItem)
+  const storeDeleteItem = useStockStore((state) => state.deleteItem)
+
+  const [dbItems, setDbItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchDbItems = async () => {
+    setIsLoading(true);
+    try {
+      const [rawResult, coalResult] = await Promise.all([
+        supabase
+          .from('raw_material_stock')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .order('material', { ascending: true })
+          .order('id', { ascending: true }),
+        supabase
+          .from('coal_stock')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .order('material', { ascending: true })
+          .order('id', { ascending: true })
+      ]);
+        
+      if (rawResult.error) throw rawResult.error;
+      if (coalResult.error) throw coalResult.error;
+      
+      const mappedRaw = rawResult.data.map(item => ({
+        id: item.id,
+        type: 'raw_material',
+        category: item.category,
+        material: item.material,
+        openingStock: Number(item.opening_stock) || 0,
+        inward: Number(item.inward) || 0,
+        consumption: Number(item.consumption) || 0,
+        crushing: item.crushing || '0%',
+        fines3: Number(item.fines3) || 0,
+        fines3Qty: Number(item.fines3_qty) || 0,
+        production: Number(item.production) || 0,
+        dispatch: Number(item.dispatch) || 0,
+        closingStock: Number(item.closing_stock) || 0,
+        unit: item.unit || 'ton',
+        remarks: item.remarks || '',
+        reportDate: item.report_date,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at
+      }));
+
+      const mappedCoal = coalResult.data.map(item => ({
+        id: item.id,
+        type: 'coal_detail',
+        category: item.category,
+        material: item.material,
+        openingStock: Number(item.opening_stock) || 0,
+        inward: Number(item.inward) || 0,
+        consumption: Number(item.consumption) || 0,
+        fc: item.fc || '',
+        moistLossPct: item.moist_loss_pct || '',
+        moistLossQty: Number(item.moist_loss_qty) || 0,
+        landedCost: Number(item.landed_cost) || 0,
+        dispatch: Number(item.dispatch) || 0,
+        closingStock: Number(item.closing_stock) || 0,
+        remarks: item.remarks || '',
+        reportDate: item.report_date,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at
+      }));
+
+      setDbItems([...mappedRaw, ...mappedCoal]);
+    } catch (err) {
+      console.error(err);
+      setToast({ type: 'error', message: 'Failed to fetch items from database.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDbItems();
+  }, []);
+
+  const items = useMemo(() => {
+    return dbItems;
+  }, [dbItems]);
+
+  const addItem = async (item) => {
+    if (item.type === 'coal_detail') {
+      const payload = {
+        category: item.category || 'COAL DETAILS',
+        material: item.material,
+        opening_stock: Number(item.openingStock) || 0,
+        inward: Number(item.inward) || 0,
+        consumption: Number(item.consumption) || 0,
+        fc: item.fc || '',
+        moist_loss_pct: item.moistLossPct || '',
+        moist_loss_qty: Number(item.moistLossQty) || 0,
+        landed_cost: Number(item.landedCost) || 0,
+        dispatch: Number(item.dispatch) || 0,
+        closing_stock: Number(item.closingStock) || 0,
+        remarks: item.remarks || '',
+        report_date: item.reportDate || new Date().toISOString().split('T')[0]
+      };
+      const { error } = await supabase.from('coal_stock').insert([payload]);
+      if (error) {
+        setToast({ type: 'error', message: 'Failed to add coal item to DB.' });
+        console.error(error);
+      } else {
+        await fetchDbItems();
+      }
+    } else {
+      const payload = {
+        category: item.category || '',
+        material: item.material,
+        opening_stock: Number(item.openingStock) || 0,
+        inward: Number(item.inward) || 0,
+        consumption: Number(item.consumption) || 0,
+        crushing: item.crushing || '0%',
+        fines3: parsePercentValue(item.fines3) || 0,
+        fines3_qty: Number(item.fines3Qty) || 0,
+        production: Number(item.production) || 0,
+        dispatch: Number(item.dispatch) || 0,
+        closing_stock: Number(item.closingStock) || 0,
+        unit: item.unit || 'ton',
+        remarks: item.remarks || '',
+        report_date: item.reportDate || new Date().toISOString().split('T')[0]
+      };
+      const { error } = await supabase.from('raw_material_stock').insert([payload]);
+      if (error) {
+        setToast({ type: 'error', message: 'Failed to add item to DB.' });
+        console.error(error);
+      } else {
+        await fetchDbItems();
+      }
+    }
+  }
+
+  const updateItem = async (id, item) => {
+    const isCoal = dbItems.some(i => i.id === id && i.type === 'coal_detail') || item.type === 'coal_detail';
+    if (isCoal) {
+      const payload = {
+        category: item.category || 'COAL DETAILS',
+        material: item.material,
+        opening_stock: Number(item.openingStock) || 0,
+        inward: Number(item.inward) || 0,
+        consumption: Number(item.consumption) || 0,
+        fc: item.fc || '',
+        moist_loss_pct: item.moistLossPct || '',
+        moist_loss_qty: Number(item.moistLossQty) || 0,
+        landed_cost: Number(item.landedCost) || 0,
+        dispatch: Number(item.dispatch) || 0,
+        closing_stock: Number(item.closingStock) || 0,
+        remarks: item.remarks || '',
+        report_date: item.reportDate || new Date().toISOString().split('T')[0]
+      };
+      const { error } = await supabase.from('coal_stock').update(payload).eq('id', id);
+      if (error) {
+        setToast({ type: 'error', message: 'Failed to update coal item in DB.' });
+        console.error(error);
+      } else {
+        await fetchDbItems();
+      }
+    } else {
+      const payload = {
+        category: item.category || '',
+        material: item.material,
+        opening_stock: Number(item.openingStock) || 0,
+        inward: Number(item.inward) || 0,
+        consumption: Number(item.consumption) || 0,
+        crushing: item.crushing || '0%',
+        fines3: parsePercentValue(item.fines3) || 0,
+        fines3_qty: Number(item.fines3Qty) || 0,
+        production: Number(item.production) || 0,
+        dispatch: Number(item.dispatch) || 0,
+        closing_stock: Number(item.closingStock) || 0,
+        unit: item.unit || 'ton',
+        remarks: item.remarks || '',
+        report_date: item.reportDate || new Date().toISOString().split('T')[0]
+      };
+      const { error } = await supabase.from('raw_material_stock').update(payload).eq('id', id);
+      if (error) {
+        setToast({ type: 'error', message: 'Failed to update item in DB.' });
+        console.error(error);
+      } else {
+        await fetchDbItems();
+      }
+    }
+  }
+
+  const deleteItem = async (id) => {
+    const isCoal = dbItems.some(i => i.id === id && i.type === 'coal_detail');
+    if (isCoal) {
+      const { error } = await supabase.from('coal_stock').delete().eq('id', id);
+      if (error) {
+        setToast({ type: 'error', message: 'Failed to delete coal item from DB.' });
+        console.error(error);
+      } else {
+        await fetchDbItems();
+      }
+    } else {
+      const { error } = await supabase.from('raw_material_stock').delete().eq('id', id);
+      if (error) {
+        setToast({ type: 'error', message: 'Failed to delete item from DB.' });
+        console.error(error);
+      } else {
+        await fetchDbItems();
+      }
+    }
+  }
 
   const [form, setForm] = useState(initialForm)
   const [rows, setRows] = useState([initialForm])
@@ -76,6 +285,7 @@ const Stock = () => {
   const [activeTab, setActiveTab] = useState('raw_material')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const [coalRows, setCoalRows] = useState([{ material: '', openingStock: '', inward: '', consumption: '', fc: '', moistLossPct: '', dispatch: '', landedCost: '', closingStock: '' }])
   const [coalCategory, setCoalCategory] = useState('COAL DETAILS')
@@ -105,6 +315,7 @@ const Stock = () => {
     setAttachments([])
     setSelectedId(null)
     setError('')
+    setCoalRows([{ material: '', openingStock: '', inward: '', consumption: '', fc: '', moistLossPct: '', dispatch: '', landedCost: '', closingStock: '' }])
   }
 
   const resetRows = () => {
@@ -257,6 +468,33 @@ const Stock = () => {
     e.target.value = '' 
   }
 
+  // --- OCR Upload Handlers ---
+  const handleRawMaterialOcr = (extractedText) => {
+    const parsedData = parseStockOCR(extractedText)
+    const newRow = { ...initialForm, ...parsedData, category: rowsCategory || '' }
+    setRows([newRow])
+    setToast({ type: 'success', message: 'OCR data extracted successfully.' })
+  }
+
+  const handleCoalOcr = (extractedText) => {
+    const parsedData = parseCoalStockOCR(extractedText)
+    const newRow = { 
+      material: parsedData.material, 
+      openingStock: parsedData.openingStock, 
+      inward: parsedData.inward, 
+      consumption: parsedData.consumption, 
+      fc: parsedData.fc, 
+      moistLossPct: parsedData.moistLossPct, 
+      dispatch: parsedData.dispatch, 
+      landedCost: parsedData.landedCost, 
+      closingStock: parsedData.closingStock,
+      category: coalCategory || 'COAL DETAILS',
+      remarks: ''
+    }
+    setCoalRows([newRow])
+    setToast({ type: 'success', message: 'OCR data extracted successfully.' })
+  }
+
   const addCoalRow = () => setCoalRows((s) => ([...s, { material: '', openingStock: '', inward: '', consumption: '', fc: '', moistLossPct: '', dispatch: '', landedCost: '', closingStock: '' }]))
   const removeCoalRow = (idx) => setCoalRows((s) => s.filter((_, i) => i !== idx))
   
@@ -275,67 +513,104 @@ const Stock = () => {
     }))
   }
 
-  const handleSaveCoalRows = (e) => {
+  const handleSaveCoalRows = async (e) => {
     e.preventDefault()
-    for (let i = 0; i < coalRows.length; i++) {
-      const r = coalRows[i]
-      if (!r.material) continue
-      const preparedItem = {
-        id: crypto.randomUUID(),
-        type: 'coal_detail',
-        category: coalCategory || 'COAL DETAILS',
-        material: r.material,
-        openingStock: Number(r.openingStock) || 0,
-        inward: Number(r.inward) || 0,
-        consumption: Number(r.consumption) || 0,
-        fc: r.fc || '',
-        moistLossPct: r.moistLossPct || '',
-        moistLossQty: Number(r.moistLossQty) || 0,
-        landedCost: Number(r.landedCost) || 0,
-        closingStock: Number(r.closingStock) || 0,
-        reportDate,
-        updatedAt: new Date().toISOString(),
-      }
-      addItem(preparedItem)
+    const validRows = coalRows.filter(r => r.material && r.material.trim() !== '')
+    
+    if (validRows.length === 0) {
+      setError('Please enter at least one material.')
+      return
     }
+
+    const payloads = validRows.map((r) => ({
+      category: coalCategory || 'COAL DETAILS',
+      material: r.material,
+      opening_stock: Number(r.openingStock) || 0,
+      inward: Number(r.inward) || 0,
+      consumption: Number(r.consumption) || 0,
+      fc: r.fc || '',
+      moist_loss_pct: r.moistLossPct || '',
+      moist_loss_qty: Number(r.moistLossQty) || 0,
+      landed_cost: Number(r.landedCost) || 0,
+      dispatch: Number(r.dispatch) || 0,
+      closing_stock: Number(r.closingStock) || 0,
+      remarks: r.remarks || '',
+      report_date: reportDate || new Date().toISOString().split('T')[0]
+    }));
+
+    setIsSaving(true);
+    if (selectedId && payloads.length === 1) {
+      const { error } = await supabase.from('coal_stock').update(payloads[0]).eq('id', selectedId);
+      if (error) {
+        setToast({ type: 'error', message: 'Failed to update coal item in DB.' });
+        console.error(error);
+      } else {
+        setToast({ type: 'success', message: `Coal entry updated successfully.` })
+        await fetchDbItems();
+      }
+    } else {
+      const { error } = await supabase.from('coal_stock').insert(payloads);
+      if (error) {
+        setToast({ type: 'error', message: 'Failed to add coal items to DB.' });
+        console.error(error);
+      } else {
+        setToast({ type: 'success', message: `${validRows.length} coal row(s) added.` })
+        await fetchDbItems();
+      }
+    }
+    setIsSaving(false);
+
     setCoalRows([{ material: '', openingStock: '', inward: '', consumption: '', fc: '', moistLossPct: '', dispatch: '', landedCost: '', closingStock: '' }])
-    setToast({ type: 'success', message: 'Coal items saved successfully!' })
     setIsModalOpen(false)
   }
 
-  const handleSaveRows = (e) => {
+  const handleSaveRows = async (e) => {
     e.preventDefault()
-    for (let i = 0; i < rows.length; i++) {
-      const validationError = validateForm(rows[i])
+    
+    // Filter out rows that have no material name (empty rows)
+    const validRows = rows.filter(r => r.material && r.material.trim() !== '')
+    
+    if (validRows.length === 0) {
+      setError('Please enter at least one material.')
+      return
+    }
+
+    for (let i = 0; i < validRows.length; i++) {
+      const validationError = validateForm(validRows[i])
       if (validationError) {
         setError(`Row ${i + 1}: ${validationError}`)
         return
       }
     }
 
-    rows.forEach((r) => {
-      const preparedItem = {
-        category: r.category || rowsCategory || '',
-        material: r.material.trim(),
-        openingStock: Number(r.openingStock) || 0,
-        inward: Number(r.inward) || 0,
-        consumption: Number(r.consumption) || 0,
-        crushing: r.crushing || '0%',
-        fines3: parsePercentValue(r.fines3),
-        fines3Qty: Number(r.fines3Qty) || 0,
-        production: Number(r.production) || 0,
-        dispatch: Number(r.dispatch) || 0,
-        closingStock: Number(r.closingStock) || 0,
-        unit: r.unit,
-        remarks: r.remarks ? r.remarks.trim() : '',
-        attachments,
-        reportDate,
-        updatedAt: new Date().toISOString(),
-      }
-      addItem(preparedItem)
-    })
+    const payloads = validRows.map((r) => ({
+      category: r.category || rowsCategory || '',
+      material: r.material.trim(),
+      opening_stock: Number(r.openingStock) || 0,
+      inward: Number(r.inward) || 0,
+      consumption: Number(r.consumption) || 0,
+      crushing: r.crushing || '0%',
+      fines3: parsePercentValue(r.fines3) || 0,
+      fines3_qty: Number(r.fines3Qty) || 0,
+      production: Number(r.production) || 0,
+      dispatch: Number(r.dispatch) || 0,
+      closing_stock: Number(r.closingStock) || 0,
+      unit: r.unit,
+      remarks: r.remarks ? r.remarks.trim() : '',
+      report_date: reportDate || new Date().toISOString().split('T')[0]
+    }));
 
-    setToast({ type: 'success', message: `${rows.length} stock row(s) added.` })
+    setIsSaving(true);
+    const { error } = await supabase.from('raw_material_stock').insert(payloads);
+    if (error) {
+       setToast({ type: 'error', message: 'Failed to add items to DB.' });
+       console.error(error);
+    } else {
+       setToast({ type: 'success', message: `${validRows.length} stock row(s) added.` })
+       await fetchDbItems();
+    }
+    setIsSaving(false);
+
     resetRows()
     setIsModalOpen(false)
   }
@@ -380,8 +655,24 @@ const Stock = () => {
   }
 
   const handleEdit = (item) => {
-    setEditForm(item)
-    setEditingId(item.id)
+    setForm(item)
+    setSelectedId(item.id)
+    if (item.type === 'coal_detail') {
+      setCoalCategory(item.category || 'COAL DETAILS')
+      setCoalRows([{
+        material: item.material,
+        openingStock: item.openingStock || '',
+        inward: item.inward || '',
+        consumption: item.consumption || '',
+        fc: item.fc || '',
+        moistLossPct: item.moistLossPct || '',
+        landedCost: item.landedCost || '',
+        dispatch: item.dispatch || '',
+        closingStock: item.closingStock || '',
+        remarks: item.remarks || ''
+      }])
+    }
+    setIsModalOpen(true)
     setError('')
   }
 
@@ -481,7 +772,7 @@ const Stock = () => {
             Coal Detail
           </button>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow shadow-indigo-500/30 transition-all flex items-center gap-2">
+        <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow shadow-indigo-500/30 transition-all flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
           Add Stock Entry
         </button>
@@ -493,7 +784,7 @@ const Stock = () => {
           <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform transition-all relative z-10 border border-slate-100 flex flex-col">
             <div className={`px-8 py-5 border-b flex justify-between items-center text-white sticky top-0 z-20 ${activeTab === 'raw_material' ? 'bg-gradient-to-r from-indigo-600 to-blue-600' : 'bg-gradient-to-r from-emerald-600 to-teal-500'}`}>
               <h3 className="font-bold text-xl flex items-center gap-2.5 tracking-wide">
-                {activeTab === 'raw_material' ? 'Add Raw Material Stock' : 'Add Coal Detail'}
+                {selectedId ? `Edit Stock Entry: ${form.material || 'Item'}` : (activeTab === 'raw_material' ? 'Add Raw Material Stock' : 'Add Coal Detail')}
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-white/70 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-full">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -505,10 +796,14 @@ const Stock = () => {
                 <>
               <div className="w-full flex flex-col gap-2">
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3 mb-6 border-b border-slate-200 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 border-b border-slate-200 pb-4">
+          <div>
+             <h4 className="text-sm font-semibold text-slate-700">Stock Details</h4>
+             <p className="text-xs text-slate-500">Update the inventory values below</p>
+          </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-white px-4 py-2 border border-slate-300 rounded-lg shadow-sm">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Report Date:</label>
+            <div className="flex items-center gap-2 bg-white px-4 py-2.5 border border-slate-200 rounded-xl shadow-sm focus-within:ring-4 focus-within:ring-indigo-500/10 focus-within:border-indigo-400 transition-all">
+              <label className="text-xs font-bold text-indigo-500 uppercase tracking-wider">Report Date:</label>
               <input 
                 type="date" 
                 value={reportDate} 
@@ -519,9 +814,10 @@ const Stock = () => {
             {selectedId && (
               <button
                 onClick={resetForm}
-                className="px-5 py-2 text-sm font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-all shadow-sm"
+                className="px-5 py-2.5 text-sm font-semibold bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl transition-all shadow-sm flex items-center gap-2"
                 type="button"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 Cancel Edit
               </button>
             )}
@@ -529,185 +825,177 @@ const Stock = () => {
         </div>
 
         {selectedId ? (
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Edit existing single item (keep old layout) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
-            <div>
-              <label className="form-label text-xs font-medium text-slate-700 block mb-1" htmlFor="category">Category (Main Heading)</label>
-              <input
-                id="category"
-                value={form.category}
-                onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-400 rounded-md text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
-                placeholder="Enter category"
-              />
-            </div>
-            <div>
-              <label className="form-label text-xs font-medium text-slate-700 block mb-1" htmlFor="material">Material Name</label>
-              <input
-                id="material"
-                value={form.material}
-                onChange={(e) => setForm((prev) => ({ ...prev, material: e.target.value }))}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-400 rounded-md text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
-                placeholder="Ex. Iron Ore (10-40)"
-              />
-            </div>
-            <div>
-              <label className="form-label text-xs font-medium text-slate-700 block mb-1" htmlFor="unit">Unit</label>
-              <select
-                id="unit"
-                value={form.unit}
-                onChange={(e) => setForm((prev) => ({ ...prev, unit: e.target.value }))}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-400 rounded-md text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
-              >
-                {unitOptions.map((unit) => (
-                  <option key={unit} value={unit}>{unit}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
-            <div>
-              <label className="form-label text-xs text-slate-500 block mb-1" htmlFor="openingStock">Opening</label>
-              <input
-                id="openingStock"
-                type="text"
-                inputMode="decimal"
-                value={form.openingStock}
-                onChange={(e) => setForm((prev) => ({ ...prev, openingStock: e.target.value }))}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-400 rounded-md text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition text-xs"
-                placeholder="0"
-              />
-            </div>
-            <div>
-              <label className="form-label text-xs text-slate-500 block mb-1" htmlFor="inward">Inward</label>
-              <input
-                id="inward"
-                type="text"
-                inputMode="decimal"
-                value={form.inward}
-                onChange={(e) => setForm((prev) => ({ ...prev, inward: e.target.value }))}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-400 rounded-md text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition text-xs"
-                placeholder="0"
-              />
-            </div>
-            <div>
-              <label className="form-label text-xs text-slate-500 block mb-1" htmlFor="consumption">Cons</label>
-              <input
-                id="consumption"
-                type="text"
-                inputMode="decimal"
-                value={form.consumption}
-                onChange={(e) => setForm((prev) => ({ ...prev, consumption: e.target.value }))}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-400 rounded-md text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition text-xs"
-                placeholder="0"
-              />
-            </div>
-            <div>
-              <label className="form-label text-xs text-slate-500 block mb-1" htmlFor="crushing">Crushing Screen (+3)</label>
-              <input
-                id="crushing"
-                value={form.crushing}
-                onChange={(e) => setForm((prev) => ({ ...prev, crushing: e.target.value }))}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-400 rounded-md text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition text-xs"
-                placeholder="0%"
-              />
-            </div>
-            <div>
-              <label className="form-label text-xs text-slate-500 block mb-1" htmlFor="fines3">Fines(-3%)</label>
-              <input
-                id="fines3"
-                type="text"
-                inputMode="decimal"
-                value={form.fines3}
-                onChange={(e) => setForm((prev) => ({ ...prev, fines3: e.target.value }))}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-400 rounded-md text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition text-xs"
-                placeholder="0%"
-              />
-            </div>
-            <div>
-              <label className="form-label text-xs text-slate-500 block mb-1" htmlFor="fines3Qty">Fines(-3)Qty</label>
-              <input
-                id="fines3Qty"
-                type="text"
-                inputMode="decimal"
-                value={form.fines3Qty}
-                onChange={(e) => setForm((prev) => ({ ...prev, fines3Qty: e.target.value }))}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-400 rounded-md text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition text-xs"
-                placeholder="0"
-              />
-            </div>
-            <div>
-              <label className="form-label text-xs text-slate-500 block mb-1" htmlFor="production">Prod</label>
-              <input
-                id="production"
-                type="text"
-                inputMode="decimal"
-                value={form.production}
-                onChange={(e) => setForm((prev) => ({ ...prev, production: e.target.value }))}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-400 rounded-md text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition text-xs"
-                placeholder="0"
-              />
-            </div>
-            <div>
-              <label className="form-label text-xs text-slate-500 block mb-1" htmlFor="dispatch">Dis</label>
-              <input
-                id="dispatch"
-                type="text"
-                inputMode="decimal"
-                value={form.dispatch}
-                onChange={(e) => setForm((prev) => ({ ...prev, dispatch: e.target.value }))}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-400 rounded-md text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition text-xs"
-                placeholder="0"
-              />
-            </div>
-            <div className="col-span-2 sm:col-span-3 lg:col-span-2">
-              <label className="form-label text-xs text-slate-500 block mb-1" htmlFor="closingStock">Closing Stock</label>
-              <input
-                id="closingStock"
-                type="text"
-                inputMode="decimal"
-                value={form.closingStock}
-                onChange={(e) => setForm((prev) => ({ ...prev, closingStock: e.target.value }))}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-400 rounded-md text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
-                placeholder="0"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-1 items-end">
-            <div>
-              <label className="form-label text-xs text-slate-500 block mb-1" htmlFor="remarks">Remarks</label>
-              <textarea
-                id="remarks"
-                rows="2"
-                value={form.remarks}
-                onChange={(e) => setForm((prev) => ({ ...prev, remarks: e.target.value }))}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-400 rounded-md text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition resize-none"
-                placeholder="Optional notes"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <div>
-                <p className="text-xs text-slate-500 mb-2">Attach Documents</p>
-                <FileUploader
-                  files={attachments}
-                  onChange={setAttachments}
-                  onError={(message) => setToast({ type: 'error', message })}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="group">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5 transition-colors group-focus-within:text-indigo-600" htmlFor="category">Category (Main Heading)</label>
+                <input
+                  id="category"
+                  value={form.category}
+                  onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm"
+                  placeholder="Enter category"
                 />
               </div>
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                <button type="submit" className="px-8 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600 text-white font-medium rounded-md transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
-                  {selectedId ? 'Update Stock' : 'Add Stock'}
-                </button>
-                <button type="button" onClick={resetForm} className="px-8 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-md transition-all duration-300">
-                  Reset
-                </button>
+              <div className="group">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5 transition-colors group-focus-within:text-indigo-600" htmlFor="material">Material Name</label>
+                <input
+                  id="material"
+                  value={form.material}
+                  onChange={(e) => setForm((prev) => ({ ...prev, material: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm"
+                  placeholder="Ex. Iron Ore (10-40)"
+                />
+              </div>
+              <div className="group">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5 transition-colors group-focus-within:text-indigo-600" htmlFor="unit">Unit</label>
+                <select
+                  id="unit"
+                  value={form.unit}
+                  onChange={(e) => setForm((prev) => ({ ...prev, unit: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm"
+                >
+                  {unitOptions.map((unit) => (
+                    <option key={unit} value={unit}>{unit}</option>
+                  ))}
+                </select>
               </div>
             </div>
-          </div>
 
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="group">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5 transition-colors group-focus-within:text-indigo-600" htmlFor="openingStock">Opening</label>
+                <input
+                  id="openingStock"
+                  type="text"
+                  inputMode="decimal"
+                  value={form.openingStock}
+                  onChange={(e) => setForm((prev) => ({ ...prev, openingStock: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-right focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm"
+                  placeholder="0"
+                />
+              </div>
+              <div className="group">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5 transition-colors group-focus-within:text-indigo-600" htmlFor="inward">Inward</label>
+                <input
+                  id="inward"
+                  type="text"
+                  inputMode="decimal"
+                  value={form.inward}
+                  onChange={(e) => setForm((prev) => ({ ...prev, inward: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-right focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm"
+                  placeholder="0"
+                />
+              </div>
+              <div className="group">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5 transition-colors group-focus-within:text-indigo-600" htmlFor="consumption">Cons.</label>
+                <input
+                  id="consumption"
+                  type="text"
+                  inputMode="decimal"
+                  value={form.consumption}
+                  onChange={(e) => setForm((prev) => ({ ...prev, consumption: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-right focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm"
+                  placeholder="0"
+                />
+              </div>
+              <div className="group">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5 transition-colors group-focus-within:text-indigo-600" htmlFor="crushing">Crushing (+3)</label>
+                <input
+                  id="crushing"
+                  value={form.crushing}
+                  onChange={(e) => setForm((prev) => ({ ...prev, crushing: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-right focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm"
+                  placeholder="0%"
+                />
+              </div>
+              <div className="group">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5 transition-colors group-focus-within:text-indigo-600" htmlFor="fines3">Fines(-3%)</label>
+                <input
+                  id="fines3"
+                  type="text"
+                  inputMode="decimal"
+                  value={form.fines3}
+                  onChange={(e) => setForm((prev) => ({ ...prev, fines3: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-right focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm"
+                  placeholder="0%"
+                />
+              </div>
+              <div className="group">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5 transition-colors group-focus-within:text-indigo-600" htmlFor="fines3Qty">Fines(-3)Qty</label>
+                <input
+                  id="fines3Qty"
+                  type="text"
+                  inputMode="decimal"
+                  value={form.fines3Qty}
+                  onChange={(e) => setForm((prev) => ({ ...prev, fines3Qty: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-right focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm"
+                  placeholder="0"
+                />
+              </div>
+              <div className="group">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5 transition-colors group-focus-within:text-indigo-600" htmlFor="production">Prod.</label>
+                <input
+                  id="production"
+                  type="text"
+                  inputMode="decimal"
+                  value={form.production}
+                  onChange={(e) => setForm((prev) => ({ ...prev, production: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-right focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm"
+                  placeholder="0"
+                />
+              </div>
+              <div className="group">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5 transition-colors group-focus-within:text-indigo-600" htmlFor="dispatch">Dis.</label>
+                <input
+                  id="dispatch"
+                  type="text"
+                  inputMode="decimal"
+                  value={form.dispatch}
+                  onChange={(e) => setForm((prev) => ({ ...prev, dispatch: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-right focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm"
+                  placeholder="0"
+                />
+              </div>
+              <div className="group col-span-2 sm:col-span-4 lg:col-span-2">
+                <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block mb-1.5 transition-colors" htmlFor="closingStock">Closing Stock</label>
+                <input
+                  id="closingStock"
+                  type="text"
+                  inputMode="decimal"
+                  value={form.closingStock}
+                  onChange={(e) => setForm((prev) => ({ ...prev, closingStock: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-900 font-bold text-right focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            <div className="w-full">
+              <div className="group">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5 transition-colors group-focus-within:text-indigo-600" htmlFor="remarks">Remarks</label>
+                <textarea
+                  id="remarks"
+                  rows="3"
+                  value={form.remarks}
+                  onChange={(e) => setForm((prev) => ({ ...prev, remarks: e.target.value }))}
+                  className="w-full h-[100px] px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm resize-none"
+                  placeholder="Optional notes or context..."
+                />
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button type="button" onClick={resetForm} className="px-6 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl transition-all duration-300 shadow-sm active:scale-95">
+                  Reset
+                </button>
+                <button type="submit" className="px-8 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold rounded-xl transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  {selectedId ? 'Update Stock Entry' : 'Add Stock Entry'}
+                </button>
+            </div>
+          </div>
         </form>
         ) : (
         <form onSubmit={handleSaveRows} className="space-y-6">
@@ -812,6 +1100,11 @@ const Stock = () => {
               </svg>
               Upload CSV
             </CsvDropzone>
+
+            <OCRImageUploader 
+              onTextExtracted={handleRawMaterialOcr} 
+              className="px-5 py-2.5 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 shadow-sm font-medium rounded-md flex items-center gap-1 active:scale-95" 
+            />
             
             <button
               type="button"
@@ -906,42 +1199,57 @@ const Stock = () => {
                           <input value={r.closingStock} onChange={(e) => updateCoalRow(idx, 'closingStock', e.target.value)} placeholder="0" inputMode="decimal" className="w-full px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 font-bold text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm focus:border-emerald-400 focus:ring-emerald-500/10 text-right" />
                         </div>
                       </div>
+                      <div className="mt-4 group">
+                        <label className="text-[10px] uppercase tracking-wider font-bold mb-1.5 block transition-colors text-slate-500 group-focus-within:text-emerald-600">Remarks</label>
+                        <input value={r.remarks || ''} onChange={(e) => updateCoalRow(idx, 'remarks', e.target.value)} placeholder="Optional notes..." className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm focus:border-emerald-400 focus:ring-emerald-500/10" />
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-
+            
             <div className="flex flex-wrap items-center gap-1.5 pt-2 w-full mx-auto">
-              <button type="button" onClick={addCoalRow} className="px-5 py-2.5 bg-white border border-slate-400 shadow-sm hover:shadow hover:border-slate-400 text-slate-700 font-medium rounded-md transition-all duration-300 flex items-center gap-1">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
-                Add Row
-              </button>
-              
-              <CsvDropzone
-                onUpload={handleCoalCsvUpload}
-                className="px-5 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm hover:shadow hover:bg-emerald-100 font-medium rounded-md transition-all duration-300 flex items-center gap-1 active:scale-95"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Upload CSV
-              </CsvDropzone>
+              {!selectedId && (
+                <>
+                  <button type="button" onClick={addCoalRow} className="px-5 py-2.5 bg-white border border-slate-400 shadow-sm hover:shadow hover:border-slate-400 text-slate-700 font-medium rounded-md transition-all duration-300 flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                    </svg>
+                    Add Row
+                  </button>
+                  
+                  <CsvDropzone
+                    onUpload={handleCoalCsvUpload}
+                    className="px-5 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-sm text-emerald-700 font-medium rounded-md transition-all duration-300 flex items-center gap-1 active:scale-95"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Upload CSV
+                  </CsvDropzone>
 
+                  <OCRImageUploader 
+                    onTextExtracted={handleCoalOcr} 
+                    className="px-5 py-2.5 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 shadow-sm font-medium rounded-md flex items-center gap-1 active:scale-95" 
+                  />
+                </>
+              )}
+              
               <button
                 type="button"
                 onClick={() => setIsPromptModalOpen(true)}
-                className="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-md shadow-sm transition-all flex items-center gap-1.5 whitespace-nowrap active:scale-95"
+                className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-medium rounded-md shadow-sm transition-all flex items-center gap-1.5 whitespace-nowrap active:scale-95"
                 title="Get AI Prompt for CSV"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                 <span className="hidden sm:inline">AI Prompt</span>
               </button>
 
-              <button type="submit" className="px-8 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white shadow-md hover:shadow-lg font-medium rounded-md transition-all duration-300 transform hover:-translate-y-0.5 ml-auto">Save Coal Detail</button>
-              <button type="button" onClick={() => setCoalRows([{...initialCoalForm}])} className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-md transition-all duration-300">Reset</button>
+              <button type="submit" className="px-8 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white shadow-md hover:shadow-lg font-medium rounded-md transition-all duration-300 transform hover:-translate-y-0.5 ml-auto">
+                {selectedId ? 'Update Stock Entry' : 'Save Coal Detail'}
+              </button>
+              <button type="button" onClick={() => setCoalRows([{ material: '', openingStock: '', inward: '', consumption: '', fc: '', moistLossPct: '', dispatch: '', landedCost: '', closingStock: '' }])} className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-md transition-all duration-300">Reset</button>
             </div>
               </form>
             </div>
@@ -960,25 +1268,7 @@ const Stock = () => {
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <CsvDropzone
-                onUpload={activeTab === 'raw_material' ? handleCsvUpload : handleCoalCsvUpload}
-                className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-sm text-emerald-700 font-medium rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 active:scale-95 w-full sm:w-auto whitespace-nowrap"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Upload CSV
-              </CsvDropzone>
-              
-              <button
-                type="button"
-                onClick={() => setIsPromptModalOpen(true)}
-                className="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 w-full sm:w-auto"
-                title="Get AI Prompt for CSV"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                <span className="hidden sm:inline">AI Prompt</span>
-              </button>
+
             </div>
             
             <div className="relative w-full sm:w-auto">
@@ -994,48 +1284,51 @@ const Stock = () => {
         </div>
 
         <div className="overflow-x-auto overflow-y-auto max-h-[70vh] rounded-xl border border-slate-200 shadow-sm">
-          {Object.keys(groupedAndTotals).length === 0 ? (
-            <div className="text-center py-16 bg-slate-50/50">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-              <p className="text-slate-500 font-medium text-sm">No stock items found.</p>
-              <p className="text-slate-400 text-xs mt-1">Use the form above to add new inventory data.</p>
-            </div>
-          ) : (
-            <table className="w-full text-xs text-left border-collapse relative">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] uppercase tracking-wider font-bold sticky top-0 z-20 shadow-sm">
+          <table className="w-full text-xs text-left border-collapse relative">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] uppercase tracking-wider font-bold sticky top-0 z-20 shadow-sm">
+              <tr>
+                <th className="px-4 py-3 break-words">Material</th>
+                <th className="px-4 py-3 text-right break-words">Opening Stock</th>
+                <th className="px-4 py-3 text-right break-words">Inward</th>
+                <th className="px-4 py-3 text-right break-words">Cons.</th>
+                {activeTab === 'raw_material' ? (
+                  <>
+                    <th className="px-4 py-3 text-right break-words">Crushing (+3)</th>
+                    <th className="px-4 py-3 text-right break-words">Fines %</th>
+                    <th className="px-4 py-3 text-right break-words">Fines Qty.</th>
+                    <th className="px-4 py-3 text-right break-words">Prod.</th>
+                    <th className="px-4 py-3 text-right break-words">Dis.</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-4 py-3 text-right break-words">F/C</th>
+                    <th className="px-4 py-3 text-right break-words">Moist.%</th>
+                    <th className="px-4 py-3 text-right break-words">Landed Cost</th>
+                    <th className="px-4 py-3 text-right break-words">Discount</th>
+                  </>
+                )}
+                <th className="px-4 py-3 text-right break-words text-indigo-500">Closing Stock</th>
+                <th className="px-4 py-3 text-left break-words">Remarks</th>
+                <th className="px-4 py-3 text-center break-words">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {Object.keys(groupedAndTotals).length === 0 ? (
                 <tr>
-                  <th className="px-4 py-3 break-words">Material</th>
-                  <th className="px-4 py-3 text-right break-words">Opening Stock</th>
-                  <th className="px-4 py-3 text-right break-words">Inward</th>
-                  <th className="px-4 py-3 text-right break-words">Cons.</th>
-                  {activeTab === 'raw_material' ? (
-                    <>
-                      <th className="px-4 py-3 text-right break-words">Crushing (+3)</th>
-                      <th className="px-4 py-3 text-right break-words">Fines %</th>
-                      <th className="px-4 py-3 text-right break-words">Fines Qty.</th>
-                      <th className="px-4 py-3 text-right break-words">Prod.</th>
-                      <th className="px-4 py-3 text-right break-words">Dis.</th>
-                    </>
-                  ) : (
-                    <>
-                      <th className="px-4 py-3 text-right break-words">F/C</th>
-                      <th className="px-4 py-3 text-right break-words">Moist.%</th>
-                      <th className="px-4 py-3 text-right break-words">Landed Cost</th>
-                      <th className="px-4 py-3 text-right break-words">Discount</th>
-                    </>
-                  )}
-                  <th className="px-4 py-3 text-right break-words text-indigo-500">Closing Stock</th>
-                  <th className="px-4 py-3 text-center break-words">Actions</th>
+                  <td colSpan={activeTab === 'raw_material' ? "12" : "11"} className="text-center py-16 bg-slate-50/50">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                    <p className="text-slate-500 font-medium text-sm">No stock items found.</p>
+                    <p className="text-slate-400 text-xs mt-1">Use the form above to add new inventory data.</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {Object.keys(groupedAndTotals).map((categoryKey) => {
+              ) : (
+                Object.keys(groupedAndTotals).map((categoryKey) => {
                   const group = groupedAndTotals[categoryKey]
                   return (
                     <React.Fragment key={categoryKey}>
                       {/* 1. CATEGORY MAIN HEADER */}
                       <tr className="bg-indigo-50/50 border-y border-indigo-100">
-                        <td colSpan={activeTab === 'raw_material' ? "11" : "10"} className="px-6 py-4 font-bold text-slate-800 text-xs uppercase tracking-widest text-indigo-700">
+                        <td colSpan={activeTab === 'raw_material' ? "12" : "11"} className="px-6 py-4 font-bold text-slate-800 text-xs uppercase tracking-widest text-indigo-700">
                           {group.label}
                         </td>
                       </tr>
@@ -1069,6 +1362,7 @@ const Stock = () => {
                                 </>
                               )}
                               <td className="px-4 py-3 text-indigo-700 text-right font-bold bg-indigo-50/50 rounded-md">{formatNumber(((Number(editForm.openingStock)||0) + (Number(editForm.inward)||0) - (Number(editForm.consumption)||0) - (Number(editForm.fines3Qty)||0) + (Number(editForm.production)||0) - (Number(editForm.dispatch)||0)))}</td>
+                              <td className="px-4 py-3"><input type="text" value={editForm.remarks || ''} onChange={e => setEditForm({...editForm, remarks: e.target.value})} className="w-full border border-indigo-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30" placeholder="Notes..." /></td>
                               <td className="px-4 py-3 text-center align-middle bg-white">
                                 <div className="flex flex-row justify-center items-center gap-1.5 transition-opacity">
                                   <button onClick={handleSaveInline} className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-md shadow-sm transition-colors" title="Save">
@@ -1098,13 +1392,14 @@ const Stock = () => {
                                 </>
                               ) : (
                                 <>
-                                  <td className="px-4 py-3 text-slate-600 text-right font-medium">{item.fc || '-'}</td>
+                                  <td className="px-4 py-3 text-slate-600 text-right font-medium whitespace-nowrap">{item.fc || '-'}</td>
                                   <td className="px-4 py-3 text-slate-600 text-right font-medium">{item.moistLossPct || '0%'}</td>
                                   <td className="px-4 py-3 text-slate-600 text-right font-medium">{formatNumber(item.landedCost)}</td>
                                   <td className="px-4 py-3 text-slate-600 text-right font-medium">{formatNumber(item.dispatch)}</td>
                                 </>
                               )}
                               <td className="px-4 py-3 text-indigo-700 bg-indigo-50/30 text-right font-bold">{formatNumber(item.closingStock)}</td>
+                              <td className="px-4 py-3 text-slate-500 text-xs truncate max-w-[150px]" title={item.remarks}>{item.remarks || '-'}</td>
                               <td className="px-4 py-3 text-center">
                                 <div className="flex justify-center gap-1 transition-opacity">
                                     <button onClick={() => handleEdit(item)} className="p-1.5 rounded transition-colors text-blue-500 hover:bg-blue-50" title="Edit">
@@ -1144,13 +1439,14 @@ const Stock = () => {
                         )}
                         <td className="px-4 py-4 text-right text-indigo-700 bg-indigo-50/50">{formatNumber(group.totals.closing)}</td>
                         <td className="px-4 py-4 text-center"></td>
+                        <td className="px-4 py-4 text-center"></td>
                       </tr>
                     </React.Fragment>
                   )
-                })}
-              </tbody>
-            </table>
-          )}
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

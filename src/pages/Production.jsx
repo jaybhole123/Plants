@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useProductionStore } from '../store/useStore'
 import { CsvDropzone } from '../components/CsvDropzone'
+import OCRImageUploader from '../components/OCRImageUploader'
+import { parseProductionOCR } from '../utils/ocrParsers'
 
 const initialFormState = {
   metricName: 'Sponge Prod. (Mt)',
@@ -193,6 +195,18 @@ const Production = () => {
     }
   }
 
+  // --- OCR Upload Handler ---
+  const handleOcrUpload = (extractedText) => {
+    const { rows: ocrRows, remarks } = parseProductionOCR(extractedText)
+    if (ocrRows && ocrRows.length > 0) {
+      setRows(ocrRows)
+      if (remarks) setDownTimeRemarks(remarks)
+      showToast('OCR data extracted successfully. Please review the details.')
+    } else {
+      showToast('No valid production data found in OCR text.', 'error')
+    }
+  }
+
   // --- Render Form (Row-wise) ---
   const renderForm = () => (
     <div className="bg-white border border-slate-400 rounded-md p-1 sm:p-6 mb-8 shadow-sm">
@@ -214,6 +228,11 @@ const Production = () => {
             </svg>
             Upload CSV
           </CsvDropzone>
+
+          <OCRImageUploader 
+            onTextExtracted={handleOcrUpload} 
+            className="px-6 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-medium rounded-md transition flex items-center gap-1"
+          />
 
           <button type="button" onClick={resetForm} className="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-md transition">
             Reset

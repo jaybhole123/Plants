@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useProduction2Store } from '../store/useStore';
+import { supabase } from '../supabase';
+import OCRImageUploader from '../components/OCRImageUploader';
+import { parseProductionOCR } from '../utils/ocrParsers';
 import './Production2.css';
 
 /* ---------- Load pdf.js (classic, non-module build) with CDN fallback chain ---------- */
@@ -178,6 +181,59 @@ export default function Production2Page() {
   const [manualPercent, setManualPercent] = useState("");
   const [manualKiln1, setManualKiln1] = useState("");
   const [manualKiln2, setManualKiln2] = useState("");
+  const [isSavingDB, setIsSavingDB] = useState(false);
+
+  const handleSaveToDB = async () => {
+    setIsSavingDB(true);
+    let payloads = [];
+
+    // Extract only Sponge Production items (A Grade, B Grade) from all files
+    filesData.forEach(f => {
+      const filteredItems = f.items.filter(item => {
+        const upper = item.label.toUpperCase();
+        return upper.includes('"A" GRADE') || upper.includes('"B" GRADE');
+      });
+
+      filteredItems.forEach(item => {
+        // Parse date. Assuming f.date is YYYY-MM-DD for Manual, or string like '25.08.2026'
+        // Just store what we have or map to valid date if possible. Supabase expects DATE.
+        // But for this project, let's just use what's given. If it fails, user can fix date format.
+        // Here we just pass f.date, but we'll use current date if f.date is missing.
+        let reportDate = new Date().toISOString().split('T')[0];
+        if (f.date && f.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          reportDate = f.date;
+        }
+
+        payloads.push({
+          report_date: reportDate,
+          source_file: f.fileName,
+          item_grade: item.label,
+          percent: item.percent || null,
+          kiln1: item.kiln1 || 0,
+          kiln2: item.kiln2 || 0,
+          total: item.total || 0
+        });
+      });
+    });
+
+    if (payloads.length === 0) {
+      setErrorMsg("Koi bhi 'A' Grade ya 'B' Grade ka data save karne ke liye nahi mila.");
+      setIsSavingDB(false);
+      return;
+    }
+
+    const { error } = await supabase.from('sponge_production').insert(payloads);
+    
+    if (error) {
+      console.error(error);
+      setErrorMsg("Database me save karne me error aayi: " + error.message);
+    } else {
+      alert("Sponge Production data successfully Database me save ho gaya!");
+      // Optionally clear data after save
+      // setFilesData([]);
+    }
+    setIsSavingDB(false);
+  };
 
   useEffect(() => {
     ensurePdfJsLoaded().catch((err) => {
@@ -219,6 +275,32 @@ export default function Production2Page() {
 
   const removeFile = (idxToRemove) => {
     setFilesData((prev) => prev.filter((_, idx) => idx !== idxToRemove));
+  };
+
+  const handleOcrUpload = (extractedText) => {
+    const { rows: ocrRows } = parseProductionOCR(extractedText);
+    if (!ocrRows || ocrRows.length === 0) {
+      setErrorMsg("Image me PRODUCTION data nahi mila.");
+      return;
+    }
+    
+    const mappedItems = ocrRows.map(row => ({
+      label: row.metricName,
+      percent: parseFloat(row.percentValue) || null,
+      kiln1: parseFloat(row.k1Value) || 0,
+      kiln2: parseFloat(row.k2Value) || 0,
+      total: parseFloat(row.totalValue) || 0
+    }));
+
+    const newResult = {
+      date: new Date().toISOString().split('T')[0],
+      fileName: "Image OCR Entry",
+      found: true,
+      items: mappedItems
+    };
+    
+    setFilesData((prev) => [...prev, newResult]);
+    alert("Image se data extract ho gaya!");
   };
 
   const handleManualSubmit = (e) => {
@@ -364,6 +446,13 @@ export default function Production2Page() {
           {progressMsg && <p className="mt-4 text-sm font-medium text-blue-600 bg-blue-50 py-2 px-4 rounded-full inline-block">{progressMsg}</p>}
           {errorMsg && <p className="mt-4 text-sm font-medium text-rose-600 bg-rose-50 py-2 px-4 rounded-full inline-block">{errorMsg}</p>}
         </section>
+        
+        <div className="mt-6 flex justify-center">
+          <OCRImageUploader 
+            onTextExtracted={handleOcrUpload} 
+            className="px-6 py-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-bold rounded-xl transition flex items-center gap-2 shadow-sm"
+          />
+        </div>
       </div>
 
         <div className="flex justify-between items-center mb-4 mt-8">
@@ -381,8 +470,26 @@ export default function Production2Page() {
 
         <div id="filesContainer" className="flex overflow-x-auto gap-6 pb-6 snap-x hide-scrollbar scroll-smooth">
           {sortedFiles.length === 0 ? (
-            <div className="w-full text-center py-12 bg-slate-50/50 rounded-lg border border-dashed border-slate-300">
-              <p className="text-slate-500 font-medium">No data available. Please upload a PDF.</p>
+            <div className="min-w-full flex-shrink-0 bg-white border border-slate-300 rounded-lg shadow-sm snap-center overflow-hidden flex flex-col">
+              <div className="overflow-auto max-h-[60vh]">
+                <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
+                  <thead className="sticky top-0 z-10 bg-slate-100 shadow-sm">
+                    <tr className="bg-slate-100 text-slate-500 uppercase tracking-wider font-semibold">
+                      <th className="px-3 py-2 border-b border-slate-200">Item</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-right">Kiln-1</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-right">Kiln-2</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-slate-700">
+                    <tr>
+                      <td colSpan="4" className="text-center py-12 bg-slate-50/50">
+                        <p className="text-slate-500 font-medium">No data available. Please upload a PDF.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             sortedFiles.map((f, i) => (
@@ -432,6 +539,9 @@ export default function Production2Page() {
             </button>
             <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-md transition-colors" onClick={() => document.getElementById('summaryContainer').scrollBy({ left: 800, behavior: 'smooth' })} title="Scroll Right">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+            <button className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2" onClick={handleSaveToDB} disabled={isSavingDB}>
+              {isSavingDB ? 'Saving...' : 'Save Data to DB'}
             </button>
             <button className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors shadow-sm" onClick={() => {
               setEditModeData(null);
@@ -496,8 +606,28 @@ export default function Production2Page() {
 
         <div id="summaryContainer" className="flex overflow-x-auto gap-6 pb-6 snap-x hide-scrollbar scroll-smooth">
           {sortedFiles.length === 0 ? (
-            <div className="w-full text-center py-12 bg-slate-50/50 rounded-lg border border-dashed border-slate-300">
-              <p className="text-slate-500 font-medium">No data available.</p>
+            <div className="min-w-full flex-shrink-0 bg-white border border-slate-300 rounded-lg shadow-sm snap-center overflow-hidden flex flex-col">
+              <div className="overflow-auto max-h-[60vh]">
+                <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
+                  <thead className="sticky top-0 z-10 bg-slate-100 shadow-sm">
+                    <tr className="bg-slate-100 text-slate-500 uppercase tracking-wider font-semibold">
+                      <th className="px-3 py-2 border-b border-slate-200">Item</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-right">Kiln-1</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-right">Kiln-2</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-center">Total</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-center">Source File</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-slate-700">
+                    <tr>
+                      <td colSpan="6" className="text-center py-12 bg-slate-50/50">
+                        <p className="text-slate-500 font-medium">No data available.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             sortedFiles.map((f, i) => {

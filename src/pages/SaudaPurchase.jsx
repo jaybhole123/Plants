@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react'
-import { useSaudaPurchaseStore } from '../store/useStore'
+import React, { useState, useMemo, useEffect } from 'react'
+import { supabase } from '../supabase'
 import { CsvDropzone } from '../components/CsvDropzone'
+import OCRImageUploader from '../components/OCRImageUploader'
+import { parseSaudaPurchaseOCR } from '../utils/ocrParsers'
 
 const initialForm = {
   date: new Date().toISOString().split('T')[0],
@@ -26,7 +28,8 @@ const formatNumber = (value) => {
 
 const SaudaPurchase = () => {
   const [headerDate, setHeaderDate] = useState(new Date().toISOString().split('T')[0])
-  const { entries, setEntries } = useSaudaPurchaseStore()
+  const [entries, setEntries] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
   const [form, setForm] = useState(initialForm)
   const [editingId, setEditingId] = useState(null)
   const [toast, setToast] = useState(null)
@@ -57,26 +60,87 @@ const SaudaPurchase = () => {
     return { balPending }
   }, [form.orderQuantity, form.qtyReceived])
 
+  const fetchPurchaseEntries = async () => {
+    setIsLoading(true)
+    const { data, error } = await supabase
+      .from('sauda_purchase')
+      .select('*')
+      
+    if (error) {
+      console.error('Error fetching purchase entries:', error)
+      showToast('Failed to fetch data', 'error')
+    } else if (data) {
+      // Map DB snake_case to frontend camelCase
+      const mappedData = data.map(item => ({
+        id: item.id,
+        date: item.date,
+        mainHeading: item.main_heading || '',
+        itemName: item.item_name || '',
+        sizeMm: item.size_mm || '',
+        partyName: item.party_name || '',
+        orderQuantity: item.order_quantity || 0,
+        rateMt: item.rate_mt || 0,
+        qtyReceived: item.qty_received || 0,
+        balPending: item.bal_pending || 0,
+        broker: item.broker || '',
+        deliveryTerms: item.delivery_terms || '',
+        paymentCondition: item.payment_condition || '',
+        referenceName: item.reference_name || '',
+        remarks: item.remarks || ''
+      }))
+      setEntries(mappedData)
+    }
+    setIsLoading(false)
+  }
+
+  useEffect(() => {
+    fetchPurchaseEntries()
+  }, [])
+
   // --- Form Submit Handler ---
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.partyName.trim() || !form.itemName.trim()) {
       showToast('Item Name and Party Name are required.', 'error')
       return
     }
 
-    const newEntry = {
-      ...form,
-      balPending: calculatedValues.balPending,
+    const payload = {
+      date: form.date,
+      main_heading: form.mainHeading,
+      item_name: form.itemName,
+      size_mm: form.sizeMm || null,
+      party_name: form.partyName,
+      order_quantity: Number(form.orderQuantity) || 0,
+      rate_mt: Number(form.rateMt) || 0,
+      qty_received: Number(form.qtyReceived) || 0,
+      bal_pending: calculatedValues.balPending,
+      broker: form.broker || null,
+      delivery_terms: form.deliveryTerms || null,
+      payment_condition: form.paymentCondition || null,
+      reference_name: form.referenceName || null,
+      remarks: form.remarks || null,
     }
 
+    setIsLoading(true)
     if (editingId) {
-      setEntries(prev => prev.map(item => item.id === editingId ? { ...newEntry, id: item.id } : item))
-      showToast('Purchase entry updated successfully.')
+      const { error } = await supabase.from('sauda_purchase').update(payload).eq('id', editingId)
+      if (error) {
+        showToast('Failed to update entry', 'error')
+      } else {
+        showToast('Purchase entry updated successfully.')
+        await fetchPurchaseEntries()
+      }
     } else {
-      setEntries(prev => [...prev, { ...newEntry, id: Date.now() }])
-      showToast('Purchase entry added successfully.')
+      const { error } = await supabase.from('sauda_purchase').insert([payload])
+      if (error) {
+        showToast('Failed to add entry', 'error')
+      } else {
+        showToast('Purchase entry added successfully.')
+        await fetchPurchaseEntries()
+      }
     }
+    setIsLoading(false)
     resetForm()
     setIsModalOpen(false)
   }
@@ -90,12 +154,34 @@ const SaudaPurchase = () => {
     }
   }
 
-  const handleDelete = (id) => {
-    if (window.confirm('Delete this sauda entry?')) {
-      setEntries(prev => prev.filter(item => item.id !== id))
-      showToast('Purchase entry removed.')
-      if (editingId === id) resetForm()
+  const handleDelete = async (id) => {
+    if (window.confirm('Delete this purchase entry?')) {
+      setIsLoading(true)
+      const { error } = await supabase.from('sauda_purchase').delete().eq('id', id)
+      if (error) {
+        showToast('Failed to delete entry', 'error')
+      } else {
+        showToast('Purchase entry removed.')
+        await fetchPurchaseEntries()
+        if (editingId === id) resetForm()
+      }
+      setIsLoading(false)
     }
+  }
+
+  // --- Date Parser Helper for CSV ---
+  const parseDateToDB = (dateStr) => {
+    if (!dateStr) return new Date().toISOString().split('T')[0];
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return dateStr;
+    const parts = dateStr.split(/[.\-\/]/);
+    if (parts.length === 3) {
+      const d = parts[0].padStart(2, '0');
+      const m = parts[1].padStart(2, '0');
+      let y = parts[2];
+      if (y.length === 2) y = '20' + y;
+      return `${y}-${m}-${d}`;
+    }
+    return new Date().toISOString().split('T')[0];
   }
 
   // --- CSV Upload Handler ---
@@ -112,7 +198,7 @@ const SaudaPurchase = () => {
       let currentItemName = ''
       
       for (let i = 0; i < lines.length; i++) {
-        const columns = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''))
+        const columns = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''))
         
         // Skip headers or subtotal rows
         if (columns[0] && (columns[0].toUpperCase().includes('DATE') || columns[0] === '')) {
@@ -122,7 +208,7 @@ const SaudaPurchase = () => {
           continue
         }
         
-        const date = columns[0] || new Date().toISOString().split('T')[0]
+        const date = parseDateToDB(columns[0])
         const itemName = columns[1] || currentItemName
         const partyNameCheck = columns[3] || ''
         
@@ -172,6 +258,17 @@ const SaudaPurchase = () => {
     return `${day}.${month}.${year.substring(2)}`
   }
 
+  // --- OCR Upload Handler ---
+  const handleOcrUpload = (extractedText) => {
+    const parsedData = parseSaudaPurchaseOCR(extractedText)
+    setForm(prev => ({
+      ...prev,
+      ...parsedData
+    }))
+    setIsModalOpen(true)
+    showToast('OCR extracted successfully. Please review the details.')
+  }
+
   // --- Render Form Section (Modal Theme) ---
   const renderForm = () => (
     <div className="mb-6 flex gap-2">
@@ -193,6 +290,8 @@ const SaudaPurchase = () => {
         </svg>
         <span className="hidden sm:inline">CSV</span>
       </CsvDropzone>
+
+      <OCRImageUploader onTextExtracted={handleOcrUpload} />
 
       <button 
         onClick={() => setIsPromptModalOpen(true)}
@@ -366,10 +465,38 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, ODER QTY., RATE/MT IN Rs, QTY. RECEI
   const renderTable = (itemsToRender, isPreview = false) => {
     if (itemsToRender.length === 0) {
       return (
-        <div className="py-12 text-center bg-slate-50/50 rounded border border-dashed border-slate-400">
-          <div className="flex flex-row justify-center items-center gap-2 transition-opacity">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            <p className="text-slate-500 font-medium">No purchase entries to display.</p>
+        <div className="w-full max-w-full bg-white border border-slate-400 rounded shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+          <div className="overflow-auto w-full max-w-full max-h-[65vh]">
+            <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
+              <thead className="sticky top-0 z-10 shadow-sm">
+                <tr className="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider font-semibold">
+                  <th className="px-2 py-1.5 break-words border border-slate-400">Date</th>
+                  <th className="px-2 py-1.5 break-words border border-slate-400">Material Name</th>
+                  <th className="px-2 py-1.5 break-words border border-slate-400">Size (MM)</th>
+                  <th className="px-2 py-1.5 min-w-[160px] border border-slate-400">Party Name</th>
+                  <th className="px-2 py-1.5 text-right border border-slate-400">Order Qty.</th>
+                  <th className="px-2 py-1.5 text-right border border-slate-400">Rate/MT in Rs</th>
+                  <th className="px-2 py-1.5 text-right border border-slate-400">Qty. Received To Till Date</th>
+                  <th className="px-2 py-1.5 text-right border border-slate-400">Balance in MT</th>
+                  <th className="px-2 py-1.5 min-w-[90px] border border-slate-400">Broker Name</th>
+                  <th className="px-2 py-1.5 min-w-[80px] border border-slate-400">Terms of Delivery</th>
+                  <th className="px-2 py-1.5 min-w-[80px] border border-slate-400">Payment Condition</th>
+                  <th className="px-2 py-1.5 min-w-[80px] border border-slate-400">Reference Name</th>
+                  <th className="px-2 py-1.5 min-w-[80px] border border-slate-400">Remark</th>
+                  <th className="px-2 py-1.5 text-center print:hidden border border-slate-400">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="text-slate-700">
+                <tr>
+                  <td colSpan="14" className="py-12 text-center bg-slate-50/50">
+                    <div className="flex flex-col justify-center items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                      <p className="text-slate-500 font-medium">No purchase entries to display.</p>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       )
@@ -513,10 +640,34 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, ODER QTY., RATE/MT IN Rs, QTY. RECEI
             </h2>
             <div className="flex gap-1">
               <button 
-                onClick={() => {
-                  setEntries(prev => [...prev, ...csvPreview])
-                  setCsvPreview([])
-                  showToast('Data saved to table successfully.')
+                onClick={async () => {
+                  setIsLoading(true)
+                  const payloads = csvPreview.map(item => ({
+                    date: item.date,
+                    main_heading: item.mainHeading,
+                    item_name: item.itemName,
+                    size_mm: item.sizeMm || null,
+                    party_name: item.partyName,
+                    order_quantity: Number(item.orderQuantity) || 0,
+                    rate_mt: Number(item.rateMt) || 0,
+                    qty_received: Number(item.qtyReceived) || 0,
+                    bal_pending: Number(item.balPending) || 0,
+                    broker: item.broker || null,
+                    delivery_terms: item.deliveryTerms || null,
+                    payment_condition: item.paymentCondition || null,
+                    reference_name: item.referenceName || null,
+                    remarks: item.remarks || null,
+                  }))
+
+                  const { error } = await supabase.from('sauda_purchase').insert(payloads)
+                  if (error) {
+                    showToast('Failed to save bulk data to table', 'error')
+                  } else {
+                    setCsvPreview([])
+                    showToast('Data saved to table successfully.')
+                    await fetchPurchaseEntries()
+                  }
+                  setIsLoading(false)
                 }} 
                 className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md transition shadow-sm"
               >
