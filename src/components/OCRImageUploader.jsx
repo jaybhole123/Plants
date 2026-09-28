@@ -1,17 +1,19 @@
 import React, { useState, useRef } from 'react'
-import Tesseract from 'tesseract.js'
+import { extractWithAI } from '../utils/aiOcr'
 
 /**
- * Reusable OCR Image Uploader Component.
- * 
+ * Reusable AI-powered Image Uploader Component.
+ * Sends the image to the ocr-extract Supabase Edge Function (OpenAI
+ * vision model) and returns structured fields for the given docType.
+ *
  * Props:
- * - onTextExtracted(rawText): Called with the raw OCR text string.
+ * - docType: which schema to extract (see supabase/functions/ocr-extract).
+ * - onDataExtracted(data): Called with the structured JSON object.
  * - buttonLabel: (optional) Label for the button.
  * - className: (optional) Additional classes for the trigger button.
  */
-const OCRImageUploader = ({ onTextExtracted, buttonLabel = 'OCR Scan', className = '' }) => {
+const OCRImageUploader = ({ docType, onDataExtracted, buttonLabel = 'AI Scan', className = '' }) => {
   const [isProcessing, setIsProcessing] = useState(false)
-  const [progress, setProgress] = useState(0)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const fileInputRef = useRef(null)
@@ -19,7 +21,7 @@ const OCRImageUploader = ({ onTextExtracted, buttonLabel = 'OCR Scan', className
   const handleFileSelect = (e) => {
     const file = e.target.files[0]
     if (!file) return
-    
+
     // Validate file type
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file (JPG, PNG, etc.)')
@@ -32,28 +34,19 @@ const OCRImageUploader = ({ onTextExtracted, buttonLabel = 'OCR Scan', className
 
   const processImage = async (file) => {
     setIsProcessing(true)
-    setProgress(0)
 
     try {
-      const { data: { text } } = await Tesseract.recognize(file, 'eng', {
-        logger: (m) => {
-          if (m.status === 'recognizing text') {
-            setProgress(Math.round(m.progress * 100))
-          }
-        }
-      })
+      const data = await extractWithAI(file, docType)
+      console.log('[AI OCR] Extracted Data:', data)
 
-      console.log('[OCR] Extracted Text:', text)
-      
-      if (onTextExtracted) {
-        onTextExtracted(text)
+      if (onDataExtracted) {
+        onDataExtracted(data)
       }
     } catch (error) {
-      console.error('[OCR] Error:', error)
-      alert('OCR processing failed. Please try again with a clearer image.')
+      console.error('[AI OCR] Error:', error)
+      alert(`AI scan failed: ${error.message || 'Please try again with a clearer image.'}`)
     } finally {
       setIsProcessing(false)
-      setProgress(0)
     }
   }
 
@@ -73,7 +66,6 @@ const OCRImageUploader = ({ onTextExtracted, buttonLabel = 'OCR Scan', className
   const closeModal = () => {
     setIsModalOpen(false)
     setPreviewUrl(null)
-    setProgress(0)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -90,7 +82,7 @@ const OCRImageUploader = ({ onTextExtracted, buttonLabel = 'OCR Scan', className
         {isProcessing ? (
           <>
             <span className="animate-spin h-4 w-4 border-2 border-violet-500 border-t-transparent rounded-full"></span>
-            <span className="hidden sm:inline">Processing {progress}%</span>
+            <span className="hidden sm:inline">Processing...</span>
           </>
         ) : (
           <>
@@ -116,7 +108,7 @@ const OCRImageUploader = ({ onTextExtracted, buttonLabel = 'OCR Scan', className
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                OCR Image Scanner
+                AI Image Scanner
               </h3>
               <button onClick={closeModal} className="text-white/70 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-full">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -150,13 +142,10 @@ const OCRImageUploader = ({ onTextExtracted, buttonLabel = 'OCR Scan', className
                     {isProcessing && (
                       <div className="space-y-2">
                         <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
-                          <div 
-                            className="bg-gradient-to-r from-violet-500 to-purple-500 h-2.5 rounded-full transition-all duration-300 ease-out"
-                            style={{ width: `${progress}%` }}
-                          ></div>
+                          <div className="bg-gradient-to-r from-violet-500 to-purple-500 h-2.5 rounded-full animate-pulse w-full"></div>
                         </div>
                         <p className="text-sm font-medium text-violet-600 animate-pulse">
-                          Reading image... {progress}%
+                          Asking AI to read the image...
                         </p>
                       </div>
                     )}

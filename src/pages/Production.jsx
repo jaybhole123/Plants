@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react'
 import { useProductionStore } from '../store/useStore'
 import { CsvDropzone } from '../components/CsvDropzone'
 import OCRImageUploader from '../components/OCRImageUploader'
-import { parseProductionOCR } from '../utils/ocrParsers'
 
 const initialFormState = {
   metricName: 'Sponge Prod. (Mt)',
@@ -195,15 +194,15 @@ const Production = () => {
     }
   }
 
-  // --- OCR Upload Handler ---
-  const handleOcrUpload = (extractedText) => {
-    const { rows: ocrRows, remarks } = parseProductionOCR(extractedText)
-    if (ocrRows && ocrRows.length > 0) {
+  // --- AI OCR Upload Handler ---
+  const handleOcrUpload = (parsedData) => {
+    const ocrRows = (parsedData?.rows || []).map(r => ({ id: Date.now() + Math.random(), ...r }))
+    if (ocrRows.length > 0) {
       setRows(ocrRows)
-      if (remarks) setDownTimeRemarks(remarks)
-      showToast('OCR data extracted successfully. Please review the details.')
+      if (parsedData.remarks) setDownTimeRemarks(parsedData.remarks)
+      showToast('AI extracted the data successfully. Please review the details.')
     } else {
-      showToast('No valid production data found in OCR text.', 'error')
+      showToast('No valid production data found in the image.', 'error')
     }
   }
 
@@ -229,8 +228,9 @@ const Production = () => {
             Upload CSV
           </CsvDropzone>
 
-          <OCRImageUploader 
-            onTextExtracted={handleOcrUpload} 
+          <OCRImageUploader
+            docType="production"
+            onDataExtracted={handleOcrUpload}
             className="px-6 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-medium rounded-md transition flex items-center gap-1"
           />
 

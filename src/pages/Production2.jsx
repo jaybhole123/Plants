@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useProduction2Store } from '../store/useStore';
 import { supabase } from '../supabase';
 import OCRImageUploader from '../components/OCRImageUploader';
-import { parseProductionOCR } from '../utils/ocrParsers';
 import './Production2.css';
 
 /* ---------- Load pdf.js (classic, non-module build) with CDN fallback chain ---------- */
@@ -277,13 +276,13 @@ export default function Production2Page() {
     setFilesData((prev) => prev.filter((_, idx) => idx !== idxToRemove));
   };
 
-  const handleOcrUpload = (extractedText) => {
-    const { rows: ocrRows } = parseProductionOCR(extractedText);
-    if (!ocrRows || ocrRows.length === 0) {
+  const handleOcrUpload = (parsedData) => {
+    const ocrRows = parsedData?.rows || [];
+    if (ocrRows.length === 0) {
       setErrorMsg("Image me PRODUCTION data nahi mila.");
       return;
     }
-    
+
     const mappedItems = ocrRows.map(row => ({
       label: row.metricName,
       percent: parseFloat(row.percentValue) || null,
@@ -448,8 +447,9 @@ export default function Production2Page() {
         </section>
         
         <div className="mt-6 flex justify-center">
-          <OCRImageUploader 
-            onTextExtracted={handleOcrUpload} 
+          <OCRImageUploader
+            docType="production"
+            onDataExtracted={handleOcrUpload}
             className="px-6 py-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-bold rounded-xl transition flex items-center gap-2 shadow-sm"
           />
         </div>

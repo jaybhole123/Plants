@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { CsvDropzone } from '../components/CsvDropzone'
 import OCRImageUploader from '../components/OCRImageUploader'
-import { parseItemTransferOCR } from '../utils/ocrParsers'
 
 const initialUnifiedForm = {
   type: 'incoming', // 'incoming' or 'outgoing'
@@ -302,15 +301,14 @@ const ItemTransfer = () => {
     }
   }
 
-  // --- OCR Upload Handler ---
-  const handleOcrUpload = (extractedText) => {
-    const parsedData = parseItemTransferOCR(extractedText)
+  // --- AI OCR Upload Handler ---
+  const handleOcrUpload = (parsedData) => {
     setUnifiedForm(prev => ({
       ...prev,
       ...parsedData
     }))
     setIsUnifiedModalOpen(true)
-    showToast('OCR extracted successfully. Please review the details.')
+    showToast('AI extracted the data successfully. Please review the details.')
   }
 
   // --- Render Table (Reusable) ---
@@ -426,9 +424,10 @@ const ItemTransfer = () => {
           <span className="hidden sm:inline">AI Prompt</span>
         </button>
 
-        <OCRImageUploader 
-          onTextExtracted={handleOcrUpload} 
-          className="px-4 py-3 bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 font-bold rounded-lg" 
+        <OCRImageUploader
+          docType="itemTransfer"
+          onDataExtracted={handleOcrUpload}
+          className="px-4 py-3 bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 font-bold rounded-lg"
         />
       </div>
 

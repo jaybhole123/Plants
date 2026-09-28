@@ -3,7 +3,6 @@ import { useStockStore } from '../store/useStore'
 import { FileUploader } from '../components/FileUploader'
 import { CsvDropzone } from '../components/CsvDropzone'
 import OCRImageUploader from '../components/OCRImageUploader'
-import { parseStockOCR, parseCoalStockOCR } from '../utils/ocrParsers'
 import { supabase } from '../supabase'
 
 const initialForm = {
@@ -468,18 +467,16 @@ const Stock = () => {
     e.target.value = '' 
   }
 
-  // --- OCR Upload Handlers ---
-  const handleRawMaterialOcr = (extractedText) => {
-    const parsedData = parseStockOCR(extractedText)
+  // --- AI OCR Upload Handlers ---
+  const handleRawMaterialOcr = (parsedData) => {
     const newRow = { ...initialForm, ...parsedData, category: rowsCategory || '' }
     setRows([newRow])
     setActiveTab('raw_material')
     setIsModalOpen(true)
-    setToast({ type: 'success', message: 'OCR extracted successfully. Please review the details.' })
+    setToast({ type: 'success', message: 'AI extracted the data successfully. Please review the details.' })
   }
 
-  const handleCoalOcr = (extractedText) => {
-    const parsedData = parseCoalStockOCR(extractedText)
+  const handleCoalOcr = (parsedData) => {
     const newRow = {
       material: parsedData.material,
       openingStock: parsedData.openingStock,
@@ -496,7 +493,7 @@ const Stock = () => {
     setCoalRows([newRow])
     setActiveTab('coal_detail')
     setIsModalOpen(true)
-    setToast({ type: 'success', message: 'OCR extracted successfully. Please review the details.' })
+    setToast({ type: 'success', message: 'AI extracted the data successfully. Please review the details.' })
   }
 
   const addCoalRow = () => setCoalRows((s) => ([...s, { material: '', openingStock: '', inward: '', consumption: '', fc: '', moistLossPct: '', dispatch: '', landedCost: '', closingStock: '' }]))
@@ -1105,9 +1102,10 @@ const Stock = () => {
               Upload CSV
             </CsvDropzone>
 
-            <OCRImageUploader 
-              onTextExtracted={handleRawMaterialOcr} 
-              className="px-5 py-2.5 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 shadow-sm font-medium rounded-md flex items-center gap-1 active:scale-95" 
+            <OCRImageUploader
+              docType="rawMaterialStock"
+              onDataExtracted={handleRawMaterialOcr}
+              className="px-5 py-2.5 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 shadow-sm font-medium rounded-md flex items-center gap-1 active:scale-95"
             />
             
             <button
@@ -1233,9 +1231,10 @@ const Stock = () => {
                     Upload CSV
                   </CsvDropzone>
 
-                  <OCRImageUploader 
-                    onTextExtracted={handleCoalOcr} 
-                    className="px-5 py-2.5 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 shadow-sm font-medium rounded-md flex items-center gap-1 active:scale-95" 
+                  <OCRImageUploader
+                    docType="coalStock"
+                    onDataExtracted={handleCoalOcr}
+                    className="px-5 py-2.5 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 shadow-sm font-medium rounded-md flex items-center gap-1 active:scale-95"
                   />
                 </>
               )}

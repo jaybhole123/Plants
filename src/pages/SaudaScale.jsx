@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { CsvDropzone } from '../components/CsvDropzone'
 import OCRImageUploader from '../components/OCRImageUploader'
-import { parseSaudaScaleOCR } from '../utils/ocrParsers'
 
 const initialForm = {
   date: new Date().toISOString().split('T')[0],
@@ -267,15 +266,14 @@ const SaudaScale = () => {
     return `${day}.${month}.${year.substring(2)}`
   }
 
-  // --- OCR Upload Handler ---
-  const handleOcrUpload = (extractedText) => {
-    const parsedData = parseSaudaScaleOCR(extractedText)
+  // --- AI OCR Upload Handler ---
+  const handleOcrUpload = (parsedData) => {
     setForm(prev => ({
       ...prev,
       ...parsedData
     }))
     setIsModalOpen(true)
-    showToast('OCR extracted successfully. Please review the details.')
+    showToast('AI extracted the data successfully. Please review the details.')
   }
 
   // --- Render Form Section (Modal Theme) ---
@@ -300,7 +298,7 @@ const SaudaScale = () => {
         <span className="hidden sm:inline">CSV</span>
       </CsvDropzone>
 
-      <OCRImageUploader onTextExtracted={handleOcrUpload} />
+      <OCRImageUploader docType="saudaScale" onDataExtracted={handleOcrUpload} />
 
       <button 
         onClick={() => setIsPromptModalOpen(true)}
