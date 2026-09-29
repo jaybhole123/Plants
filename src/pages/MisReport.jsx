@@ -143,7 +143,10 @@ const MisReport = () => {
       if (item.type === 'coal_detail') return // skip coal
       let cat = item.category === undefined ? 'UNKNOWN' : item.category
       if (categoryLabels[cat] !== undefined) cat = categoryLabels[cat]
-      const key = cat.toUpperCase().trim() || 'RAW IRON ORE'
+      let key = cat.toUpperCase().trim() || 'RAW IRON ORE'
+      if (key.includes('NMDC BACHELI')) {
+        key = 'IRON FINES (0-3)'
+      }
       summary[key] = (summary[key] || 0) + (Number(item.closingStock) || 0)
     })
     return summary
@@ -171,7 +174,9 @@ const MisReport = () => {
     Object.entries(summary).forEach(([key, val]) => {
       const isCoalType = coalIdentifiers.some(identifier => key.includes(identifier));
       if (isCoalType) {
-        coalTotal += val
+        if (val > 0) {
+          coalTotal += val
+        }
       } else {
         finalSummary[key] = val
       }
@@ -401,7 +406,24 @@ const MisReport = () => {
 
   // UI based on image provided
   return (
-    <div className="max-w-[1100px] mx-auto my-8 pb-10 bg-white min-h-screen text-slate-800 font-sans shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded overflow-hidden border border-slate-400">
+    <div className="max-w-[1100px] mx-auto my-8 pb-10 bg-white min-h-screen text-slate-800 font-sans shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded overflow-hidden border border-slate-400 print:my-0 print:mx-0 print:border-none print:shadow-none print:pb-0 print:min-h-0 print:overflow-hidden">
+      <style>{`
+        @media print {
+          @page { margin: 8mm; size: A4 portrait; }
+          body { 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
+          table { 
+            font-size: 11px !important; 
+            width: 100% !important;
+          }
+          td, th { 
+            padding-top: 2px !important; 
+            padding-bottom: 2px !important; 
+          }
+        }
+      `}</style>
       
       {/* Date Header */}
       <div className="p-5 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-400 flex justify-between items-center print:hidden shadow-sm">
@@ -433,8 +455,8 @@ const MisReport = () => {
       </div>
 
       {/* The Report (Printable Area) */}
-      <div className="p-1 sm:p-8" ref={reportRef}>
-        <table className="w-full border-collapse border border-slate-400 text-[13px] sm:text-xs text-slate-800 bg-white shadow-sm">
+      <div className="p-1 sm:p-8 print:p-0" ref={reportRef}>
+        <table className="w-full border-collapse border border-slate-400 text-[13px] sm:text-xs print:text-[10px] text-slate-800 bg-white shadow-sm print:shadow-none">
           
           {/* Main Header */}
           <thead>

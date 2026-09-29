@@ -13,7 +13,7 @@ const Navbar = ({ onMenuToggle }) => {
   const title = pageTitles[location.pathname] || 'Trading Management'
 
   return (
-    <header className="flex items-center justify-between gap-4 px-4 py-4 bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
+    <header className="flex items-center justify-between gap-4 px-4 py-4 bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10 print:hidden">
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuToggle}

@@ -3,6 +3,7 @@ import { useProduction2Store } from '../store/useStore';
 import { supabase } from '../supabase';
 import OCRImageUploader from '../components/OCRImageUploader';
 import { parseProductionOCR } from '../utils/ocrParsers';
+import DateFilter from '../components/DateFilter';
 import './Production2.css';
 
 /* ---------- Load pdf.js (classic, non-module build) with CDN fallback chain ---------- */
@@ -173,6 +174,47 @@ export default function Production2Page() {
   const [progressMsg, setProgressMsg] = useState("");
   const fileInputRef = useRef(null);
 
+  const [headerDate, setHeaderDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const fetchData = async () => {
+    const { data, error } = await supabase.from('production2_data').select('*').eq('report_date', headerDate);
+    if (data) {
+      const grouped = {};
+      data.forEach(row => {
+         if (!grouped[row.file_name]) {
+             grouped[row.file_name] = {
+                 date: row.report_date,
+                 fileName: row.file_name,
+                 found: true,
+                 fileUrl: row.file_url,
+                 items: []
+             };
+         }
+         grouped[row.file_name].items.push({
+             label: row.item_label,
+             percent: row.percent,
+             kiln1: row.kiln1,
+             kiln2: row.kiln2,
+             total: row.total
+         });
+      });
+      setFilesData(prev => {
+        const newFiles = Object.values(grouped);
+        newFiles.forEach(nf => {
+          const existing = prev.find(p => p.fileName === nf.fileName);
+          if (existing && existing.fileUrl && !nf.fileUrl) {
+            nf.fileUrl = existing.fileUrl;
+          }
+        });
+        return newFiles;
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (headerDate) fetchData();
+  }, [headerDate]);
+
   // Manual Form State
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [editModeData, setEditModeData] = useState(null);
@@ -187,50 +229,43 @@ export default function Production2Page() {
     setIsSavingDB(true);
     let payloads = [];
 
-    // Extract only Sponge Production items (A Grade, B Grade) from all files
     filesData.forEach(f => {
-      const filteredItems = f.items.filter(item => {
-        const upper = item.label.toUpperCase();
-        return upper.includes('"A" GRADE') || upper.includes('"B" GRADE');
-      });
-
-      filteredItems.forEach(item => {
-        // Parse date. Assuming f.date is YYYY-MM-DD for Manual, or string like '25.08.2026'
-        // Just store what we have or map to valid date if possible. Supabase expects DATE.
-        // But for this project, let's just use what's given. If it fails, user can fix date format.
-        // Here we just pass f.date, but we'll use current date if f.date is missing.
-        let reportDate = new Date().toISOString().split('T')[0];
+      f.items.forEach(item => {
+        let reportDate = headerDate || new Date().toISOString().split('T')[0];
         if (f.date && f.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
           reportDate = f.date;
         }
 
         payloads.push({
           report_date: reportDate,
-          source_file: f.fileName,
-          item_grade: item.label,
+          file_name: f.fileName,
+          item_label: item.label,
           percent: item.percent || null,
           kiln1: item.kiln1 || 0,
           kiln2: item.kiln2 || 0,
-          total: item.total || 0
+          total: item.total || 0,
+          file_url: (f.fileUrl && !f.fileUrl.startsWith('blob:')) ? f.fileUrl : null
         });
       });
     });
 
     if (payloads.length === 0) {
-      setErrorMsg("Koi bhi 'A' Grade ya 'B' Grade ka data save karne ke liye nahi mila.");
+      setErrorMsg("Koi data nahi mila save karne ke liye.");
       setIsSavingDB(false);
       return;
     }
 
-    const { error } = await supabase.from('sponge_production').insert(payloads);
+    // Delete existing entries for this date
+    await supabase.from('production2_data').delete().eq('report_date', headerDate);
+
+    const { error } = await supabase.from('production2_data').insert(payloads);
     
     if (error) {
       console.error(error);
       setErrorMsg("Database me save karne me error aayi: " + error.message);
     } else {
-      alert("Sponge Production data successfully Database me save ho gaya!");
-      // Optionally clear data after save
-      // setFilesData([]);
+      alert("Production data successfully Database me save ho gaya!");
+      fetchData();
     }
     setIsSavingDB(false);
   };
@@ -261,6 +296,18 @@ export default function Production2Page() {
         if (!result.found) {
           setErrorMsg(`"${file.name}" me PRODUCTION section ka data nahi mila. Format check karein.`);
         } else {
+          setProgressMsg(`Uploading ${file.name} to Storage...`);
+          const fileExt = file.name.split('.').pop();
+          const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const filePath = `${headerDate}/${uniqueName}`;
+          
+          const { error: uploadError } = await supabase.storage.from('production_pdfs').upload(filePath, file);
+          if (!uploadError) {
+             const { data: publicUrlData } = supabase.storage.from('production_pdfs').getPublicUrl(filePath);
+             result.fileUrl = publicUrlData.publicUrl;
+          } else {
+             console.error("Storage upload error", uploadError);
+          }
           newFiles.push(result);
         }
       } catch (err) {
@@ -400,12 +447,27 @@ export default function Production2Page() {
     downloadBlob(toCSV(), "nspl_production_log.csv", "text/csv");
   };
 
-  const handleClearAll = () => {
-    setFilesData([]);
-    setErrorMsg("");
+  const handleClearAll = async () => {
+    if (window.confirm(`Delete all data for ${headerDate}?`)) {
+      await supabase.from('production2_data').delete().eq('report_date', headerDate);
+      setFilesData([]);
+      setErrorMsg("");
+    }
   };
 
-  const sortedFiles = [...filesData].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  const filteredFiles = headerDate 
+    ? filesData.filter(f => {
+        if (!f.date) return false;
+        // Simple check if it matches headerDate 
+        // e.g., if headerDate is 2026-08-25, check for '25' and '08' and '2026'
+        // or just rely on manual date setting. For now let's just show all or implement a basic check.
+        // Let's actually not filter the local files by this strict date unless we parse it properly.
+        // The user probably just wants it for the DB save and consistency.
+        return true;
+      }) 
+    : filesData;
+
+  const sortedFiles = [...filteredFiles].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 
   return (
     <div className="space-y-6 pb-10 px-2 sm:px-4 w-full max-w-[1200px] mx-auto text-slate-800">
@@ -418,6 +480,13 @@ export default function Production2Page() {
         <div className="z-10 text-center sm:text-left mb-3 sm:mb-0">
           <p className="text-emerald-100 text-[10px] font-semibold uppercase tracking-wider mb-0.5">Module</p>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Production 2</h1>
+        </div>
+
+        <div className="z-10 flex flex-col items-center sm:items-end">
+          <label className="text-emerald-100 text-[10px] uppercase tracking-wider font-semibold mb-1">Report Date</label>
+          <div className="p-1">
+            <DateFilter date={headerDate} onChange={setHeaderDate} />
+          </div>
         </div>
       </div>
 
