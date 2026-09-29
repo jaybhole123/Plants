@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { CsvDropzone } from '../components/CsvDropzone'
 import OCRImageUploader from '../components/OCRImageUploader'
 import { parseSaudaScaleOCR } from '../utils/ocrParsers'
+import DateFilter from '../components/DateFilter'
 
 const initialForm = {
   date: new Date().toISOString().split('T')[0],
@@ -62,10 +63,11 @@ const SaudaScale = () => {
 
   const fetchSaudaEntries = async () => {
     setIsLoading(true)
-    const { data, error } = await supabase
-      .from('sauda_sale')
-      .select('*')
-      
+    let query = supabase.from('sauda_sale').select('*')
+    if (headerDate) {
+      query = query.gte('created_at', `${headerDate}T00:00:00+05:30`).lte('created_at', `${headerDate}T23:59:59+05:30`)
+    }
+    const { data, error } = await query
     if (error) {
       console.error('Error fetching sauda entries:', error)
       showToast('Failed to fetch data', 'error')
@@ -577,34 +579,33 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT.
                     
                     {/* Item Rows */}
                     {groupItems.map((item) => (
-                      
-              <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-700">{new Date(item.date).toLocaleDateString('en-GB')}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 font-medium text-slate-900 uppercase">{item.itemName}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-slate-700 uppercase">{item.sizeMm || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-slate-700 uppercase">{item.partyName}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-slate-700 uppercase">{item.consigneeName || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center">{formatNumber(item.saudaQuantity)}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center">{item.rateAmt || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center">{formatNumber(item.prvPending)}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center">{formatNumber(item.qtyDispatch)}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center font-bold text-slate-800 bg-slate-50/50">{formatNumber(item.balPending)}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.broker || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.deliveryTerms || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.paymentCondition || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.referenceName || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600 break-words" title={item.remarks}>{item.remarks || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center bg-white align-middle">
-                      <div className="flex flex-row justify-center items-center gap-2 transition-opacity">
-                        <button onClick={() => handleEdit(item.id)} className="p-1 text-blue-500 hover:bg-blue-50 rounded" title="Edit">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                        </button>
-                        <button onClick={() => handleDelete(item.id)} className="p-1 text-rose-500 hover:bg-rose-50 rounded" title="Delete">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      </div>
-                    </td>
-              </tr>
+                      <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
+                        <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-700">{new Date(item.date).toLocaleDateString('en-GB')}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 font-medium text-slate-900 uppercase">{item.itemName}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-slate-700 uppercase">{item.sizeMm || '-'}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-slate-700 uppercase">{item.partyName}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-slate-700 uppercase">{item.consigneeName || '-'}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-center">{formatNumber(item.saudaQuantity)}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-center">{item.rateAmt || '-'}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-center">{formatNumber(item.prvPending)}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-center">{formatNumber(item.qtyDispatch)}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-center font-bold text-slate-800 bg-slate-50/50">{formatNumber(item.balPending)}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.broker || '-'}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.deliveryTerms || '-'}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.paymentCondition || '-'}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.referenceName || '-'}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600 break-words" title={item.remarks}>{item.remarks || '-'}</td>
+                        <td className="border border-slate-400 px-2 py-1.5 text-center bg-white align-middle">
+                          <div className="flex flex-row justify-center items-center gap-2 transition-opacity">
+                            <button onClick={() => handleEdit(item.id)} className="p-1 text-blue-500 hover:bg-blue-50 rounded" title="Edit">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                            </button>
+                            <button onClick={() => handleDelete(item.id)} className="p-1 text-rose-500 hover:bg-rose-50 rounded" title="Delete">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
                     ))}
 
                     {/* Subtotal Row */}
@@ -617,6 +618,23 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT.
                       <td className="px-2 py-1.5 text-right text-slate-800 font-bold border border-slate-400">{formatNumber(subBal)}</td>
                       <td colSpan="6" className="border border-slate-400"></td>
                     </tr>
+                    
+                    {/* Subtotal Verification Row */}
+                    {(() => {
+                      const expectedSubBal = subSauda + subPrv - subDispatch;
+                      const isCorrect = Math.abs(expectedSubBal - subBal) < 0.001;
+                      return (
+                        <tr className={isCorrect ? "bg-emerald-50/40" : "bg-rose-50/40"}>
+                          <td colSpan="9" className={`border border-slate-400 px-2 py-1 text-right text-[10px] font-semibold italic ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {isCorrect ? 'Calculation Verified' : 'Calculation Mismatch'}
+                          </td>
+                          <td className={`border border-slate-400 px-2 py-1 text-right font-bold text-[10px] ${isCorrect ? 'text-emerald-700 bg-emerald-100/50' : 'text-rose-600 bg-rose-100/50'}`}>
+                            {isCorrect ? 'Correct' : `Expected: ${formatNumber(expectedSubBal)}`}
+                          </td>
+                          <td colSpan="6" className="border border-slate-400"></td>
+                        </tr>
+                      );
+                    })()}
                   </React.Fragment>
                 )
               })}
@@ -643,13 +661,8 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT.
         
         <div className="z-10 flex flex-col items-center sm:items-end">
           <label className="text-blue-100 text-[10px] uppercase tracking-wider font-semibold mb-1">Report Date</label>
-          <div className="flex items-center bg-white/10 backdrop-blur-md rounded-md p-1 border border-white/20 shadow-inner">
-            <input
-              type="date"
-              value={headerDate}
-              onChange={(e) => setHeaderDate(e.target.value)}
-              className="bg-transparent text-white px-3 py-1.5 focus:outline-none focus:ring-0 rounded-md text-xs font-medium [&::-webkit-calendar-picker-indicator]:invert"
-            />
+          <div className="p-1">
+            <DateFilter date={headerDate} onChange={setHeaderDate} />
           </div>
         </div>
       </div>

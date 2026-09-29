@@ -5,6 +5,7 @@ import { CsvDropzone } from '../components/CsvDropzone'
 import OCRImageUploader from '../components/OCRImageUploader'
 import { parseStockOCR, parseCoalStockOCR } from '../utils/ocrParsers'
 import { supabase } from '../supabase'
+import DateFilter from '../components/DateFilter'
 
 const initialForm = {
   category: '',
@@ -304,11 +305,16 @@ const Stock = () => {
       if (activeTab === 'coal_detail' && !isCoal) return false
       if (activeTab === 'raw_material' && isCoal) return false
 
+      if (reportDate) {
+        const createdDate = new Date(item.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+        if (createdDate !== reportDate) return false
+      }
+
       return item.material.toLowerCase().includes(normalized) ||
              item.category.toLowerCase().includes(normalized)
     })
     return filtered;
-  }, [items, search, activeTab])
+  }, [items, search, activeTab, reportDate])
 
   const resetForm = () => {
     setForm(initialForm)
@@ -772,10 +778,13 @@ const Stock = () => {
             Coal Detail
           </button>
         </div>
-        <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow shadow-indigo-500/30 transition-all flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-          Add Stock Entry
-        </button>
+        <div className="flex items-center gap-4">
+          <DateFilter date={reportDate} onChange={setReportDate} />
+          <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow shadow-indigo-500/30 transition-all flex items-center gap-2 h-10">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            Add Stock Entry
+          </button>
+        </div>
       </div>
 
       {isModalOpen && (
@@ -1441,6 +1450,29 @@ const Stock = () => {
                         <td className="px-4 py-4 text-center"></td>
                         <td className="px-4 py-4 text-center"></td>
                       </tr>
+
+                      {/* Verification Row */}
+                      {(() => {
+                        let expectedClosing = 0;
+                        if (activeTab === 'raw_material') {
+                          expectedClosing = group.totals.opening + group.totals.inward - group.totals.consumption - group.totals.fines3Qty + group.totals.production - group.totals.dispatch;
+                        } else {
+                          expectedClosing = group.totals.opening + group.totals.inward - group.totals.consumption - group.totals.moistLossQty - group.totals.dispatch;
+                        }
+                        const isCorrect = Math.abs(expectedClosing - group.totals.closing) < 0.001;
+                        const colSpan1 = activeTab === 'raw_material' ? 9 : 8;
+                        return (
+                          <tr className={isCorrect ? "bg-emerald-50/40" : "bg-rose-50/40"}>
+                            <td colSpan={colSpan1} className={`px-4 py-1.5 text-right text-[10px] font-semibold italic ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
+                              {isCorrect ? 'Calculation Verified' : 'Calculation Mismatch'}
+                            </td>
+                            <td className={`px-4 py-1.5 text-right font-bold text-[10px] ${isCorrect ? 'text-emerald-700 bg-emerald-100/50' : 'text-rose-600 bg-rose-100/50'}`}>
+                              {isCorrect ? 'Correct' : `Expected: ${formatNumber(expectedClosing)}`}
+                            </td>
+                            <td colSpan="2" className="px-4 py-1.5 text-center"></td>
+                          </tr>
+                        );
+                      })()}
                     </React.Fragment>
                   )
                 })

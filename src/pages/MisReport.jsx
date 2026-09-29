@@ -7,6 +7,7 @@ import {
   useProduction2Store
 } from '../store/useStore'
 import { supabase } from '../supabase'
+import DateFilter from '../components/DateFilter'
 
 const formatNumber = (value) => {
   if (value === undefined || value === null || isNaN(value)) return '0.000'
@@ -34,7 +35,7 @@ const MisReport = () => {
   )
 
   // Get data from all stores
-  const stockItems = useStockStore(state => state.items)
+  const [stockItems, setStockItems] = useState([])
   
   const [incomingList, setIncomingList] = useState([])
   const [outgoingList, setOutgoingList] = useState([])
@@ -43,11 +44,45 @@ const MisReport = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      // Fetch Raw Material Stock
+      const { data: rawData } = await supabase
+        .from('raw_material_stock')
+        .select('*')
+        .gte('created_at', `${reportDate}T00:00:00+05:30`)
+        .lte('created_at', `${reportDate}T23:59:59+05:30`)
+        
+      // Fetch Coal Stock
+      const { data: coalData } = await supabase
+        .from('coal_stock')
+        .select('*')
+        .gte('created_at', `${reportDate}T00:00:00+05:30`)
+        .lte('created_at', `${reportDate}T23:59:59+05:30`)
+
+      let mappedStocks = []
+      if (rawData) {
+        mappedStocks = [...mappedStocks, ...rawData.map(item => ({
+          type: 'raw_material',
+          category: item.category,
+          material: item.material,
+          closingStock: item.closing_stock
+        }))]
+      }
+      if (coalData) {
+        mappedStocks = [...mappedStocks, ...coalData.map(item => ({
+          type: 'coal_detail',
+          category: item.category,
+          material: item.material,
+          closingStock: item.closing_stock
+        }))]
+      }
+      setStockItems(mappedStocks)
+
       // Fetch item transfers
       const { data: transfers, error: transferError } = await supabase
         .from('item_transfers')
         .select('*')
-        .eq('report_date', reportDate)
+        .gte('created_at', `${reportDate}T00:00:00+05:30`)
+        .lte('created_at', `${reportDate}T23:59:59+05:30`)
         
       if (!transferError && transfers) {
         const incoming = transfers.filter(d => d.entry_type === 'incoming').map(item => ({
@@ -124,8 +159,18 @@ const MisReport = () => {
 
     let coalTotal = 0
     const finalSummary = {}
+    
+    const coalIdentifiers = [
+      'COAL',
+      'KOHINOOR',
+      'LOYAL TRADING',
+      'JBT(JAGANNATHPUR)',
+      'SUNSHINE ENTE'
+    ];
+
     Object.entries(summary).forEach(([key, val]) => {
-      if (key.includes('COAL')) {
+      const isCoalType = coalIdentifiers.some(identifier => key.includes(identifier));
+      if (isCoalType) {
         coalTotal += val
       } else {
         finalSummary[key] = val
@@ -361,13 +406,8 @@ const MisReport = () => {
       {/* Date Header */}
       <div className="p-5 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-400 flex justify-between items-center print:hidden shadow-sm">
         <h1 className="text-xl font-bold text-slate-800">MIS Report Settings</h1>
-        <div className="flex gap-1">
-          <input 
-            type="date" 
-            value={reportDate} 
-            onChange={(e) => setReportDate(e.target.value)}
-            className="border border-slate-400 px-3 py-1.5 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <div className="flex items-center gap-2">
+          <DateFilter date={reportDate} onChange={setReportDate} />
           <button 
             onClick={downloadPDF} 
             disabled={isDownloading}
@@ -659,6 +699,15 @@ const MisReport = () => {
                 <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1"></td>
               </tr>
             )}
+
+            {/* NOTES SECTION */}
+            <tr>
+              <td contentEditable suppressContentEditableWarning className="bg-slate-100 text-slate-800 font-bold p-1.5 border border-slate-400 uppercase tracking-wide align-top w-[120px]">
+                NOTES:
+              </td>
+              <td contentEditable suppressContentEditableWarning colSpan="2" className="border border-slate-400 p-2 text-slate-800 font-bold text-sm min-h-[60px] align-top outline-none focus:bg-slate-50 transition-colors break-words break-all whitespace-pre-wrap max-w-[100px]" placeholder="Type your notes here...">
+              </td>
+            </tr>
 
           </tbody>
         </table>

@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { CsvDropzone } from '../components/CsvDropzone'
 import OCRImageUploader from '../components/OCRImageUploader'
 import { parseItemTransferOCR } from '../utils/ocrParsers'
+import DateFilter from '../components/DateFilter'
 
 const initialUnifiedForm = {
   type: 'incoming', // 'incoming' or 'outgoing'
@@ -50,7 +51,8 @@ const ItemTransfer = () => {
     const { data, error } = await supabase
       .from('item_transfers')
       .select('*')
-      .eq('report_date', date)
+      .gte('created_at', `${date}T00:00:00+05:30`)
+      .lte('created_at', `${date}T23:59:59+05:30`)
       
     if (error) {
       console.error('Error fetching transfers:', error)
@@ -81,7 +83,40 @@ const ItemTransfer = () => {
   }
 
   useEffect(() => {
-    fetchTransfers()
+    if (date !== '') {
+      fetchTransfers()
+    } else {
+      // If date is all, maybe we want to fetch all or we don't support all.
+      // We will adjust fetch to not filter by date if date is empty
+      const fetchAll = async () => {
+        setIsLoading(true)
+        const { data, error } = await supabase.from('item_transfers').select('*')
+        if (data) {
+          const incoming = data.filter(d => d.entry_type === 'incoming').map(item => ({
+            id: item.id,
+            mainHeading: '',
+            partyName: item.party_name,
+            materialName: item.material_name,
+            vehicleNo: item.vehicle_no,
+            qty: item.qty,
+            rate: item.rate
+          }))
+          const outgoing = data.filter(d => d.entry_type === 'outgoing').map(item => ({
+            id: item.id,
+            mainHeading: '',
+            partyName: item.party_name,
+            materialName: item.material_name,
+            vehicleNo: item.vehicle_no,
+            qty: item.qty,
+            rate: item.rate
+          }))
+          setIncomingList(incoming)
+          setOutgoingList(outgoing)
+        }
+        setIsLoading(false)
+      }
+      fetchAll()
+    }
   }, [date])
   
   const [unifiedForm, setUnifiedForm] = useState(initialUnifiedForm)
@@ -397,13 +432,8 @@ const ItemTransfer = () => {
           </h2>
         </div>
         
-        <div className="relative z-10 bg-white/10 p-1 rounded-md backdrop-blur-md border border-white/20 inline-flex items-center shadow-inner">
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="px-3 py-1.5 bg-transparent text-white text-xs font-medium focus:outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert hover:bg-white/10 rounded-md transition-colors"
-          />
+        <div className="relative z-10 p-1">
+          <DateFilter date={date} onChange={setDate} />
         </div>
       </div>
 

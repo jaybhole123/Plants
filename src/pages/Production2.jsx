@@ -709,6 +709,22 @@ export default function Production2Page() {
                           </td>
                           <td colSpan="2"></td>
                         </tr>
+                        {(() => {
+                          const expectedTotal = filteredItems.reduce((acc, curr) => acc + (curr.kiln1 || 0), 0) + filteredItems.reduce((acc, curr) => acc + (curr.kiln2 || 0), 0);
+                          const actualTotal = filteredItems.reduce((acc, curr) => acc + (curr.total || 0), 0);
+                          const isCorrect = Math.abs(expectedTotal - actualTotal) < 0.001;
+                          return (
+                            <tr className={isCorrect ? "bg-emerald-50/40" : "bg-rose-50/40"}>
+                              <td colSpan="3" className={`border-b border-slate-100 px-3 py-1 text-right text-[10px] font-semibold italic ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {isCorrect ? 'Calculation Verified' : 'Calculation Mismatch'}
+                              </td>
+                              <td className={`border-b border-slate-100 px-3 py-1 text-center font-bold text-[10px] ${isCorrect ? 'text-emerald-700 bg-emerald-100/50' : 'text-rose-600 bg-rose-100/50'}`}>
+                                {isCorrect ? 'Correct' : `Expected: ${fmt(expectedTotal)}`}
+                              </td>
+                              <td colSpan="2" className="border-b border-slate-100"></td>
+                            </tr>
+                          );
+                        })()}
                       </tbody>
                     </table>
                   </div>
