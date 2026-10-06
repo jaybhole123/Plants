@@ -3,6 +3,8 @@ import { useProduction2Store } from '../store/useStore';
 import { ImageOcrUploader } from '../components/ImageOcrUploader';
 import { FilterBar } from '../components/FilterBar';
 import './Production2.css';
+import DateFilter from '../components/DateFilter';
+import { supabase } from '../supabase';
 
 /* ---------- Load pdf.js (classic, non-module build) with CDN fallback chain ---------- */
 const PDFJS_SOURCES = [
@@ -176,6 +178,47 @@ export default function Production2Page() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   const [headerDate, setHeaderDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isSavingDB, setIsSavingDB] = useState(false);
+
+  const handleSaveToDB = async () => {
+    setIsSavingDB(true);
+    setErrorMsg("");
+    
+    const payloads = [];
+    filesData.forEach(f => {
+      f.items.forEach(item => {
+        payloads.push({
+          report_date: headerDate,
+          file_name: f.fileName,
+          file_url: f.fileUrl || null,
+          item_label: item.label,
+          percent: item.percent || null,
+          kiln1: item.kiln1 || 0,
+          kiln2: item.kiln2 || 0,
+          total: item.total || 0
+        });
+      });
+    });
+
+    if (payloads.length === 0) {
+      setErrorMsg("No data to save.");
+      setIsSavingDB(false);
+      return;
+    }
+
+    try {
+      await supabase.from('production2_data').delete().eq('report_date', headerDate);
+      const { error } = await supabase.from('production2_data').insert(payloads);
+      
+      if (error) throw error;
+      alert("Data saved successfully!");
+    } catch (err) {
+      console.error("Error saving to DB:", err);
+      setErrorMsg("Error saving to DB: " + err.message);
+    } finally {
+      setIsSavingDB(false);
+    }
+  };
 
   const fetchData = async () => {
     const { data, error } = await supabase.from('production2_data').select('*').eq('report_date', headerDate);

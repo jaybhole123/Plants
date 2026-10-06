@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { CsvDropzone } from '../components/CsvDropzone'
 import { ImageOcrUploader } from '../components/ImageOcrUploader'
 import { FilterBar } from '../components/FilterBar'
+import { useSaudaScaleStore } from '../store/useStore'
 const initialForm = {
   date: new Date().toISOString().split('T')[0],
   mainHeading: '',

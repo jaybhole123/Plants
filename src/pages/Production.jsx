@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useProductionStore } from '../store/useStore'
 import { CsvDropzone } from '../components/CsvDropzone'
 import { ImageOcrUploader } from '../components/ImageOcrUploader'
+import OCRImageUploader from '../components/OCRImageUploader'
 const initialFormState = {
   metricName: 'Sponge Prod. (Mt)',
   percentValue: '',
@@ -251,7 +252,7 @@ const Production = () => {
           />
 
           <OCRImageUploader 
-            onTextExtracted={handleOcrUpload} 
+            onTextExtracted={handleOcrResult} 
             className="px-6 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-medium rounded-md transition flex items-center gap-1"
           />
 

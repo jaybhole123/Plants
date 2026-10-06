@@ -3,6 +3,8 @@ import { supabase } from '../supabase'
 import { CsvDropzone } from '../components/CsvDropzone'
 import { ImageOcrUploader } from '../components/ImageOcrUploader'
 import { FilterBar } from '../components/FilterBar'
+import DateFilter from '../components/DateFilter'
+import OCRImageUploader from '../components/OCRImageUploader'
 const initialUnifiedForm = {
   type: 'incoming', // 'incoming' or 'outgoing'
   mainHeading: '',
@@ -491,7 +493,7 @@ const ItemTransfer = () => {
         </button>
 
         <OCRImageUploader 
-          onTextExtracted={handleOcrUpload} 
+          onTextExtracted={(text) => handleOcrResult(text, 'incoming')} 
           className="px-4 py-3 bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 font-bold rounded-lg" 
         />
       </div>

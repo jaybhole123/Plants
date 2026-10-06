@@ -7,6 +7,7 @@ import {
   useProduction2Store
 } from '../store/useStore'
 import { FilterBar } from '../components/FilterBar'
+import { supabase } from '../supabase'
 
 const formatNumber = (value) => {
   if (value === undefined || value === null || isNaN(Number(value))) return '0.000'

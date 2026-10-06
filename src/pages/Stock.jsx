@@ -3,6 +3,9 @@ import { useStockStore } from '../store/useStore'
 import { CsvDropzone } from '../components/CsvDropzone'
 import { ImageOcrUploader } from '../components/ImageOcrUploader'
 import { FilterBar } from '../components/FilterBar'
+import DateFilter from '../components/DateFilter'
+import OCRImageUploader from '../components/OCRImageUploader'
+import { supabase } from '../supabase'
 
 const initialForm = {
   category: '',
@@ -1282,6 +1285,8 @@ const Stock = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                 <span className="hidden sm:inline">AI Prompt</span>
               </button>
+              </>
+            )}
 
               <button type="submit" className="px-8 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white shadow-md hover:shadow-lg font-medium rounded-md transition-all duration-300 transform hover:-translate-y-0.5 ml-auto">
                 {selectedId ? 'Update Stock Entry' : 'Save Coal Detail'}
