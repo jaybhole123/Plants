@@ -1,24 +1,18 @@
 import React, { useState, useMemo } from 'react'
 import { useSaudaScaleStore } from '../store/useStore'
 import { CsvDropzone } from '../components/CsvDropzone'
-
+import { ImageOcrUploader } from '../components/ImageOcrUploader'
+import { FilterBar } from '../components/FilterBar'
 const initialForm = {
   date: new Date().toISOString().split('T')[0],
   mainHeading: '',
   itemName: '',
-  sizeMm: '',
   partyName: '',
-  consigneeName: '',
   saudaQuantity: '',
   rateAmt: '',
   prvPending: '',
   qtyDispatch: '',
   balPending: '',
-  broker: '',
-  deliveryTerms: '',
-  paymentCondition: '',
-  referenceName: '',
-  remarks: '',
 }
 
 const formatNumber = (value) => {
@@ -28,6 +22,7 @@ const formatNumber = (value) => {
 
 const SaudaScale = () => {
   const [headerDate, setHeaderDate] = useState(new Date().toISOString().split('T')[0])
+  const [search, setSearch] = useState('')
   const { entries, setEntries } = useSaudaScaleStore()
   const [form, setForm] = useState(initialForm)
   const [editingId, setEditingId] = useState(null)
@@ -56,6 +51,15 @@ const SaudaScale = () => {
     const dispatch = Number(form.qtyDispatch) || 0
     return (sauda + prv) - dispatch
   }, [form.saudaQuantity, form.prvPending, form.qtyDispatch])
+
+  const filteredEntries = useMemo(() => {
+    return entries.filter(item => 
+      !search || 
+      item.partyName?.toLowerCase().includes(search.toLowerCase()) || 
+      item.itemName?.toLowerCase().includes(search.toLowerCase()) ||
+      item.mainHeading?.toLowerCase().includes(search.toLowerCase())
+    )
+  }, [entries, search])
 
   // --- Form Submit Handler ---
   const handleSubmit = (e) => {
@@ -133,19 +137,12 @@ const SaudaScale = () => {
             date: date,
             mainHeading: currentItemName,
             itemName: itemName,
-            sizeMm: columns[2] || '',
-            partyName: columns[3] || '',
-            consigneeName: columns[4] || '',
-            saudaQuantity: columns[5] || '0',
-            rateAmt: columns[6] || '0',
-            prvPending: '0', // Not in new CSV format
-            qtyDispatch: columns[7] || '0',
-            balPending: columns[8] || '0',
-            broker: columns[9] || '',
-            deliveryTerms: columns[10] || '',
-            paymentCondition: columns[11] || '',
-            referenceName: columns[12] || '',
-            remarks: columns[13] || '',
+            partyName: columns[2] || '',
+            saudaQuantity: columns[3] || '0',
+            rateAmt: columns[4] || '0',
+            prvPending: columns[5] || '0',
+            qtyDispatch: columns[6] || '0',
+            balPending: columns[7] || '0',
           })
         }
       }
@@ -159,6 +156,40 @@ const SaudaScale = () => {
     }
     reader.readAsText(file)
     e.target.value = '' 
+  }
+
+  const handleOcrResult = (text) => {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l)
+    const newRows = []
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      if (line.match(/\d/)) {
+        const parts = line.split(/\s+/)
+        const nums = parts.filter(p => !isNaN(parseFloat(p.replace(/,/g, ''))))
+        const chars = line.replace(/[\d\.\-,]/g, '').trim()
+        
+        newRows.push({
+          id: Date.now() + i + Math.random(),
+          date: new Date().toISOString().split('T')[0],
+          mainHeading: form.mainHeading || 'SCANNED DATA',
+          itemName: form.itemName || 'Item',
+          partyName: chars.substring(0, 30) || 'Scanned Party',
+          saudaQuantity: nums[0] || '0',
+          rateAmt: nums[1] || '0',
+          prvPending: nums[2] || '0',
+          qtyDispatch: nums[3] || '0',
+          balPending: nums[4] || '0',
+        })
+      }
+    }
+
+    if (newRows.length > 0) {
+      setCsvPreview(newRows)
+      showToast(`Ready to preview ${newRows.length} scanned entries.`, 'success')
+    } else {
+      showToast('Could not extract valid data from image.', 'error')
+    }
   }
 
   // Format the date for the yellow header (DD.MM.YYYY)
@@ -197,6 +228,11 @@ const SaudaScale = () => {
         <span className="hidden sm:inline">CSV</span>
       </CsvDropzone>
 
+      <ImageOcrUploader
+        onTextExtracted={handleOcrResult}
+        className={`px-4 py-2.5 bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 font-medium rounded-md transition-all shadow-sm flex items-center gap-2 active:scale-[0.98]`}
+      />
+
       <button 
         onClick={() => setIsPromptModalOpen(true)}
         className="px-4 py-2.5 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 font-medium rounded-md transition-all shadow-sm flex items-center gap-2 active:scale-[0.98]"
@@ -229,8 +265,8 @@ const SaudaScale = () => {
 {`Please extract the data from the attached image of the "BALANCE PENDING OUTGOING (SAUDA SALE)" table and convert it into a strictly formatted CSV.
 
 Instructions:
-1. Use EXACTLY these 14 column headers in this exact order for the first row:
-DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT., QTY. DISPATCH, BAL. PENDING, BROKER, TERMS OF DELIVERY, PAYMENT CONDITION, REFERENCE NAME, REMARK
+1. Use EXACTLY these 8 column headers in this exact order for the first row:
+DATE, ITEMS, PARTY NAME, SAUDA QUANTITY, RATE/MT, PRV PENDING, QTY DISPATCH, BAL PENDING
 
 2. Ensure all values are separated by commas.
 3. If a column is empty or has a hyphen (-) in the image, output an empty string for that field. 
@@ -240,7 +276,7 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT.
                 </pre>
                 <button 
                   onClick={() => {
-                    navigator.clipboard.writeText(`Please extract the data from the attached image of the "BALANCE PENDING OUTGOING (SAUDA SALE)" table and convert it into a strictly formatted CSV.\n\nInstructions:\n1. Use EXACTLY these 14 column headers in this exact order for the first row:\nDATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT., QTY. DISPATCH, BAL. PENDING, BROKER, TERMS OF DELIVERY, PAYMENT CONDITION, REFERENCE NAME, REMARK\n\n2. Ensure all values are separated by commas.\n3. If a column is empty or has a hyphen (-) in the image, output an empty string for that field. \n4. Do not include any subtotal rows or main category headers (like "DUST" or "TOTAL DUST") as data rows. Only include the actual entry rows with the party names.\n5. Make sure numeric values like quantities and rates do not have commas in them (e.g., use 1000.00 instead of 1,000.00).\n6. Output ONLY the raw CSV text inside a code block, without any extra explanations or greetings.`);
+                    navigator.clipboard.writeText(`Please extract the data from the attached image of the "BALANCE PENDING OUTGOING (SAUDA SALE)" table and convert it into a strictly formatted CSV.\n\nInstructions:\n1. Use EXACTLY these 8 column headers in this exact order for the first row:\nDATE, ITEMS, PARTY NAME, SAUDA QUANTITY, RATE/MT, PRV PENDING, QTY DISPATCH, BAL PENDING\n\n2. Ensure all values are separated by commas.\n3. If a column is empty or has a hyphen (-) in the image, output an empty string for that field. \n4. Do not include any subtotal rows or main category headers (like "DUST" or "TOTAL DUST") as data rows. Only include the actual entry rows with the party names.\n5. Make sure numeric values like quantities and rates do not have commas in them (e.g., use 1000.00 instead of 1,000.00).\n6. Output ONLY the raw CSV text inside a code block, without any extra explanations or greetings.`);
                     showToast('Prompt copied to clipboard!');
                   }}
                   className="absolute top-2 right-2 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-700 flex items-center gap-1"
@@ -290,20 +326,12 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT.
                   <input type="date" value={form.date} onChange={(e) => setForm(prev => ({ ...prev, date: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm focus:border-indigo-400 focus:ring-indigo-500/10" />
                 </div>
                 <div className="group">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Material Name</label>
+                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Item's</label>
                   <input type="text" value={form.itemName} onChange={(e) => setForm(prev => ({ ...prev, itemName: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm uppercase focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="e.g. IRON ORE" />
-                </div>
-                <div className="group">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Size (MM)</label>
-                  <input type="text" value={form.sizeMm} onChange={(e) => setForm(prev => ({ ...prev, sizeMm: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm uppercase focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="e.g. 5-18" />
                 </div>
                 <div className="group">
                   <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Party Name</label>
                   <input type="text" value={form.partyName} onChange={(e) => setForm(prev => ({ ...prev, partyName: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm uppercase focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="e.g. HINDUSTAN DHAATU LTD." />
-                </div>
-                <div className="group">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Consignee Name</label>
-                  <input type="text" value={form.consigneeName} onChange={(e) => setForm(prev => ({ ...prev, consigneeName: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm uppercase focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="e.g. Consignee" />
                 </div>
                 
                 <div className="group">
@@ -335,28 +363,6 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT.
                   <input type="text" readOnly value={formatNumber(calculatedBalance)} className="w-full px-4 py-3 bg-emerald-50/50 border border-emerald-200 rounded-xl text-emerald-700 text-sm font-semibold cursor-not-allowed shadow-sm text-right" />
                 </div>
 
-                <div className="group">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Broker</label>
-                  <input type="text" value={form.broker} onChange={(e) => setForm(prev => ({ ...prev, broker: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="e.g. R.K. Broker" />
-                </div>
-
-                <div className="group">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Terms of Delivery</label>
-                  <input type="text" value={form.deliveryTerms} onChange={(e) => setForm(prev => ({ ...prev, deliveryTerms: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="e.g. F.O.R. Plant" />
-                </div>
-                <div className="group">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Payment Condition</label>
-                  <input type="text" value={form.paymentCondition} onChange={(e) => setForm(prev => ({ ...prev, paymentCondition: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="e.g. Advance" />
-                </div>
-                <div className="group">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Reference Name</label>
-                  <input type="text" value={form.referenceName} onChange={(e) => setForm(prev => ({ ...prev, referenceName: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="e.g. PO Ref." />
-                </div>
-                <div className="group md:col-span-2 lg:col-span-3 xl:col-span-4">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Remark</label>
-                  <input type="text" value={form.remarks} onChange={(e) => setForm(prev => ({ ...prev, remarks: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="Any remarks..." />
-                </div>
-
                 <div className="col-span-full flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
                   <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-slate-600 bg-white hover:bg-slate-100 rounded-xl font-bold transition-all w-full md:w-auto text-xs uppercase tracking-wider flex items-center justify-center border border-slate-200 shadow-sm active:scale-95">
                     Cancel
@@ -378,17 +384,6 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT.
 
   // --- Render Table Section ---
   const renderTable = (itemsToRender, isPreview = false) => {
-    if (itemsToRender.length === 0) {
-      return (
-        <div className="py-12 text-center bg-slate-50/50 rounded border border-dashed border-slate-400">
-          <div className="flex flex-row justify-center items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            <p className="text-slate-500 font-medium">No sauda entries to display.</p>
-          </div>
-        </div>
-      )
-    }
-
     // Group entries by mainHeading
     const groupedEntries = itemsToRender.reduce((acc, curr) => {
       const name = curr.mainHeading || curr.itemName || 'Unknown'
@@ -404,25 +399,27 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT.
             <thead className="sticky top-0 z-10 shadow-sm">
               <tr className="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider font-semibold">
                 <th className="px-2 py-1.5 break-words border border-slate-400">Date</th>
-                <th className="px-2 py-1.5 break-words border border-slate-400">Material Name</th>
-                <th className="px-2 py-1.5 min-w-[80px] border border-slate-400">Size (MM)</th>
+                <th className="px-2 py-1.5 break-words border border-slate-400">Item's</th>
                 <th className="px-2 py-1.5 min-w-[160px] border border-slate-400">Party Name</th>
-                <th className="px-2 py-1.5 min-w-[120px] border border-slate-400">Consignee Name</th>
                 <th className="px-2 py-1.5 text-right border border-slate-400">Sauda Qty.</th>
                 <th className="px-2 py-1.5 text-right border border-slate-400">Rate/MT.</th>
                 <th className="px-2 py-1.5 text-right border border-slate-400">Prv. Pending</th>
                 <th className="px-2 py-1.5 text-right border border-slate-400">Qty. Dispatch</th>
                 <th className="px-2 py-1.5 text-right border border-slate-400">Bal. Pending</th>
-                <th className="px-2 py-1.5 min-w-[90px] border border-slate-400">Broker</th>
-                <th className="px-2 py-1.5 min-w-[80px] border border-slate-400">Terms of Delivery</th>
-                <th className="px-2 py-1.5 min-w-[80px] border border-slate-400">Payment Condition</th>
-                <th className="px-2 py-1.5 min-w-[80px] border border-slate-400">Reference Name</th>
-                <th className="px-2 py-1.5 min-w-[80px] border border-slate-400">Remark</th>
                 <th className="px-2 py-1.5 text-center print:hidden border border-slate-400">Actions</th>
               </tr>
             </thead>
             <tbody className="text-slate-700">
-              {Object.entries(groupedEntries).map(([mainHeadingName, groupItems], groupIdx) => {
+              {itemsToRender.length === 0 ? (
+                <tr>
+                  <td colSpan="9" className="py-12 text-center bg-slate-50/50">
+                    <div className="flex flex-col justify-center items-center gap-2 transition-opacity">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-slate-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                      <p className="text-slate-500 font-medium">No sauda entries to display.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : Object.entries(groupedEntries).map(([mainHeadingName, groupItems], groupIdx) => {
                 
                 // Calculate group subtotals
                 const subSauda = groupItems.reduce((sum, i) => sum + (Number(i.saudaQuantity) || 0), 0)
@@ -434,7 +431,7 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT.
                   <React.Fragment key={`group-${groupIdx}`}>
                     {/* Group Header Row */}
                     <tr className="bg-slate-50">
-                      <td colSpan="16" className="px-2 py-1.5 text-left font-bold text-slate-800 text-[11px] uppercase tracking-widest text-indigo-600 border border-slate-400">
+                      <td colSpan="9" className="px-2 py-1.5 text-center font-bold text-slate-800 text-[11px] uppercase tracking-widest border border-slate-400">
                         {mainHeadingName}
                       </td>
                     </tr>
@@ -445,20 +442,13 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT.
               <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-700">{new Date(item.date).toLocaleDateString('en-GB')}</td>
                     <td className="border border-slate-400 px-2 py-1.5 font-medium text-slate-900 uppercase">{item.itemName}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-slate-700 uppercase">{item.sizeMm || '-'}</td>
                     <td className="border border-slate-400 px-2 py-1.5 text-slate-700 uppercase">{item.partyName}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-slate-700 uppercase">{item.consigneeName || '-'}</td>
                     <td className="border border-slate-400 px-2 py-1.5 text-center">{formatNumber(item.saudaQuantity)}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center">{item.rateAmt || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center">{formatNumber(item.prvPending)}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center">{formatNumber(item.qtyDispatch)}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center font-bold text-slate-800 bg-slate-50/50">{formatNumber(item.balPending)}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.broker || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.deliveryTerms || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.paymentCondition || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.referenceName || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600 break-words" title={item.remarks}>{item.remarks || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center bg-white align-middle">
+                    <td className="border border-slate-400 px-2 py-1.5 text-center font-bold">{item.rateAmt || '-'}</td>
+                    <td className="border border-slate-400 px-2 py-1.5 text-right">{formatNumber(item.prvPending)}</td>
+                    <td className="border border-slate-400 px-2 py-1.5 text-right">{formatNumber(item.qtyDispatch)}</td>
+                    <td className="border border-slate-400 px-2 py-1.5 text-right font-bold text-slate-800">{formatNumber(item.balPending)}</td>
+                    <td className="border border-slate-400 px-2 py-1.5 text-center bg-white align-middle print:hidden">
                       <div className="flex flex-row justify-center items-center gap-2 transition-opacity">
                         <button onClick={() => handleEdit(item.id)} className="p-1 text-blue-500 hover:bg-blue-50 rounded" title="Edit">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
@@ -473,13 +463,13 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT.
 
                     {/* Subtotal Row */}
                     <tr className="font-semibold text-slate-700 bg-slate-50/50">
-                      <td colSpan="5" className="px-2 py-1.5 text-right text-[11px] uppercase tracking-wider text-slate-500 border border-slate-400">Subtotal</td>
-                      <td className="px-2 py-1.5 text-right border border-slate-400">{formatNumber(subSauda)}</td>
+                      <td colSpan="3" className="px-2 py-1.5 text-center text-[11px] uppercase tracking-wider text-slate-800 border border-slate-400 font-bold">Total</td>
+                      <td className="px-2 py-1.5 text-center font-bold text-slate-900 border border-slate-400">{formatNumber(subSauda)}</td>
                       <td className="px-2 py-1.5 border border-slate-400"></td>
-                      <td className="px-2 py-1.5 text-right border border-slate-400">{formatNumber(subPrv)}</td>
-                      <td className="px-2 py-1.5 text-right border border-slate-400">{formatNumber(subDispatch)}</td>
-                      <td className="px-2 py-1.5 text-right text-slate-800 font-bold border border-slate-400">{formatNumber(subBal)}</td>
-                      <td colSpan="6" className="border border-slate-400"></td>
+                      <td className="px-2 py-1.5 text-right font-bold text-slate-900 border border-slate-400">{formatNumber(subPrv)}</td>
+                      <td className="px-2 py-1.5 text-right font-bold text-slate-900 border border-slate-400">{formatNumber(subDispatch)}</td>
+                      <td className="px-2 py-1.5 text-right font-bold text-slate-900 border border-slate-400">{formatNumber(subBal)}</td>
+                      <td className="border border-slate-400 print:hidden"></td>
                     </tr>
                   </React.Fragment>
                 )
@@ -493,7 +483,7 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT.
 
   // --- Main Layout ---
   return (
-    <div className="space-y-6 pb-10 px-2 sm:px-4 max-w-[1400px] mx-auto text-slate-800">
+    <div className="space-y-6 pb-10 px-2 sm:px-4 w-full text-slate-800">
       
       {/* Top Banner (Modern Gradient) */}
       <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded p-4 sm:p-5 mb-6 shadow-md relative overflow-hidden flex flex-col sm:flex-row items-center justify-between text-white">
@@ -504,19 +494,14 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, CONSIGNEE NAME, SAUDA QTY., RATE/MT.
           <p className="text-blue-100 text-[10px] font-semibold uppercase tracking-wider mb-0.5">Module</p>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Sauda Sale</h1>
         </div>
-        
-        <div className="z-10 flex flex-col items-center sm:items-end">
-          <label className="text-blue-100 text-[10px] uppercase tracking-wider font-semibold mb-1">Report Date</label>
-          <div className="flex items-center bg-white/10 backdrop-blur-md rounded-md p-1 border border-white/20 shadow-inner">
-            <input
-              type="date"
-              value={headerDate}
-              onChange={(e) => setHeaderDate(e.target.value)}
-              className="bg-transparent text-white px-3 py-1.5 focus:outline-none focus:ring-0 rounded-md text-xs font-medium [&::-webkit-calendar-picker-indicator]:invert"
-            />
-          </div>
-        </div>
       </div>
+
+      <FilterBar 
+        searchQuery={search} 
+        setSearchQuery={setSearch} 
+        selectedDate={headerDate} 
+        setSelectedDate={setHeaderDate} 
+      />
 
       {/* Form Section */}
       <div className="print:hidden">

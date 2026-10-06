@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useTransferStore } from '../store/useStore'
 import { CsvDropzone } from '../components/CsvDropzone'
-
+import { ImageOcrUploader } from '../components/ImageOcrUploader'
+import { FilterBar } from '../components/FilterBar'
 const initialUnifiedForm = {
   type: 'incoming', // 'incoming' or 'outgoing'
   mainHeading: '',
@@ -38,6 +39,7 @@ const formatNumber = (value) => {
 const ItemTransfer = () => {
   // --- State Management ---
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [search, setSearch] = useState('')
   
   const { incomingList, setIncomingList, outgoingList, setOutgoingList } = useTransferStore()
   
@@ -60,6 +62,18 @@ const ItemTransfer = () => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 3000)
   }
+
+  const filteredIncoming = incomingList.filter(item => 
+    !search || 
+    item.partyName?.toLowerCase().includes(search.toLowerCase()) || 
+    item.materialName?.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const filteredOutgoing = outgoingList.filter(item => 
+    !search || 
+    item.partyName?.toLowerCase().includes(search.toLowerCase()) || 
+    item.materialName?.toLowerCase().includes(search.toLowerCase())
+  )
 
   const resetUnifiedForm = () => {
     setUnifiedForm(initialUnifiedForm)
@@ -242,6 +256,40 @@ const ItemTransfer = () => {
     }
   }
 
+  const handleOcrResult = (text, type) => {
+    console.log("Extracted OCR Text:", text);
+    // Basic heuristic to parse text into rows
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    const newRows = [];
+    
+    for (let line of lines) {
+      // Look for a number pattern at the end for Qty/Rate
+      const match = line.match(/(.+?)\s+([0-9.,]+)\s*([0-9.,]*)$/);
+      if (match) {
+        newRows.push({
+          id: Date.now() + Math.random(),
+          mainHeading: '',
+          partyName: match[1].trim().substring(0, 30),
+          materialName: 'OCR Item',
+          vehicleNo: '',
+          qty: match[2] ? match[2].replace(/,/g, '') : '0',
+          rate: match[3] ? match[3].replace(/,/g, '') : '0'
+        });
+      }
+    }
+    
+    if (newRows.length > 0) {
+      if (type === 'incoming') {
+        setIncomingCsvPreview(prev => [...prev, ...newRows]);
+      } else {
+        setOutgoingCsvPreview(prev => [...prev, ...newRows]);
+      }
+      showToast(`Scanned ${newRows.length} entries from image.`);
+    } else {
+      showToast('Could not extract structured data from image.', 'error');
+    }
+  }
+
   // --- Render Table (Reusable) ---
   const renderTable = (type, list, onEdit, onDelete, isPreview = false) => {
     const title = type === 'incoming' ? 'INCOMING' : 'OUTGOING'
@@ -312,7 +360,7 @@ const ItemTransfer = () => {
   }
 
   return (
-    <div className="space-y-8 pb-12 pt-4 px-4 sm:px-6 max-w-7xl mx-auto text-slate-800">
+    <div className="space-y-8 pb-12 pt-4 px-4 sm:px-6 w-full text-slate-800">
       
       {/* Date Header (Modern Gradient Box) */}
       <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 rounded p-1 md:px-8 md:py-4 shadow-lg relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-1">
@@ -465,6 +513,13 @@ const ItemTransfer = () => {
         </div>
       )}
 
+      <FilterBar 
+        searchQuery={search} 
+        setSearchQuery={setSearch} 
+        selectedDate={date} 
+        setSelectedDate={setDate} 
+      />
+
       {/* --- Incoming Section --- */}
       <div className="space-y-2">
         <div className="flex items-center gap-1.5 px-2 mb-2">
@@ -480,6 +535,10 @@ const ItemTransfer = () => {
             </svg>
             <span>Upload CSV</span>
           </CsvDropzone>
+          <ImageOcrUploader
+            onTextExtracted={(text) => handleOcrResult(text, 'incoming')}
+            className={`px-5 py-2 border font-bold rounded-lg transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700 hover:border-indigo-300`}
+          />
         </div>
         
         {incomingCsvPreview.length > 0 && (
@@ -498,7 +557,7 @@ const ItemTransfer = () => {
           </div>
         )}
 
-        {renderTable('incoming', incomingList, handleEditIncoming, handleDeleteIncoming, false)}
+        {renderTable('incoming', filteredIncoming, handleEditIncoming, handleDeleteIncoming, false)}
       </div>
 
       {/* --- Outgoing Section --- */}
@@ -516,6 +575,10 @@ const ItemTransfer = () => {
             </svg>
             <span>Upload CSV</span>
           </CsvDropzone>
+          <ImageOcrUploader
+            onTextExtracted={(text) => handleOcrResult(text, 'outgoing')}
+            className={`px-5 py-2 border font-bold rounded-lg transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700 hover:border-indigo-300`}
+          />
         </div>
         
         {outgoingCsvPreview.length > 0 && (
@@ -534,7 +597,7 @@ const ItemTransfer = () => {
           </div>
         )}
 
-        {renderTable('outgoing', outgoingList, handleEditOutgoing, handleDeleteOutgoing, false)}
+        {renderTable('outgoing', filteredOutgoing, handleEditOutgoing, handleDeleteOutgoing, false)}
       </div>
 
       {/* AI Prompt Modal */}

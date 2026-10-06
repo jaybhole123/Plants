@@ -95,7 +95,7 @@ const Sidebar = ({ isOpen, onClose, isCollapsed, toggleCollapse }) => {
           {!isCollapsed && (
             <div className="overflow-hidden">
               <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 truncate">Plant</p>
-              <h2 className="text-sm font-semibold text-slate-800 leading-tight truncate">Nandan Smillter</h2>
+              <h2 className="text-sm font-semibold text-slate-800 leading-tight">Hindustan Datthu Sponge</h2>
             </div>
           )}
 

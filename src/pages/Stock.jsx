@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useStockStore } from '../store/useStore'
-import { FileUploader } from '../components/FileUploader'
 import { CsvDropzone } from '../components/CsvDropzone'
+import { ImageOcrUploader } from '../components/ImageOcrUploader'
+import { FilterBar } from '../components/FilterBar'
 
 const initialForm = {
   category: '',
@@ -257,6 +258,54 @@ const Stock = () => {
     e.target.value = '' 
   }
 
+  const handleOcrResult = (text, type) => {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l)
+    const newRows = []
+    
+    for (const line of lines) {
+      if (line.match(/\d/)) {
+        const parts = line.split(/\s+/)
+        const nums = parts.filter(p => !isNaN(parseFloat(p.replace(/,/g, ''))))
+        const chars = line.replace(/[\d\.\-,]/g, '').trim()
+        
+        if (type === 'raw_material') {
+           newRows.push({
+             category: form.category || 'RAW MATERIAL',
+             materialName: chars.substring(0, 20) || 'Item',
+             openingStock: nums[0] || '',
+             inward: nums[1] || '',
+             outward: nums[2] || '',
+             closingStock: nums[3] || ''
+           })
+        } else {
+           newRows.push({
+             category: coalCategory || 'COAL',
+             material: chars.substring(0, 20) || 'Item',
+             openingStock: nums[0] || '',
+             inward: nums[1] || '',
+             consumption: nums[2] || '',
+             fc: '-',
+             moistLossPct: '0%',
+             dispatch: nums[3] || '',
+             landedCost: nums[4] || '',
+             closingStock: nums[5] || ''
+           })
+        }
+      }
+    }
+
+    if (newRows.length > 0) {
+       if (type === 'raw_material') {
+          setRows(newRows)
+       } else {
+          setCoalRows(newRows)
+       }
+       setToast({ type: 'success', message: `Extracted ${newRows.length} rows from image.` })
+    } else {
+       setToast({ type: 'error', message: 'Could not extract valid data from image.' })
+    }
+  }
+
   const addCoalRow = () => setCoalRows((s) => ([...s, { material: '', openingStock: '', inward: '', consumption: '', fc: '', moistLossPct: '', dispatch: '', landedCost: '', closingStock: '' }]))
   const removeCoalRow = (idx) => setCoalRows((s) => s.filter((_, i) => i !== idx))
   
@@ -446,7 +495,7 @@ const Stock = () => {
   }, [filteredItems])
 
   return (
-    <div className="space-y-6 pb-10 px-2 sm:px-4 w-full max-w-[1200px] mx-auto text-slate-800">
+    <div className="space-y-6 pb-10 px-2 sm:px-4 w-full text-slate-800">
       
       {/* Top Banner (Modern Gradient) */}
       <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 rounded p-4 sm:p-5 mb-6 shadow-md relative overflow-hidden flex flex-col sm:flex-row items-center justify-between text-white">
@@ -486,6 +535,13 @@ const Stock = () => {
           Add Stock Entry
         </button>
       </div>
+      
+      <FilterBar 
+        searchQuery={search} 
+        setSearchQuery={setSearch} 
+        selectedDate={reportDate} 
+        setSelectedDate={setReportDate} 
+      />
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -813,6 +869,11 @@ const Stock = () => {
               Upload CSV
             </CsvDropzone>
             
+            <ImageOcrUploader
+              onTextExtracted={(text) => handleOcrResult(text, 'raw_material')}
+              className={`px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-md transition-all duration-300 flex items-center gap-1 active:scale-95`}
+            />
+            
             <button
               type="button"
               onClick={() => setIsPromptModalOpen(true)}
@@ -930,6 +991,11 @@ const Stock = () => {
                 Upload CSV
               </CsvDropzone>
 
+              <ImageOcrUploader
+                onTextExtracted={(text) => handleOcrResult(text, 'coal')}
+                className={`px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-md transition-all duration-300 flex items-center gap-1 active:scale-95`}
+              />
+
               <button
                 type="button"
                 onClick={() => setIsPromptModalOpen(true)}
@@ -960,25 +1026,7 @@ const Stock = () => {
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <CsvDropzone
-                onUpload={activeTab === 'raw_material' ? handleCsvUpload : handleCoalCsvUpload}
-                className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-sm text-emerald-700 font-medium rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 active:scale-95 w-full sm:w-auto whitespace-nowrap"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Upload CSV
-              </CsvDropzone>
-              
-              <button
-                type="button"
-                onClick={() => setIsPromptModalOpen(true)}
-                className="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 w-full sm:w-auto"
-                title="Get AI Prompt for CSV"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                <span className="hidden sm:inline">AI Prompt</span>
-              </button>
+
             </div>
             
             <div className="relative w-full sm:w-auto">
@@ -994,42 +1042,43 @@ const Stock = () => {
         </div>
 
         <div className="overflow-x-auto overflow-y-auto max-h-[70vh] rounded-xl border border-slate-200 shadow-sm">
-          {Object.keys(groupedAndTotals).length === 0 ? (
-            <div className="text-center py-16 bg-slate-50/50">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-              <p className="text-slate-500 font-medium text-sm">No stock items found.</p>
-              <p className="text-slate-400 text-xs mt-1">Use the form above to add new inventory data.</p>
-            </div>
-          ) : (
-            <table className="w-full text-xs text-left border-collapse relative">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] uppercase tracking-wider font-bold sticky top-0 z-20 shadow-sm">
+          <table className="w-full text-xs text-left border-collapse relative">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] uppercase tracking-wider font-bold sticky top-0 z-20 shadow-sm">
+              <tr>
+                <th className="px-4 py-3 break-words">Material</th>
+                <th className="px-4 py-3 text-right break-words">Opening Stock</th>
+                <th className="px-4 py-3 text-right break-words">Inward</th>
+                <th className="px-4 py-3 text-right break-words">Cons.</th>
+                {activeTab === 'raw_material' ? (
+                  <>
+                    <th className="px-4 py-3 text-right break-words">Crushing (+3)</th>
+                    <th className="px-4 py-3 text-right break-words">Fines %</th>
+                    <th className="px-4 py-3 text-right break-words">Fines Qty.</th>
+                    <th className="px-4 py-3 text-right break-words">Prod.</th>
+                    <th className="px-4 py-3 text-right break-words">Dis.</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-4 py-3 text-right break-words">F/C</th>
+                    <th className="px-4 py-3 text-right break-words">Moist.%</th>
+                    <th className="px-4 py-3 text-right break-words">Landed Cost</th>
+                    <th className="px-4 py-3 text-right break-words">Discount</th>
+                  </>
+                )}
+                <th className="px-4 py-3 text-right break-words text-indigo-500">Closing Stock</th>
+                <th className="px-4 py-3 text-center break-words">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {Object.keys(groupedAndTotals).length === 0 ? (
                 <tr>
-                  <th className="px-4 py-3 break-words">Material</th>
-                  <th className="px-4 py-3 text-right break-words">Opening Stock</th>
-                  <th className="px-4 py-3 text-right break-words">Inward</th>
-                  <th className="px-4 py-3 text-right break-words">Cons.</th>
-                  {activeTab === 'raw_material' ? (
-                    <>
-                      <th className="px-4 py-3 text-right break-words">Crushing (+3)</th>
-                      <th className="px-4 py-3 text-right break-words">Fines %</th>
-                      <th className="px-4 py-3 text-right break-words">Fines Qty.</th>
-                      <th className="px-4 py-3 text-right break-words">Prod.</th>
-                      <th className="px-4 py-3 text-right break-words">Dis.</th>
-                    </>
-                  ) : (
-                    <>
-                      <th className="px-4 py-3 text-right break-words">F/C</th>
-                      <th className="px-4 py-3 text-right break-words">Moist.%</th>
-                      <th className="px-4 py-3 text-right break-words">Landed Cost</th>
-                      <th className="px-4 py-3 text-right break-words">Discount</th>
-                    </>
-                  )}
-                  <th className="px-4 py-3 text-right break-words text-indigo-500">Closing Stock</th>
-                  <th className="px-4 py-3 text-center break-words">Actions</th>
+                  <td colSpan={activeTab === 'raw_material' ? 11 : 10} className="text-center py-16 bg-slate-50/50">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                    <p className="text-slate-500 font-medium text-sm">No stock items found.</p>
+                    <p className="text-slate-400 text-xs mt-1">Use the form above to add new inventory data.</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {Object.keys(groupedAndTotals).map((categoryKey) => {
+              ) : Object.keys(groupedAndTotals).map((categoryKey) => {
                   const group = groupedAndTotals[categoryKey]
                   return (
                     <React.Fragment key={categoryKey}>
@@ -1150,7 +1199,6 @@ const Stock = () => {
                 })}
               </tbody>
             </table>
-          )}
         </div>
       </div>
 
@@ -1187,7 +1235,8 @@ Rules:
 2. If there are Category Headers (like "RAW IRON ORE", "RAW PELLET ORE"), output them in the MATERIAL column, with all other columns empty for that row.
 3. Ignore rows that say "TOTAL" or "AS ON DATE".
 4. Ensure all percentages and decimals are preserved exactly as shown.
-5. Maintain the EXACT top-to-bottom row sequence as shown in the image. DO NOT sort the rows alphabetically.`
+5. DO NOT use commas inside numbers (e.g., output 1234.56 instead of 1,234.56).
+6. Maintain the EXACT top-to-bottom row sequence as shown in the image. DO NOT sort the rows alphabetically.`
                       : `I have an image of a Coal Details stock table. Please extract the data and provide it in a CSV format exactly matching the following 9 columns:
 
 MATERIAL, OPENING STOCK, INWARD, CONS., F/C, MOIST. %, LANDED COST, DISCOUNT, CLOSING STOCK
@@ -1199,7 +1248,8 @@ Rules:
 4. The column before DISCOUNT is LANDED COST.
 5. Ignore rows that say "TOTAL COAL".
 6. Ensure all percentages and decimals are preserved exactly as shown.
-7. Maintain the EXACT top-to-bottom row sequence as shown in the image. DO NOT sort the rows alphabetically.`;
+7. DO NOT use commas inside numbers (e.g., output 1234.56 instead of 1,234.56).
+8. Maintain the EXACT top-to-bottom row sequence as shown in the image. DO NOT sort the rows alphabetically.`;
                     
                     navigator.clipboard.writeText(promptText);
                     setToast({ type: 'success', message: 'Prompt copied to clipboard!' });
@@ -1220,7 +1270,8 @@ Rules:
 2. If there are Category Headers (like "RAW IRON ORE", "RAW PELLET ORE"), output them in the MATERIAL column, with all other columns empty for that row.
 3. Ignore rows that say "TOTAL" or "AS ON DATE".
 4. Ensure all percentages and decimals are preserved exactly as shown.
-5. Maintain the EXACT top-to-bottom row sequence as shown in the image. DO NOT sort the rows alphabetically.` : `I have an image of a Coal Details stock table. Please extract the data and provide it in a CSV format exactly matching the following 9 columns:
+5. DO NOT use commas inside numbers (e.g., output 1234.56 instead of 1,234.56).
+6. Maintain the EXACT top-to-bottom row sequence as shown in the image. DO NOT sort the rows alphabetically.` : `I have an image of a Coal Details stock table. Please extract the data and provide it in a CSV format exactly matching the following 9 columns:
 
 MATERIAL, OPENING STOCK, INWARD, CONS., F/C, MOIST. %, LANDED COST, DISCOUNT, CLOSING STOCK
 
@@ -1231,7 +1282,8 @@ Rules:
 4. The column before DISCOUNT is LANDED COST.
 5. Ignore rows that say "TOTAL COAL".
 6. Ensure all percentages and decimals are preserved exactly as shown.
-7. Maintain the EXACT top-to-bottom row sequence as shown in the image. DO NOT sort the rows alphabetically.`}
+7. DO NOT use commas inside numbers (e.g., output 1234.56 instead of 1,234.56).
+8. Maintain the EXACT top-to-bottom row sequence as shown in the image. DO NOT sort the rows alphabetically.`}
                 </pre>
               </div>
             </div>

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useProduction2Store } from '../store/useStore';
+import { ImageOcrUploader } from '../components/ImageOcrUploader';
+import { FilterBar } from '../components/FilterBar';
 import './Production2.css';
 
 /* ---------- Load pdf.js (classic, non-module build) with CDN fallback chain ---------- */
@@ -169,6 +171,9 @@ export default function Production2Page() {
   const [errorMsg, setErrorMsg] = useState("");
   const [progressMsg, setProgressMsg] = useState("");
   const fileInputRef = useRef(null);
+  
+  const [search, setSearch] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Manual Form State
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
@@ -177,7 +182,6 @@ export default function Production2Page() {
   const [manualItem, setManualItem] = useState('"A" GRADE');
   const [manualPercent, setManualPercent] = useState("");
   const [manualKiln1, setManualKiln1] = useState("");
-  const [manualKiln2, setManualKiln2] = useState("");
 
   useEffect(() => {
     ensurePdfJsLoaded().catch((err) => {
@@ -217,26 +221,59 @@ export default function Production2Page() {
     setFilesData((prev) => [...prev, ...newFiles]);
   };
 
+  const handleOcrResult = (text) => {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l)
+    
+    const items = []
+    for (const line of lines) {
+      if (line.match(/\d/)) {
+        const parts = line.split(/\s+/)
+        const nums = parts.filter(p => !isNaN(parseFloat(p.replace(/,/g, ''))))
+        const chars = line.replace(/[\d\.\-,%]/g, '').trim()
+        
+        if (nums.length >= 1) {
+           items.push({
+             label: chars.substring(0, 30) || 'Scanned Item',
+             percent: null,
+             kiln1: parseFloat(nums[0]) || 0,
+             kiln2: 0,
+             total: nums.length > 1 ? parseFloat(nums[nums.length-1]) : parseFloat(nums[0])
+           })
+        }
+      }
+    }
+
+    if (items.length > 0) {
+      setFilesData(prev => [...prev, {
+        date: new Date().toISOString().split('T')[0],
+        fileName: 'Image Scan',
+        found: true,
+        items
+      }])
+    } else {
+      setErrorMsg('Could not extract valid data from image.')
+    }
+  };
+
   const removeFile = (idxToRemove) => {
     setFilesData((prev) => prev.filter((_, idx) => idx !== idxToRemove));
   };
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
-    if (!manualDate || !manualKiln1 || !manualKiln2) {
+    if (!manualDate || !manualKiln1) {
       setErrorMsg("Please fill out all fields for manual entry.");
       return;
     }
     setErrorMsg("");
 
     const k1 = parseFloat(manualKiln1);
-    const k2 = parseFloat(manualKiln2);
     const newItem = {
       label: manualItem,
       percent: manualPercent ? parseFloat(manualPercent) : null,
       kiln1: k1,
-      kiln2: k2,
-      total: k1 + k2
+      kiln2: 0,
+      total: k1
     };
 
     setFilesData((prev) => {
@@ -276,7 +313,6 @@ export default function Production2Page() {
 
     setEditModeData(null);
     setManualKiln1("");
-    setManualKiln2("");
     setManualPercent("");
     setIsManualModalOpen(false);
   };
@@ -287,7 +323,6 @@ export default function Production2Page() {
     setManualItem(item.label);
     setManualPercent(item.percent !== null ? item.percent : "");
     setManualKiln1(item.kiln1);
-    setManualKiln2(item.kiln2);
     setIsManualModalOpen(true);
   };
 
@@ -323,10 +358,17 @@ export default function Production2Page() {
     setErrorMsg("");
   };
 
-  const sortedFiles = [...filesData].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  const filteredFiles = filesData.filter((f) => {
+    if (search && !f.fileName.toLowerCase().includes(search.toLowerCase()) && !(f.date && f.date.toLowerCase().includes(search.toLowerCase()))) {
+      return false;
+    }
+    return true;
+  });
+
+  const sortedFiles = [...filteredFiles].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 
   return (
-    <div className="space-y-6 pb-10 px-2 sm:px-4 w-full max-w-[1200px] mx-auto text-slate-800">
+    <div className="space-y-6 pb-10 px-2 sm:px-4 w-full text-slate-800">
       
       {/* Top Banner (Modern Gradient) */}
       <div className="bg-gradient-to-r from-teal-600 via-emerald-600 to-green-600 rounded p-4 sm:p-5 mb-6 shadow-md relative overflow-hidden flex flex-col sm:flex-row items-center justify-between text-white">
@@ -338,6 +380,13 @@ export default function Production2Page() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Production 2</h1>
         </div>
       </div>
+
+      <FilterBar 
+        searchQuery={search} 
+        setSearchQuery={setSearch} 
+        selectedDate={date} 
+        setSelectedDate={setDate} 
+      />
 
       <div className="print:hidden">
         <section
@@ -364,6 +413,12 @@ export default function Production2Page() {
           {progressMsg && <p className="mt-4 text-sm font-medium text-blue-600 bg-blue-50 py-2 px-4 rounded-full inline-block">{progressMsg}</p>}
           {errorMsg && <p className="mt-4 text-sm font-medium text-rose-600 bg-rose-50 py-2 px-4 rounded-full inline-block">{errorMsg}</p>}
         </section>
+        <div className="flex justify-center mt-4">
+           <ImageOcrUploader
+             onTextExtracted={handleOcrResult}
+             className="px-6 py-3 border font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700 hover:border-indigo-300"
+           />
+        </div>
       </div>
 
         <div className="flex justify-between items-center mb-4 mt-8">
@@ -381,8 +436,25 @@ export default function Production2Page() {
 
         <div id="filesContainer" className="flex overflow-x-auto gap-6 pb-6 snap-x hide-scrollbar scroll-smooth">
           {sortedFiles.length === 0 ? (
-            <div className="w-full text-center py-12 bg-slate-50/50 rounded-lg border border-dashed border-slate-300">
-              <p className="text-slate-500 font-medium">No data available. Please upload a PDF.</p>
+            <div className="min-w-full flex-shrink-0 bg-white border border-slate-300 rounded-lg shadow-sm snap-center overflow-hidden flex flex-col">
+              <div className="overflow-auto max-h-[60vh]">
+                <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
+                  <thead className="sticky top-0 z-10 bg-slate-100 shadow-sm">
+                    <tr className="bg-slate-100 text-slate-500 uppercase tracking-wider font-semibold">
+                      <th className="px-3 py-2 border-b border-slate-200">Item</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-right">Kiln-1</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td colSpan="3" className="w-full text-center py-12 bg-slate-50/50">
+                        <p className="text-slate-500 font-medium">No data available. Please upload a PDF.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             sortedFiles.map((f, i) => (
@@ -400,7 +472,6 @@ export default function Production2Page() {
                       <tr className="bg-slate-100 text-slate-500 uppercase tracking-wider font-semibold">
                         <th className="px-3 py-2 border-b border-slate-200">Item</th>
                         <th className="px-3 py-2 border-b border-slate-200 text-right">Kiln-1</th>
-                        <th className="px-3 py-2 border-b border-slate-200 text-right">Kiln-2</th>
                         <th className="px-3 py-2 border-b border-slate-200 text-right">Total</th>
                       </tr>
                     </thead>
@@ -412,7 +483,6 @@ export default function Production2Page() {
                             {item.percent !== null && <span className="text-slate-400 ml-1">({fmtPct(item.percent)})</span>}
                           </td>
                           <td className="px-3 py-2 text-right">{fmt(item.kiln1)}</td>
-                          <td className="px-3 py-2 text-right">{fmt(item.kiln2)}</td>
                           <td className="px-3 py-2 text-right">{item.total === null ? "—" : fmt(item.total)}</td>
                         </tr>
                       ))}
@@ -439,7 +509,6 @@ export default function Production2Page() {
               setManualItem('"A" GRADE');
               setManualPercent("");
               setManualKiln1("");
-              setManualKiln2("");
               setIsManualModalOpen(true);
             }}>+ Add Entry</button>
           </div>
@@ -475,15 +544,9 @@ export default function Production2Page() {
                   <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all" type="number" step="0.01" placeholder="e.g. 80" value={manualPercent} onChange={e => setManualPercent(e.target.value)} />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Kiln-1 (Mt)</label>
-                    <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-right" type="number" step="0.01" placeholder="0.00" value={manualKiln1} onChange={e => setManualKiln1(e.target.value)} required />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Kiln-2 (Mt)</label>
-                    <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-right" type="number" step="0.01" placeholder="0.00" value={manualKiln2} onChange={e => setManualKiln2(e.target.value)} required />
-                  </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Kiln-1 (Mt)</label>
+                  <input className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-right" type="number" step="0.01" placeholder="0.00" value={manualKiln1} onChange={e => setManualKiln1(e.target.value)} required />
                 </div>
 
                 <div className="pt-4 flex justify-end">
@@ -496,8 +559,27 @@ export default function Production2Page() {
 
         <div id="summaryContainer" className="flex overflow-x-auto gap-6 pb-6 snap-x hide-scrollbar scroll-smooth">
           {sortedFiles.length === 0 ? (
-            <div className="w-full text-center py-12 bg-slate-50/50 rounded-lg border border-dashed border-slate-300">
-              <p className="text-slate-500 font-medium">No data available.</p>
+            <div className="min-w-full flex-shrink-0 bg-white border border-slate-300 rounded-lg shadow-sm snap-center overflow-hidden flex flex-col">
+              <div className="overflow-auto max-h-[60vh]">
+                <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
+                  <thead className="sticky top-0 z-10 bg-slate-100 shadow-sm">
+                    <tr className="bg-slate-100 text-slate-500 uppercase tracking-wider font-semibold">
+                      <th className="px-3 py-2 border-b border-slate-200">Item</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-right">Kiln-1</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-center">Total</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-center">Source File</th>
+                      <th className="px-3 py-2 border-b border-slate-200 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td colSpan="5" className="w-full text-center py-12 bg-slate-50/50">
+                        <p className="text-slate-500 font-medium">No data available.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             sortedFiles.map((f, i) => {
@@ -522,7 +604,6 @@ export default function Production2Page() {
                         <tr className="bg-slate-100 text-slate-500 uppercase tracking-wider font-semibold">
                           <th className="px-3 py-2 border-b border-slate-200">Item</th>
                           <th className="px-3 py-2 border-b border-slate-200 text-right">Kiln-1</th>
-                          <th className="px-3 py-2 border-b border-slate-200 text-right">Kiln-2</th>
                           <th className="px-3 py-2 border-b border-slate-200 text-center">Total</th>
                           <th className="px-3 py-2 border-b border-slate-200 text-center">Source File</th>
                           <th className="px-3 py-2 border-b border-slate-200 text-center">Action</th>
@@ -536,7 +617,6 @@ export default function Production2Page() {
                               {item.percent !== null && <span className="text-slate-400 ml-1">({fmtPct(item.percent)})</span>}
                             </td>
                             <td className="px-3 py-2 text-right">{fmt(item.kiln1)}</td>
-                            <td className="px-3 py-2 text-right">{fmt(item.kiln2)}</td>
                             <td className="px-3 py-2 text-center align-top">
                               <div>{item.total === null ? "—" : fmt(item.total)}</div>
                               {item.label.toUpperCase().includes('"A" GRADE') && <div className="text-[10px] text-slate-400 font-normal uppercase mt-0.5">A grade total</div>}
@@ -569,10 +649,6 @@ export default function Production2Page() {
                           <td className="px-3 py-2 text-right align-bottom">
                             <div className="text-[10px] text-slate-400 font-normal uppercase mb-0.5">Kiln-1 total</div>
                             <strong className="text-slate-800">{fmt(filteredItems.reduce((acc, curr) => acc + (curr.kiln1 || 0), 0))}</strong>
-                          </td>
-                          <td className="px-3 py-2 text-right align-bottom">
-                            <div className="text-[10px] text-slate-400 font-normal uppercase mb-0.5">Kiln-2 total</div>
-                            <strong className="text-slate-800">{fmt(filteredItems.reduce((acc, curr) => acc + (curr.kiln2 || 0), 0))}</strong>
                           </td>
                           <td className="px-3 py-2 text-center align-bottom">
                             <strong className="text-slate-800">{fmt(filteredItems.reduce((acc, curr) => acc + (curr.total || 0), 0))}</strong>

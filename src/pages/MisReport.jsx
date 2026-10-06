@@ -9,14 +9,16 @@ import {
   useSaudaScaleStore,
   useSaudaPurchaseStore
 } from '../store/useStore'
+import { FilterBar } from '../components/FilterBar'
 
 const formatNumber = (value) => {
-  if (value === undefined || value === null || isNaN(value)) return '0.000'
-  return Number(value).toFixed(3)
+  if (value === undefined || value === null || isNaN(Number(value))) return '0.000'
+  return Math.round(Number(value)).toFixed(3)
 }
 
 const MisReport = () => {
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0])
+  const [search, setSearch] = useState('')
   const [isDownloading, setIsDownloading] = useState(false)
   const reportRef = useRef(null)
 
@@ -53,10 +55,27 @@ const MisReport = () => {
     }
     stockItems.forEach(item => {
       if (item.type === 'coal_detail') return // skip coal
-      let cat = item.category === undefined ? 'UNKNOWN' : item.category
-      if (categoryLabels[cat] !== undefined) cat = categoryLabels[cat]
-      const key = cat.toUpperCase().trim() || 'RAW IRON ORE'
-      summary[key] = (summary[key] || 0) + (Number(item.closingStock) || 0)
+      
+      const mat = (item.material || '').toUpperCase().trim()
+      const catVal = (item.category || '').toUpperCase().trim()
+      const specialMats = ['SPONGE PELLET', 'DOLOMITE', 'NON MAG', 'SPONGE IRON']
+      const isSpecial = specialMats.find(sm => mat.includes(sm) || catVal.includes(sm))
+
+      if (isSpecial) {
+        const key = isSpecial === 'NON MAG' ? 'NON MAG (CHAR + DOLOCHAR)' : isSpecial
+        summary[key] = (summary[key] || 0) + (Number(item.closingStock) || 0)
+      } else {
+        let cat = item.category === undefined ? 'UNKNOWN' : item.category
+        if (categoryLabels[cat] !== undefined) cat = categoryLabels[cat]
+        let key = cat.toUpperCase().trim() || 'RAW IRON ORE'
+        
+        // Merge DRCLO IRON S.A into PROCESSED IRON ORE
+        if (key.includes('DRCLO IRON')) {
+          key = 'PROCESSED IRON ORE (3-18)'
+        }
+        
+        summary[key] = (summary[key] || 0) + (Number(item.closingStock) || 0)
+      }
     })
     return summary
   }, [stockItems])
@@ -65,8 +84,19 @@ const MisReport = () => {
     const summary = {}
     stockItems.forEach(item => {
       if (item.type !== 'coal_detail') return // only coal
-      const key = item.material?.toUpperCase().trim() || 'COAL MATERIAL'
-      summary[key] = (summary[key] || 0) + (Number(item.closingStock) || 0)
+      
+      const mat = (item.material || '').toUpperCase().trim()
+      const catVal = (item.category || '').toUpperCase().trim()
+      const specialMats = ['SPONGE PELLET', 'DOLOMITE', 'NON MAG', 'SPONGE IRON']
+      const isSpecial = specialMats.find(sm => mat.includes(sm) || catVal.includes(sm))
+
+      if (isSpecial) {
+        const key = isSpecial === 'NON MAG' ? 'NON MAG (CHAR + DOLOCHAR)' : isSpecial
+        summary[key] = (summary[key] || 0) + (Number(item.closingStock) || 0)
+      } else {
+        const key = 'COAL'
+        summary[key] = (summary[key] || 0) + (Number(item.closingStock) || 0)
+      }
     })
     return summary
   }, [stockItems])
@@ -160,38 +190,32 @@ const MisReport = () => {
       summary[material] += Number(item.balPending) || 0
     })
 
-    // Merge all COAL variants into a single "COAL" row
-    let coalTotal = 0
-    const nonCoalSummary = {}
-    Object.entries(summary).forEach(([key, val]) => {
-      if (key.includes('COAL')) {
-        coalTotal += val
-      } else {
-        nonCoalSummary[key] = val
-      }
-    })
-    if (coalTotal > 0) {
-      nonCoalSummary['COAL'] = coalTotal
-    }
-    
     // Convert object to array for easier rendering
-    return Object.entries(nonCoalSummary).map(([itemName, balPending]) => ({
+    return Object.entries(summary).map(([itemName, balPending]) => ({
       itemName,
       balPending
     }))
   }, [saudaPurchaseEntries])
 
-  // Filtered Lists for Hiding Rows
-  const filteredRawStock = Object.entries(rawMaterialSummary).filter(([m]) => !hiddenRows.has(`rawstock-${m}`))
-  const filteredCoalStock = Object.entries(coalStockSummary).filter(([m]) => !hiddenRows.has(`coalstock-${m}`))
-  const filteredIncoming = incomingList.filter((item, idx) => !hiddenRows.has(`inc-${item.id || idx}`))
-  const filteredOutgoing = outgoingList.filter((item, idx) => !hiddenRows.has(`out-${item.id || idx}`))
-  const filteredProduction = Object.entries(productionSummary).filter(([m]) => !hiddenRows.has(`prod-${m}`))
+  // Filtered Lists for Hiding Rows and Search
+  const matchesSearch = (str) => !search || str.toLowerCase().includes(search.toLowerCase())
+
+  const filteredRawStock = Object.entries(rawMaterialSummary).filter(([m]) => !hiddenRows.has(`rawstock-${m}`) && matchesSearch(m))
+  const filteredCoalStock = Object.entries(coalStockSummary).filter(([m]) => !hiddenRows.has(`coalstock-${m}`) && matchesSearch(m))
+  
+  const incomingSummaryArr = Object.entries(incomingSummary).map(([material, qty]) => ({ material, qty }))
+  const filteredIncoming = incomingSummaryArr.filter(item => !hiddenRows.has(`inc-${item.material}`) && matchesSearch(item.material))
+  
+  const outgoingSummaryArr = Object.entries(outgoingSummary).map(([material, qty]) => ({ material, qty }))
+  const filteredOutgoing = outgoingSummaryArr.filter(item => !hiddenRows.has(`out-${item.material}`) && matchesSearch(item.material))
+  
+  const filteredProduction = Object.entries(productionSummary).filter(([m]) => !hiddenRows.has(`prod-${m}`) && matchesSearch(m))
   const prodTotalK1Filtered = filteredProduction.reduce((sum, [, val]) => sum + val.k1, 0)
   const prodTotalK2Filtered = filteredProduction.reduce((sum, [, val]) => sum + val.k2, 0)
   const prodTotalAllFiltered = filteredProduction.reduce((sum, [, val]) => sum + val.total, 0)
-  const filteredSaudaSale = saudaSaleSummary.filter((item, idx) => !hiddenRows.has(`sale-${item.itemName || idx}`))
-  const filteredSaudaPurchase = saudaPurchaseSummary.filter((item, idx) => !hiddenRows.has(`pur-${item.itemName || idx}`))
+  
+  const filteredSaudaSale = saudaSaleSummary.filter((item, idx) => !hiddenRows.has(`sale-${item.itemName || idx}`) && matchesSearch(item.itemName || ''))
+  const filteredSaudaPurchase = saudaPurchaseSummary.filter((item, idx) => !hiddenRows.has(`pur-${item.itemName || idx}`) && matchesSearch(item.itemName || ''))
 
   // Local ordered states
   const [orderedRawStock, setOrderedRawStock] = useState(filteredRawStock)
@@ -274,7 +298,7 @@ const MisReport = () => {
       const xOffset = margin + (availableWidth - finalWidth) / 2
       
       pdf.addImage(imgData, 'PNG', xOffset, margin, finalWidth, finalHeight)
-      pdf.save(`Nandan_Smelters_Report_${formattedDate}.pdf`)
+      pdf.save(`Hindustan_Dhaatu_Sponge_Report_${formattedDate}.pdf`)
       
     } catch (error) {
       console.error("Error generating PDF:", error)
@@ -286,18 +310,12 @@ const MisReport = () => {
 
   // UI based on image provided
   return (
-    <div className="max-w-[1100px] mx-auto my-8 pb-10 bg-white min-h-screen text-slate-800 font-sans shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded overflow-hidden border border-slate-400">
+    <div className="w-full my-8 pb-10 bg-white min-h-screen text-slate-800 font-sans shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded overflow-hidden border border-slate-400">
       
       {/* Date Header */}
       <div className="p-5 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-400 flex justify-between items-center print:hidden shadow-sm">
         <h1 className="text-xl font-bold text-slate-800">MIS Report Settings</h1>
         <div className="flex gap-1">
-          <input 
-            type="date" 
-            value={reportDate} 
-            onChange={(e) => setReportDate(e.target.value)}
-            className="border border-slate-400 px-3 py-1.5 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
           <button 
             onClick={downloadPDF} 
             disabled={isDownloading}
@@ -322,272 +340,245 @@ const MisReport = () => {
         </div>
       </div>
 
+      <div className="px-5 pt-5 print:hidden">
+        <FilterBar 
+          searchQuery={search} 
+          setSearchQuery={setSearch} 
+          selectedDate={reportDate} 
+          setSelectedDate={setReportDate} 
+        />
+      </div>
+
       {/* The Report (Printable Area) */}
       <div className="p-1 sm:p-8" ref={reportRef}>
-        <table className="w-full border-collapse border border-slate-400 text-[13px] sm:text-xs text-slate-800 bg-white shadow-sm">
+        <table className="w-full border-collapse border-2 border-black text-[13px] font-bold text-black bg-white">
           
           {/* Main Header */}
           <thead>
             <tr>
-              <th contentEditable suppressContentEditableWarning colSpan="2" className="bg-gradient-to-r from-indigo-700 to-blue-800 text-white py-3 text-center font-bold text-lg border border-indigo-900 uppercase tracking-widest shadow-inner">
-                NANDAN SMELTERS REPORT
+              <th contentEditable suppressContentEditableWarning colSpan="2" className="bg-[#FFFF00] text-black py-2 px-2 text-center font-extrabold text-[16px] border-2 border-black uppercase tracking-wide">
+                HINDUSTAN DHAATU REPORT (SPONGE)
               </th>
-              <th contentEditable suppressContentEditableWarning className="bg-blue-800 text-white py-3 text-center font-bold text-lg border border-indigo-900 w-[180px] shadow-inner">
+              <th contentEditable suppressContentEditableWarning className="bg-[#FFFF00] text-black py-2 px-2 text-right font-extrabold text-[16px] border-2 border-black w-[150px]">
                 {formattedDate}
               </th>
             </tr>
           </thead>
           
           <tbody>
-            {/* RAW MATERIAL STOCK SECTION */}
-            {orderedRawStock.length > 0 ? (
-              <>
-                {orderedRawStock.map(([material, qty], idx) => (
-                  <tr key={`rawstock-${material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'rawstock')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'rawstock', orderedRawStock, setOrderedRawStock)}>
-                    {idx === 0 && (
-                      <td contentEditable suppressContentEditableWarning rowSpan={orderedRawStock.length} className="font-bold border border-slate-400 p-1 align-top w-[120px]">
-                        RAW MATERIAL STOCK
-                      </td>
-                    )}
-                    <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 relative">
-                      <HideButton rowKey={`rawstock-${material}`} />
-                      {material}
-                    </td>
-                    <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 text-right">{formatNumber(qty)}</td>
-                  </tr>
-                ))}
-              </>
-            ) : (
+            {/* STOCK SECTION */}
+            {orderedRawStock.map(([material, qty], idx) => (
+              <tr key={`rawstock-${material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'rawstock')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'rawstock', orderedRawStock, setOrderedRawStock)}>
+                {idx === 0 && (
+                  <td contentEditable suppressContentEditableWarning rowSpan={orderedRawStock.length + orderedCoalStock.length} className="font-bold border-2 border-black p-1 align-top w-[140px] uppercase">
+                    STOCK
+                  </td>
+                )}
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 uppercase relative w-[60%]">
+                  <HideButton rowKey={`rawstock-${material}`} />
+                  {material}
+                </td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-right">{formatNumber(qty)}</td>
+              </tr>
+            ))}
+            
+            {orderedCoalStock.map(([material, qty], idx) => (
+              <tr key={`coalstock-${material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'coalstock')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'coalstock', orderedCoalStock, setOrderedCoalStock)}>
+                {orderedRawStock.length === 0 && idx === 0 && (
+                  <td contentEditable suppressContentEditableWarning rowSpan={orderedCoalStock.length} className="font-bold border-2 border-black p-1 align-top w-[140px] uppercase">
+                    STOCK
+                  </td>
+                )}
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 uppercase relative w-[60%]">
+                  <HideButton rowKey={`coalstock-${material}`} />
+                  {material}
+                </td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-right">{formatNumber(qty)}</td>
+              </tr>
+            ))}
+            
+            {orderedRawStock.length === 0 && orderedCoalStock.length === 0 && (
               <tr>
-                <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 align-top w-[120px]">RAW MATERIAL STOCK</td>
-                <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1 text-center text-slate-500">No raw material stock found.</td>
-                <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1"></td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 align-top w-[140px] uppercase">STOCK</td>
+                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 uppercase"></td>
+                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right">0.000</td>
               </tr>
             )}
 
-            {/* COAL DETAIL STOCK SECTION */}
-            {orderedCoalStock.length > 0 ? (
-              <>
-                {orderedCoalStock.map(([material, qty], idx) => (
-                  <tr key={`coalstock-${material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'coalstock')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'coalstock', orderedCoalStock, setOrderedCoalStock)}>
-                    {idx === 0 && (
-                      <td contentEditable suppressContentEditableWarning rowSpan={orderedCoalStock.length} className="font-bold border border-slate-400 p-1 align-top w-[120px]">
-                        COAL STOCK
-                      </td>
-                    )}
-                    <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 relative">
-                      <HideButton rowKey={`coalstock-${material}`} />
-                      {material}
-                    </td>
-                    <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 text-right">{formatNumber(qty)}</td>
-                  </tr>
-                ))}
-              </>
-            ) : (
-              <tr>
-                <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 align-top w-[120px]">COAL STOCK</td>
-                <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1 text-center text-slate-500">No coal stock found.</td>
-                <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1"></td>
-              </tr>
-            )}
+            {/* SEPARATOR */}
+            <tr>
+              <td colSpan="3" className="border-2 border-black bg-slate-300 h-[6px]"></td>
+            </tr>
 
             {/* YESTERDAY INCOMING MATERIALS */}
             <tr>
-              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-indigo-50 text-indigo-900 font-bold text-center p-1.5 border border-slate-400 uppercase tracking-wide">
+              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-[#FFFF00] text-black font-bold text-center p-1 border-2 border-black uppercase">
                 YESTERDAY INCOMING MATERIALS
               </td>
             </tr>
-            {filteredIncoming.length > 0 ? (
-              <tr>
-                <td contentEditable suppressContentEditableWarning colSpan="3" className="p-0 border border-slate-400">
-                  <table className="w-full border-collapse table-fixed">
-                    <thead>
-                      <tr>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-[50px]">S.No</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-left bg-white">Party Name</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-left bg-white">Material Name</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-[120px]">Vehicle No</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-[120px]">Qty.</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b border-slate-400 font-bold p-1 text-center bg-white w-[120px]">RATE 18 %</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orderedIncoming.map((item, idx) => (
-                        <tr key={`inc-${item.id || idx}`} className="border-b border-slate-400 last:border-b-0 hover:bg-indigo-50/50 transition-colors group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'incoming')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'incoming', orderedIncoming, setOrderedIncoming)}>
-                          <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 p-1 text-center font-bold relative">
-                            <HideButton rowKey={`inc-${item.id || idx}`} />
-                            {idx + 1}
-                          </td>
-                          <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 p-1 font-bold">{item.partyName}</td>
-                          <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 p-1 font-bold">{item.materialName}</td>
-                          <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 p-1 text-center font-bold">{item.vehicleNo}</td>
-                          <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 p-1 text-center font-bold">{formatNumber(item.qty)}</td>
-                          <td contentEditable suppressContentEditableWarning className="p-1 text-center font-bold">{item.rate || '0'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {orderedIncoming.map((item, idx) => (
+              <tr key={`inc-${item.material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'incoming')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'incoming', orderedIncoming, setOrderedIncoming)}>
+                <td contentEditable suppressContentEditableWarning colSpan="2" className="border-2 border-black p-1 font-bold uppercase relative">
+                  <HideButton rowKey={`inc-${item.material}`} />
+                  {item.material}
                 </td>
+                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right font-bold">{formatNumber(item.qty)}</td>
               </tr>
-            ) : (
-              <tr><td contentEditable suppressContentEditableWarning colSpan="3" className="border border-slate-400 p-1 text-center text-slate-500">No incoming materials found.</td></tr>
+            ))}
+            {orderedIncoming.length === 0 && (
+              <tr>
+                <td contentEditable suppressContentEditableWarning colSpan="2" className="border-2 border-black p-1 font-bold uppercase">NO INCOMING</td>
+                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right font-bold">0.000</td>
+              </tr>
             )}
+
+            {/* SEPARATOR */}
+            <tr>
+              <td colSpan="3" className="border-2 border-black bg-slate-300 h-[6px]"></td>
+            </tr>
 
             {/* YESTERDAY OUTGOING MATERIALS */}
             <tr>
-              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-indigo-50 text-indigo-900 font-bold text-center p-1.5 border border-slate-400 uppercase tracking-wide">
+              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-[#FFFF00] text-black font-bold text-center p-1 border-2 border-black uppercase">
                 YESTERDAY OUTGOING MATERIALS
               </td>
             </tr>
-            {filteredOutgoing.length > 0 ? (
-              <tr>
-                <td contentEditable suppressContentEditableWarning colSpan="3" className="p-0 border border-slate-400">
-                  <table className="w-full border-collapse table-fixed">
-                    <thead>
-                      <tr>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-[50px]">S.No</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-left bg-white">Party Name</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-left bg-white">Material Name</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-[120px]">Vehicle No</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white w-[120px]">Qty.</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b border-slate-400 font-bold p-1 text-center bg-white w-[120px]">RATE 18 %</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orderedOutgoing.map((item, idx) => (
-                        <tr key={`out-${item.id || idx}`} className="border-b border-slate-400 last:border-b-0 hover:bg-indigo-50/50 transition-colors group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'outgoing')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'outgoing', orderedOutgoing, setOrderedOutgoing)}>
-                          <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 p-1 text-center font-bold relative">
-                            <HideButton rowKey={`out-${item.id || idx}`} />
-                            {idx + 1}
-                          </td>
-                          <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 p-1 font-bold">{item.partyName}</td>
-                          <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 p-1 font-bold">{item.materialName}</td>
-                          <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 p-1 text-center font-bold">{item.vehicleNo}</td>
-                          <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 p-1 text-center font-bold">{formatNumber(item.qty)}</td>
-                          <td contentEditable suppressContentEditableWarning className="p-1 text-center font-bold">{item.rate || '0'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {orderedOutgoing.map((item, idx) => (
+              <tr key={`out-${item.material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'outgoing')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'outgoing', orderedOutgoing, setOrderedOutgoing)}>
+                <td contentEditable suppressContentEditableWarning colSpan="2" className="border-2 border-black p-1 font-bold uppercase relative">
+                  <HideButton rowKey={`out-${item.material}`} />
+                  {item.material}
                 </td>
+                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right font-bold">{formatNumber(item.qty)}</td>
               </tr>
-            ) : (
-              <tr><td contentEditable suppressContentEditableWarning colSpan="3" className="border border-slate-400 p-1 text-center text-slate-500">No outgoing materials found.</td></tr>
+            ))}
+            {orderedOutgoing.length === 0 && (
+              <tr>
+                <td contentEditable suppressContentEditableWarning colSpan="2" className="border-2 border-black p-1 font-bold uppercase">NO OUTGOING</td>
+                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right font-bold">0.000</td>
+              </tr>
             )}
+
+            {/* SEPARATOR */}
+            <tr>
+              <td colSpan="3" className="border-2 border-black bg-slate-300 h-[6px]"></td>
+            </tr>
 
             {/* TOTAL PRODUCTION IN 24HR */}
             <tr>
-              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-indigo-50 text-indigo-900 font-bold text-center p-1.5 border border-slate-400 uppercase tracking-wide">
+              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-[#FFFF00] text-black font-bold text-center p-1 border-2 border-black uppercase">
                 TOTAL PRODUCTION IN 24HR
               </td>
             </tr>
-            {filteredProduction.length > 0 ? (
+            {orderedProduction.map(([metric, values], idx) => {
+              let gradeStr = metric.replace(/"/g, '')
+              let matStr = "SPONGE IRON"
+              if (gradeStr.includes(' GRADE')) {
+                const parts = gradeStr.split(' GRADE')
+                gradeStr = parts[0] + ' Grade'
+                matStr = parts[1] || 'SPONGE IRON'
+              }
+              return (
+                <tr key={`prod-${metric}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'production')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'production', orderedProduction, setOrderedProduction)}>
+                  <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 uppercase text-center relative w-[140px]">
+                    <HideButton rowKey={`prod-${metric}`} />
+                    {gradeStr}
+                  </td>
+                  <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 uppercase relative w-[60%]">
+                    {matStr}
+                  </td>
+                  <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right font-bold">{formatNumber(values.total)}</td>
+                </tr>
+              )
+            })}
+            {orderedProduction.length === 0 && (
               <tr>
-                <td contentEditable suppressContentEditableWarning colSpan="3" className="p-0 border border-slate-400">
-                  <table className="w-full border-collapse table-fixed">
-                    <thead>
-                      <tr>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center bg-white">GRADE</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center w-[120px] bg-white">KILN 1</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b-[2px] border-r border-slate-400 font-bold p-1 text-center w-[120px] bg-white">KILN 2</th>
-                        <th contentEditable suppressContentEditableWarning className="border-b border-slate-400 font-bold p-1 text-center w-[120px] bg-white">TOTAL</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orderedProduction.map(([metric, values], idx) => (
-                        <tr key={`prod-${metric}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'production')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'production', orderedProduction, setOrderedProduction)}>
-                          <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 font-bold p-1 uppercase relative">
-                            <HideButton rowKey={`prod-${metric}`} />
-                            {metric}
-                          </td>
-                          <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 font-bold p-1 text-center">{formatNumber(values.k1)}</td>
-                          <td contentEditable suppressContentEditableWarning className="border-r border-slate-400 font-bold p-1 text-center">{formatNumber(values.k2)}</td>
-                          <td contentEditable suppressContentEditableWarning className="font-bold p-1 text-center">
-                            <div>{formatNumber(values.total)}</div>
-                            {metric.includes('"A" GRADE') && <div className="text-[9px] text-slate-500 font-normal uppercase mt-0.5">A GRADE TOTAL</div>}
-                            {metric.includes('"B" GRADE') && <div className="text-[9px] text-slate-500 font-normal uppercase mt-0.5">B GRADE TOTAL</div>}
-                          </td>
-                        </tr>
-                      ))}
-                      {/* Sub-total for production */}
-                      <tr className="bg-[#B4C6E7]" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-                        <td contentEditable suppressContentEditableWarning className="border-t-[2px] border-r border-slate-400 font-bold py-2 px-1 text-center uppercase">Sponge Total</td>
-                        <td contentEditable suppressContentEditableWarning className="border-t-[2px] border-r border-slate-400 font-bold py-2 px-1 text-center">
-                          <div className="text-[9px] text-slate-600 font-normal uppercase leading-tight">KILN-1 TOTAL</div>
-                          {formatNumber(prodTotalK1Filtered)}
-                        </td>
-                        <td contentEditable suppressContentEditableWarning className="border-t-[2px] border-r border-slate-400 font-bold py-2 px-1 text-center">
-                          <div className="text-[9px] text-slate-600 font-normal uppercase leading-tight">KILN-2 TOTAL</div>
-                          {formatNumber(prodTotalK2Filtered)}
-                        </td>
-                        <td contentEditable suppressContentEditableWarning className="border-t-[2px] border-slate-400 font-bold py-2 px-1 text-center">
-                          {formatNumber(prodTotalAllFiltered)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </td>
+                <td contentEditable suppressContentEditableWarning colSpan="2" className="border-2 border-black p-1 text-center font-bold uppercase">NO PRODUCTION</td>
+                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right font-bold">0.000</td>
               </tr>
-            ) : (
-              <tr><td contentEditable suppressContentEditableWarning colSpan="3" className="border border-slate-400 p-1 text-center text-slate-500">No production entries found.</td></tr>
             )}
+            {/* Total Row */}
+            <tr>
+              <td contentEditable suppressContentEditableWarning colSpan="2" className="border-2 border-black font-bold p-1 text-center uppercase">TOTAL</td>
+              <td contentEditable suppressContentEditableWarning className="bg-[#FFFF00] border-2 border-black font-bold p-1 text-right">
+                {formatNumber(prodTotalAllFiltered)}
+              </td>
+            </tr>
+
+            {/* SEPARATOR */}
+            <tr>
+              <td colSpan="3" className="border-2 border-black bg-slate-300 h-[6px]"></td>
+            </tr>
 
             {/* BALANCE PENDING OUTGOING (SAUDA SALE) */}
             <tr>
-              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-indigo-50 text-indigo-900 font-bold text-center p-1.5 border border-slate-400 uppercase tracking-wide">
+              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-[#FFFF00] text-black font-bold text-center p-1 border-2 border-black uppercase">
                 BALANCE PENDING OUTGOING (SAUDA SALE)
               </td>
             </tr>
-            <tr>
-              <td contentEditable suppressContentEditableWarning className="bg-indigo-50 text-indigo-900 font-bold text-center p-1.5 border border-slate-400 uppercase tracking-wide w-[120px]">TYPE</td>
-              <td contentEditable suppressContentEditableWarning className="bg-indigo-50 text-indigo-900 font-bold text-center p-1.5 border border-slate-400 uppercase tracking-wide">ITEM'S</td>
-              <td contentEditable suppressContentEditableWarning className="bg-indigo-50 text-indigo-900 font-bold text-center p-1.5 border border-slate-400 uppercase tracking-wide">BAL. PENDING</td>
-            </tr>
             {orderedSaudaSale.map((item, idx) => (
               <tr key={`sale-${item.itemName || idx}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'saudaSale')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'saudaSale', orderedSaudaSale, setOrderedSaudaSale)}>
-                {idx === 0 && <td contentEditable suppressContentEditableWarning rowSpan={Math.max(1, orderedSaudaSale.length)} className="font-bold border border-slate-400 p-1 align-top uppercase">SALE</td>}
-                <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 uppercase relative">
+                <td className="border-2 border-black p-1"></td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 uppercase relative">
                   <HideButton rowKey={`sale-${item.itemName || idx}`} />
                   {item.itemName}
                 </td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 text-right">{formatNumber(item.balPending)}</td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-right">{formatNumber(item.balPending)}</td>
               </tr>
             ))}
-            {filteredSaudaSale.length === 0 && (
+            {orderedSaudaSale.length > 0 && (
               <tr>
-                <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 align-top w-[120px] uppercase">SALE</td>
-                <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1 text-center text-slate-500">No pending sales found.</td>
-                <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1"></td>
+                <td className="border-2 border-black p-1"></td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-center uppercase">TOTAL</td>
+                <td contentEditable suppressContentEditableWarning className="bg-[#FFFF00] border-2 border-black font-bold p-1 text-right">
+                  {formatNumber(orderedSaudaSale.reduce((sum, item) => sum + Number(item.balPending), 0))}
+                </td>
+              </tr>
+            )}
+            {orderedSaudaSale.length === 0 && (
+              <tr>
+                <td className="border-2 border-black p-1"></td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 uppercase"></td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-right">0.000</td>
               </tr>
             )}
 
+            {/* SEPARATOR */}
+            <tr>
+              <td colSpan="3" className="border-2 border-black bg-slate-300 h-[6px]"></td>
+            </tr>
+
             {/* BALANCE PENDING INCOMING (SAUDA PURCHASE) */}
             <tr>
-              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-indigo-50 text-indigo-900 font-bold text-center p-1.5 border border-slate-400 uppercase tracking-wide">
+              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-[#FFFF00] text-black font-bold text-center p-1 border-2 border-black uppercase">
                 BALANCE PENDING INCOMING (SAUDA PURCHASE)
               </td>
             </tr>
-            <tr>
-              <td contentEditable suppressContentEditableWarning className="bg-indigo-50 text-indigo-900 font-bold text-center p-1.5 border border-slate-400 uppercase tracking-wide w-[120px]">TYPE</td>
-              <td contentEditable suppressContentEditableWarning className="bg-indigo-50 text-indigo-900 font-bold text-center p-1.5 border border-slate-400 uppercase tracking-wide">ITEM'S</td>
-              <td contentEditable suppressContentEditableWarning className="bg-indigo-50 text-indigo-900 font-bold text-center p-1.5 border border-slate-400 uppercase tracking-wide">BAL. PENDING</td>
-            </tr>
             {orderedSaudaPurchase.map((item, idx) => (
               <tr key={`pur-${item.itemName || idx}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'saudaPurchase')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'saudaPurchase', orderedSaudaPurchase, setOrderedSaudaPurchase)}>
-                {idx === 0 && <td contentEditable suppressContentEditableWarning rowSpan={Math.max(1, orderedSaudaPurchase.length)} className="font-bold border border-slate-400 p-1 align-top uppercase">PURCHASE</td>}
-                <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 uppercase relative">
+                <td className="border-2 border-black p-1"></td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 uppercase relative">
                   <HideButton rowKey={`pur-${item.itemName || idx}`} />
                   {item.itemName}
                 </td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 text-right">{formatNumber(item.balPending)}</td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-right">{formatNumber(item.balPending)}</td>
               </tr>
             ))}
-            {filteredSaudaPurchase.length === 0 && (
+            {orderedSaudaPurchase.length > 0 && (
               <tr>
-                <td contentEditable suppressContentEditableWarning className="font-bold border border-slate-400 p-1 align-top w-[120px] uppercase">PURCHASE</td>
-                <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1 text-center text-slate-500">No pending purchases found.</td>
-                <td contentEditable suppressContentEditableWarning className="border border-slate-400 p-1"></td>
+                <td className="border-2 border-black p-1"></td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-center uppercase">TOTAL</td>
+                <td contentEditable suppressContentEditableWarning className="bg-[#FFFF00] border-2 border-black font-bold p-1 text-right">
+                  {formatNumber(orderedSaudaPurchase.reduce((sum, item) => sum + Number(item.balPending), 0))}
+                </td>
               </tr>
+            )}
+            {orderedSaudaPurchase.length === 0 && (
+              <tr>
+                <td className="border-2 border-black p-1"></td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 uppercase"></td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-right">0.000</td>
+               </tr>
             )}
 
           </tbody>

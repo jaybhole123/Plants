@@ -1,22 +1,23 @@
-import React, { useState, useMemo } from 'react'
+                                          import React, { useState, useMemo } from 'react'
 import { useSaudaPurchaseStore } from '../store/useStore'
 import { CsvDropzone } from '../components/CsvDropzone'
-
+import { ImageOcrUploader } from '../components/ImageOcrUploader'
+import { FilterBar } from '../components/FilterBar'
 const initialForm = {
   date: new Date().toISOString().split('T')[0],
   mainHeading: '',
   itemName: '',
-  sizeMm: '',
   partyName: '',
   orderQuantity: '',
   rateMt: '',
+  tcs: '',
+  bhada: '',
+  landingCost: '',
+  gst: '',
+  grossRate: '',
+  netRate: '',
   qtyReceived: '',
   balPending: '',
-  broker: '',
-  deliveryTerms: '',
-  paymentCondition: '',
-  referenceName: '',
-  remarks: '',
 }
 
 const formatNumber = (value) => {
@@ -26,6 +27,7 @@ const formatNumber = (value) => {
 
 const SaudaPurchase = () => {
   const [headerDate, setHeaderDate] = useState(new Date().toISOString().split('T')[0])
+  const [search, setSearch] = useState('')
   const { entries, setEntries } = useSaudaPurchaseStore()
   const [form, setForm] = useState(initialForm)
   const [editingId, setEditingId] = useState(null)
@@ -56,6 +58,15 @@ const SaudaPurchase = () => {
 
     return { balPending }
   }, [form.orderQuantity, form.qtyReceived])
+
+  const filteredEntries = useMemo(() => {
+    return entries.filter(item => 
+      !search || 
+      item.partyName?.toLowerCase().includes(search.toLowerCase()) || 
+      item.itemName?.toLowerCase().includes(search.toLowerCase()) ||
+      item.mainHeading?.toLowerCase().includes(search.toLowerCase())
+    )
+  }, [entries, search])
 
   // --- Form Submit Handler ---
   const handleSubmit = (e) => {
@@ -114,35 +125,33 @@ const SaudaPurchase = () => {
       for (let i = 0; i < lines.length; i++) {
         const columns = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''))
         
-        // Skip headers or subtotal rows
-        if (columns[0] && (columns[0].toUpperCase().includes('DATE') || columns[0] === '')) {
-          if (!columns[0] && columns[1] && !columns[2]) {
-             currentItemName = columns[1]
-          }
+        // Skip headers
+        if (columns[0] && (columns[0].toUpperCase().includes('MAIN HEADING') || columns[0].toUpperCase().includes('DATE'))) {
           continue
         }
         
-        const date = columns[0] || new Date().toISOString().split('T')[0]
-        const itemName = columns[1] || currentItemName
+        const mainHeading = columns[0] || 'GENERAL'
+        const date = columns[1] || new Date().toISOString().split('T')[0]
+        const itemName = columns[2] || ''
         const partyNameCheck = columns[3] || ''
         
         if (partyNameCheck && partyNameCheck.toUpperCase() !== 'PARTY NAME') {
           newRows.push({
             id: Date.now() + i + Math.random(),
             date: date,
-            mainHeading: currentItemName,
+            mainHeading: mainHeading,
             itemName: itemName,
-            sizeMm: columns[2] || '',
             partyName: partyNameCheck,
             orderQuantity: columns[4] || '0',
             rateMt: columns[5] || '0',
-            qtyReceived: columns[6] || '0',
-            balPending: columns[7] || '0',
-            broker: columns[8] || '',
-            deliveryTerms: columns[9] || '',
-            paymentCondition: columns[10] || '',
-            referenceName: columns[11] || '',
-            remarks: columns[12] || '',
+            tcs: columns[6] || '0',
+            bhada: columns[7] || '0',
+            landingCost: columns[8] || '0',
+            gst: columns[9] || '0',
+            grossRate: columns[10] || '0',
+            netRate: columns[11] || '0',
+            qtyReceived: columns[12] || '0',
+            balPending: columns[13] || '0',
           })
         }
       }
@@ -156,6 +165,45 @@ const SaudaPurchase = () => {
     }
     reader.readAsText(file)
     e.target.value = '' 
+  }
+
+  const handleOcrResult = (text) => {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l)
+    const newRows = []
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      if (line.match(/\d/)) {
+        const parts = line.split(/\s+/)
+        const nums = parts.filter(p => !isNaN(parseFloat(p.replace(/,/g, ''))))
+        const chars = line.replace(/[\d\.\-,]/g, '').trim()
+        
+        newRows.push({
+          id: Date.now() + i + Math.random(),
+          date: new Date().toISOString().split('T')[0],
+          mainHeading: form.mainHeading || 'SCANNED DATA',
+          itemName: form.itemName || 'Item',
+          partyName: chars.substring(0, 30) || 'Scanned Party',
+          orderQuantity: nums[0] || '0',
+          rateMt: nums[1] || '0',
+          tcs: nums[2] || '0',
+          bhada: nums[3] || '0',
+          landingCost: nums[4] || '0',
+          gst: nums[5] || '0',
+          grossRate: nums[6] || '0',
+          netRate: nums[7] || '0',
+          qtyReceived: nums[8] || '0',
+          balPending: nums[9] || '0',
+        })
+      }
+    }
+
+    if (newRows.length > 0) {
+      setCsvPreview(newRows)
+      showToast(`Ready to preview ${newRows.length} scanned entries.`, 'success')
+    } else {
+      showToast('Could not extract valid data from image.', 'error')
+    }
   }
 
   // Format the date for the yellow header (DD.MM.YYYY)
@@ -194,6 +242,11 @@ const SaudaPurchase = () => {
         <span className="hidden sm:inline">CSV</span>
       </CsvDropzone>
 
+      <ImageOcrUploader
+        onTextExtracted={handleOcrResult}
+        className={`px-4 py-2.5 bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 font-medium rounded-md transition-all shadow-sm flex items-center gap-2 active:scale-[0.98]`}
+      />
+
       <button 
         onClick={() => setIsPromptModalOpen(true)}
         className="px-4 py-2.5 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 font-medium rounded-md transition-all shadow-sm flex items-center gap-2 active:scale-[0.98]"
@@ -223,21 +276,22 @@ const SaudaPurchase = () => {
               
               <div className="relative group">
                 <pre className="bg-slate-50 border border-slate-200 text-slate-800 text-sm p-4 rounded-xl whitespace-pre-wrap font-mono leading-relaxed h-[300px] overflow-y-auto">
-{`Please extract the data from the attached image of the "BALANCE PENDING INCOMING (SAUDA PURCHASE)" table and convert it into a strictly formatted CSV.
+{`Please extract the data from the attached image of the "MATERIAL PURCHASE" or "BALANCE PENDING INCOMING (SAUDA PURCHASE)" table and convert it into a strictly formatted CSV.
 
 Instructions:
-1. Use EXACTLY these 13 column headers in this exact order for the first row:
-DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, ODER QTY., RATE/MT IN Rs, QTY. RECEIVED TO TILL DATE, BALANCE IN MT, BROKER NAME, TERMS OF DELIVERY, PAYMENT CONDITION, REFERENCE NAME, REMARK
+1. Use EXACTLY these 14 column headers in this exact order for the first row:
+MAIN HEADING, DATE, MATERIAL, PARTY NAME, QUANTITY IN MT, RATE/MT IN RS, TCS, BHADA, LANDING COST, GST, GROSS RATE, NET RATE, QTY RCVD TILL DATE, BALANCE IN MT
 
 2. Ensure all values are separated by commas.
 3. If a column is empty or has a hyphen (-) in the image, output an empty string for that field. 
-4. Do not include any subtotal rows or main category headers (like "IRON ORE") as data rows. Only include the actual entry rows with the party names.
-5. Make sure numeric values like quantities and rates do not have commas in them (e.g., use 1000.00 instead of 1,000.00).
-6. Output ONLY the raw CSV text inside a code block, without any extra explanations or greetings.`}
+4. For the "MAIN HEADING" column, output the main yellow category header that applies to the row (e.g., 'IRONORE', 'COAL/SID', 'Steam Coal/ Gasifire', 'DOLOCHAR/COAL', 'Dolomite', etc.).
+5. Do not include any subtotal rows or main category headers as independent data rows. Only include the actual entry rows with the party names.
+6. Make sure numeric values like quantities and rates do not have commas in them (e.g., use 1000.00 instead of 1,000.00).
+7. Output ONLY the raw CSV text inside a code block, without any extra explanations or greetings.`}
                 </pre>
                 <button 
                   onClick={() => {
-                    navigator.clipboard.writeText(`Please extract the data from the attached image of the "BALANCE PENDING INCOMING (SAUDA PURCHASE)" table and convert it into a strictly formatted CSV.\n\nInstructions:\n1. Use EXACTLY these 13 column headers in this exact order for the first row:\nDATE, MATERIAL NAME, SIZE (MM), PARTY NAME, ODER QTY., RATE/MT IN Rs, QTY. RECEIVED TO TILL DATE, BALANCE IN MT, BROKER NAME, TERMS OF DELIVERY, PAYMENT CONDITION, REFERENCE NAME, REMARK\n\n2. Ensure all values are separated by commas.\n3. If a column is empty or has a hyphen (-) in the image, output an empty string for that field. \n4. Do not include any subtotal rows or main category headers (like "IRON ORE") as data rows. Only include the actual entry rows with the party names.\n5. Make sure numeric values like quantities and rates do not have commas in them (e.g., use 1000.00 instead of 1,000.00).\n6. Output ONLY the raw CSV text inside a code block, without any extra explanations or greetings.`);
+                    navigator.clipboard.writeText(`Please extract the data from the attached image of the "MATERIAL PURCHASE" or "BALANCE PENDING INCOMING (SAUDA PURCHASE)" table and convert it into a strictly formatted CSV.\n\nInstructions:\n1. Use EXACTLY these 14 column headers in this exact order for the first row:\nMAIN HEADING, DATE, MATERIAL, PARTY NAME, QUANTITY IN MT, RATE/MT IN RS, TCS, BHADA, LANDING COST, GST, GROSS RATE, NET RATE, QTY RCVD TILL DATE, BALANCE IN MT\n\n2. Ensure all values are separated by commas.\n3. If a column is empty or has a hyphen (-) in the image, output an empty string for that field. \n4. For the "MAIN HEADING" column, output the main yellow category header that applies to the row (e.g., 'IRONORE', 'COAL/SID', 'Steam Coal/ Gasifire', 'DOLOCHAR/COAL', 'Dolomite', etc.).\n5. Do not include any subtotal rows or main category headers as independent data rows. Only include the actual entry rows with the party names.\n6. Make sure numeric values like quantities and rates do not have commas in them (e.g., use 1000.00 instead of 1,000.00).\n7. Output ONLY the raw CSV text inside a code block, without any extra explanations or greetings.`);
                     showToast('Prompt copied to clipboard!');
                   }}
                   className="absolute top-2 right-2 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-700 flex items-center gap-1"
@@ -291,16 +345,12 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, ODER QTY., RATE/MT IN Rs, QTY. RECEI
                   <input type="text" value={form.itemName} onChange={(e) => setForm(prev => ({ ...prev, itemName: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm uppercase focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="e.g. IRON ORE" />
                 </div>
                 <div className="group">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Size (MM)</label>
-                  <input type="text" value={form.sizeMm} onChange={(e) => setForm(prev => ({ ...prev, sizeMm: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm uppercase focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="e.g. 10-40" />
-                </div>
-                <div className="group md:col-span-2">
                   <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Party Name</label>
                   <input type="text" value={form.partyName} onChange={(e) => setForm(prev => ({ ...prev, partyName: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm uppercase focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="e.g. HINDUSTAN DHAATU LTD." />
                 </div>
                 
                 <div className="group">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Oder Qty.</label>
+                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Quantity in MT</label>
                   <div className="relative">
                     <input type="number" step="any" min="0" value={form.orderQuantity} onChange={(e) => setForm(prev => ({ ...prev, orderQuantity: e.target.value }))} className="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm text-right focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="0.000" />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-xs">MT</span>
@@ -314,33 +364,36 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, ODER QTY., RATE/MT IN Rs, QTY. RECEI
                   </div>
                 </div>
                 <div className="group">
+                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">TCS</label>
+                  <input type="number" step="any" min="0" value={form.tcs} onChange={(e) => setForm(prev => ({ ...prev, tcs: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm text-right focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="0" />
+                </div>
+                <div className="group">
+                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">BHADA</label>
+                  <input type="number" step="any" min="0" value={form.bhada} onChange={(e) => setForm(prev => ({ ...prev, bhada: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm text-right focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="0" />
+                </div>
+                <div className="group">
+                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Landing Cost Incl. Cess & Bhada</label>
+                  <input type="number" step="any" min="0" value={form.landingCost} onChange={(e) => setForm(prev => ({ ...prev, landingCost: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm text-right focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="0" />
+                </div>
+                <div className="group">
+                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">GST</label>
+                  <input type="number" step="any" min="0" value={form.gst} onChange={(e) => setForm(prev => ({ ...prev, gst: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm text-right focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="0" />
+                </div>
+                <div className="group">
+                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Gross Rate</label>
+                  <input type="number" step="any" min="0" value={form.grossRate} onChange={(e) => setForm(prev => ({ ...prev, grossRate: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm text-right focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="0" />
+                </div>
+                <div className="group">
+                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Net Rate</label>
+                  <input type="number" step="any" min="0" value={form.netRate} onChange={(e) => setForm(prev => ({ ...prev, netRate: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm text-right focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="0" />
+                </div>
+                <div className="group">
                   <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Qty. Received To Till Date</label>
                   <input type="number" step="any" min="0" value={form.qtyReceived} onChange={(e) => setForm(prev => ({ ...prev, qtyReceived: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm text-right focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="0" />
                 </div>
-
                 <div className="group">
                   <label className="text-xs uppercase tracking-wider font-bold mb-2 block text-emerald-600">Balance in MT</label>
                   <input type="text" readOnly value={formatNumber(calculatedValues.balPending)} className="w-full px-4 py-3 bg-emerald-50/50 border border-emerald-200 rounded-xl text-emerald-700 text-sm font-semibold cursor-not-allowed shadow-sm text-right" />
-                </div>
-                <div className="group">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Broker Name</label>
-                  <input type="text" value={form.broker} onChange={(e) => setForm(prev => ({ ...prev, broker: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="e.g. R.K. Broker" />
-                </div>
-                <div className="group">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Terms of Delivery</label>
-                  <input type="text" value={form.deliveryTerms} onChange={(e) => setForm(prev => ({ ...prev, deliveryTerms: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="e.g. F.O.R. Plant" />
-                </div>
-                <div className="group">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Payment Condition</label>
-                  <input type="text" value={form.paymentCondition} onChange={(e) => setForm(prev => ({ ...prev, paymentCondition: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm focus:border-indigo-400 focus:ring-indigo-500/10" />
-                </div>
-                <div className="group md:col-span-2">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Reference Name</label>
-                  <input type="text" value={form.referenceName} onChange={(e) => setForm(prev => ({ ...prev, referenceName: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm focus:border-indigo-400 focus:ring-indigo-500/10" />
-                </div>
-                <div className="group md:col-span-2 lg:col-span-3 xl:col-span-4">
-                  <label className="text-xs uppercase tracking-wider font-bold mb-2 block transition-colors text-indigo-900/60 group-focus-within:text-indigo-600">Remark</label>
-                  <input type="text" value={form.remarks} onChange={(e) => setForm(prev => ({ ...prev, remarks: e.target.value }))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-4 transition-all duration-200 shadow-sm focus:border-indigo-400 focus:ring-indigo-500/10" placeholder="Any remarks..." />
                 </div>
 
                 <div className="col-span-full flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
@@ -364,17 +417,6 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, ODER QTY., RATE/MT IN Rs, QTY. RECEI
 
   // --- Render Table Section ---
   const renderTable = (itemsToRender, isPreview = false) => {
-    if (itemsToRender.length === 0) {
-      return (
-        <div className="py-12 text-center bg-slate-50/50 rounded border border-dashed border-slate-400">
-          <div className="flex flex-row justify-center items-center gap-2 transition-opacity">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            <p className="text-slate-500 font-medium">No purchase entries to display.</p>
-          </div>
-        </div>
-      )
-    }
-
     // Group entries by mainHeading
     const groupedEntries = itemsToRender.reduce((acc, curr) => {
       const name = curr.mainHeading || curr.itemName || 'Unknown'
@@ -390,23 +432,32 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, ODER QTY., RATE/MT IN Rs, QTY. RECEI
             <thead className="sticky top-0 z-10 shadow-sm">
               <tr className="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider font-semibold">
                 <th className="px-2 py-1.5 break-words border border-slate-400">Date</th>
-                <th className="px-2 py-1.5 break-words border border-slate-400">Material Name</th>
-                <th className="px-2 py-1.5 break-words border border-slate-400">Size (MM)</th>
+                <th className="px-2 py-1.5 break-words border border-slate-400">Material</th>
                 <th className="px-2 py-1.5 min-w-[160px] border border-slate-400">Party Name</th>
-                <th className="px-2 py-1.5 text-right border border-slate-400">Order Qty.</th>
+                <th className="px-2 py-1.5 text-right border border-slate-400">Quantity in MT</th>
                 <th className="px-2 py-1.5 text-right border border-slate-400">Rate/MT in Rs</th>
+                <th className="px-2 py-1.5 text-right border border-slate-400">TCS</th>
+                <th className="px-2 py-1.5 text-right border border-slate-400">BHADA</th>
+                <th className="px-2 py-1.5 text-right border border-slate-400">Landing Cost Incl. Cess & Bhada</th>
+                <th className="px-2 py-1.5 text-right border border-slate-400">GST</th>
+                <th className="px-2 py-1.5 text-right border border-slate-400">Gross Rate</th>
+                <th className="px-2 py-1.5 text-right border border-slate-400">Net Rate</th>
                 <th className="px-2 py-1.5 text-right border border-slate-400">Qty. Received To Till Date</th>
                 <th className="px-2 py-1.5 text-right border border-slate-400">Balance in MT</th>
-                <th className="px-2 py-1.5 min-w-[90px] border border-slate-400">Broker Name</th>
-                <th className="px-2 py-1.5 min-w-[80px] border border-slate-400">Terms of Delivery</th>
-                <th className="px-2 py-1.5 min-w-[80px] border border-slate-400">Payment Condition</th>
-                <th className="px-2 py-1.5 min-w-[80px] border border-slate-400">Reference Name</th>
-                <th className="px-2 py-1.5 min-w-[80px] border border-slate-400">Remark</th>
                 <th className="px-2 py-1.5 text-center print:hidden border border-slate-400">Actions</th>
               </tr>
             </thead>
             <tbody className="text-slate-700">
-              {Object.entries(groupedEntries).map(([mainHeadingName, groupItems], groupIdx) => {
+              {itemsToRender.length === 0 ? (
+                <tr>
+                  <td colSpan="14" className="py-12 text-center bg-slate-50/50">
+                    <div className="flex flex-col justify-center items-center gap-2 transition-opacity">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-slate-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                      <p className="text-slate-500 font-medium">No purchase entries to display.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : Object.entries(groupedEntries).map(([mainHeadingName, groupItems], groupIdx) => {
                 
                 // Calculate group subtotals
                 const subOrder = groupItems.reduce((sum, i) => sum + (Number(i.orderQuantity) || 0), 0)
@@ -428,17 +479,17 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, ODER QTY., RATE/MT IN Rs, QTY. RECEI
               <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-700">{new Date(item.date).toLocaleDateString('en-GB')}</td>
                     <td className="border border-slate-400 px-2 py-1.5 font-medium text-slate-900 uppercase">{item.itemName}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-slate-700 uppercase">{item.sizeMm || '-'}</td>
                     <td className="border border-slate-400 px-2 py-1.5 text-slate-700 uppercase">{item.partyName}</td>
                     <td className="border border-slate-400 px-2 py-1.5 text-center">{formatNumber(item.orderQuantity)}</td>
                     <td className="border border-slate-400 px-2 py-1.5 text-center">{item.rateMt || '-'}</td>
+                    <td className="border border-slate-400 px-2 py-1.5 text-center">{item.tcs || '0'}</td>
+                    <td className="border border-slate-400 px-2 py-1.5 text-center">{item.bhada || '0'}</td>
+                    <td className="border border-slate-400 px-2 py-1.5 text-center">{item.landingCost || '0'}</td>
+                    <td className="border border-slate-400 px-2 py-1.5 text-center">{item.gst || '0'}</td>
+                    <td className="border border-slate-400 px-2 py-1.5 text-center">{item.grossRate || '0'}</td>
+                    <td className="border border-slate-400 px-2 py-1.5 text-center">{item.netRate || '0'}</td>
                     <td className="border border-slate-400 px-2 py-1.5 text-center">{formatNumber(item.qtyReceived)}</td>
                     <td className="border border-slate-400 px-2 py-1.5 text-center font-bold text-slate-800 bg-slate-50/50">{formatNumber(item.balPending)}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.broker || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.deliveryTerms || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.paymentCondition || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600">{item.referenceName || '-'}</td>
-                    <td className="border border-slate-400 px-2 py-1.5 text-center text-slate-600 break-words" title={item.remarks}>{item.remarks || '-'}</td>
                     <td className="border border-slate-400 px-2 py-1.5 text-center bg-white align-middle">
                       <div className="flex flex-row justify-center items-center gap-2 transition-opacity">
                         <button onClick={() => handleEdit(item.id)} className="p-1 text-blue-500 hover:bg-blue-50 rounded" title="Edit">
@@ -453,13 +504,19 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, ODER QTY., RATE/MT IN Rs, QTY. RECEI
                     ))}
 
                     {/* Subtotal Row */}
-                    <tr className="font-semibold text-slate-700 bg-slate-50/50">
-                      <td colSpan="4" className="px-2 py-1.5 text-right text-[11px] uppercase tracking-wider text-slate-500 border border-slate-400">Subtotal</td>
+                    <tr className="font-semibold text-slate-800 bg-slate-100">
+                      <td colSpan="3" className="px-2 py-1.5 text-right text-[11px] uppercase tracking-wider text-slate-600 border border-slate-400">TOTAL {mainHeadingName} PURCHASE</td>
                       <td className="px-2 py-1.5 text-right border border-slate-400">{formatNumber(subOrder)}</td>
-                      <td className="px-2 py-1.5 border border-slate-400"></td>
+                      <td className="border border-slate-400"></td>
+                      <td className="border border-slate-400"></td>
+                      <td className="border border-slate-400"></td>
+                      <td className="border border-slate-400"></td>
+                      <td className="border border-slate-400"></td>
+                      <td className="border border-slate-400"></td>
+                      <td className="border border-slate-400"></td>
                       <td className="px-2 py-1.5 text-right border border-slate-400">{formatNumber(subReceived)}</td>
-                      <td className="px-2 py-1.5 text-right text-slate-800 font-bold border border-slate-400">{formatNumber(subBal)}</td>
-                      <td colSpan="6" className="border border-slate-400"></td>
+                      <td className="px-2 py-1.5 text-right text-slate-900 font-bold border border-slate-400">{formatNumber(subBal)}</td>
+                      <td className="border border-slate-400"></td>
                     </tr>
                   </React.Fragment>
                 )
@@ -473,7 +530,7 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, ODER QTY., RATE/MT IN Rs, QTY. RECEI
 
   // --- Main Layout ---
   return (
-    <div className="space-y-6 pb-10 px-2 sm:px-4 w-full max-w-[1200px] mx-auto text-slate-800">
+    <div className="space-y-6 pb-10 px-2 sm:px-4 w-full text-slate-800">
       
       {/* Top Banner (Modern Gradient) */}
       <div className="bg-gradient-to-r from-teal-600 via-emerald-600 to-green-600 rounded p-4 sm:p-5 mb-6 shadow-md relative overflow-hidden flex flex-col sm:flex-row items-center justify-between text-white">
@@ -484,19 +541,14 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, ODER QTY., RATE/MT IN Rs, QTY. RECEI
           <p className="text-emerald-100 text-[10px] font-semibold uppercase tracking-wider mb-0.5">Module</p>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Sauda Purchase</h1>
         </div>
-        
-        <div className="z-10 flex flex-col items-center sm:items-end">
-          <label className="text-emerald-100 text-[10px] uppercase tracking-wider font-semibold mb-1">Report Date</label>
-          <div className="flex items-center bg-white/10 backdrop-blur-md rounded-md p-1 border border-white/20 shadow-inner">
-            <input
-              type="date"
-              value={headerDate}
-              onChange={(e) => setHeaderDate(e.target.value)}
-              className="bg-transparent text-white px-3 py-1.5 focus:outline-none focus:ring-0 rounded-md text-xs font-medium [&::-webkit-calendar-picker-indicator]:invert"
-            />
-          </div>
-        </div>
       </div>
+
+      <FilterBar 
+        searchQuery={search} 
+        setSearchQuery={setSearch} 
+        selectedDate={headerDate} 
+        setSelectedDate={setHeaderDate} 
+      />
 
       {/* Form Section */}
       <div className="print:hidden">
@@ -542,7 +594,7 @@ DATE, MATERIAL NAME, SIZE (MM), PARTY NAME, ODER QTY., RATE/MT IN Rs, QTY. RECEI
           <h2 className="text-xl font-bold text-slate-800 uppercase tracking-wide">Balance Pending Incoming (Sauda Purchase)</h2>
           <div className="h-px bg-slate-200 flex-1"></div>
         </div>
-        {renderTable(entries, false)}
+        {renderTable(filteredEntries, false)}
       </div>
 
       {/* Toast Notification */}

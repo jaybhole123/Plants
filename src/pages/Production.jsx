@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useProductionStore } from '../store/useStore'
 import { CsvDropzone } from '../components/CsvDropzone'
-
+import { ImageOcrUploader } from '../components/ImageOcrUploader'
 const initialFormState = {
   metricName: 'Sponge Prod. (Mt)',
   percentValue: '',
@@ -193,6 +193,36 @@ const Production = () => {
     }
   }
 
+  const handleOcrResult = (text) => {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l)
+    const newRows = []
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      if (line.match(/\d/)) {
+        const parts = line.split(/\s+/)
+        const nums = parts.filter(p => !isNaN(parseFloat(p.replace(/,/g, ''))))
+        const chars = line.replace(/[\d\.\-,%]/g, '').trim()
+        
+        newRows.push({
+          id: Date.now() + i + Math.random(),
+          metricName: chars.substring(0, 30) || 'Scanned Metric',
+          percentValue: nums[0] || '',
+          k1Value: nums[1] || '',
+          k2Value: nums[2] || '',
+          totalValue: nums[3] || '',
+        })
+      }
+    }
+
+    if (newRows.length > 0) {
+      setRows(newRows)
+      showToast(`Extracted ${newRows.length} rows from image. Click Add Entry to save.`, 'success')
+    } else {
+      showToast('Could not extract valid data from image.', 'error')
+    }
+  }
+
   // --- Render Form (Row-wise) ---
   const renderForm = () => (
     <div className="bg-white border border-slate-400 rounded-md p-1 sm:p-6 mb-8 shadow-sm">
@@ -214,6 +244,11 @@ const Production = () => {
             </svg>
             Upload CSV
           </CsvDropzone>
+          
+          <ImageOcrUploader
+            onTextExtracted={handleOcrResult}
+            className={`px-6 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-md transition flex items-center gap-1`}
+          />
 
           <button type="button" onClick={resetForm} className="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-md transition">
             Reset
@@ -342,10 +377,6 @@ const Production = () => {
 
   // --- Render Table ---
   const renderTable = () => {
-    if (entries.length === 0) {
-      return <p className="text-slate-500 text-center py-6 bg-slate-50 rounded-md border border-slate-400">No production entries added yet. Use the form above to add data.</p>
-    }
-
     return (
       <table className="w-full text-xs text-left border-collapse">
         <thead>
@@ -358,7 +389,15 @@ const Production = () => {
             <th className="border border-slate-400 px-2 py-1.5 text-center w-24 print:hidden">Actions</th>
           </tr>
         </thead>
-        {entries.map(item => {
+        {entries.length === 0 ? (
+          <tbody>
+            <tr>
+              <td colSpan="6" className="text-slate-500 text-center py-6 bg-slate-50 border border-slate-400">
+                No production entries added yet. Use the form above to add data.
+              </td>
+            </tr>
+          </tbody>
+        ) : entries.map(item => {
           // Extract dynamic rows dynamically
           const rowItems = []
           let index = 0
@@ -448,7 +487,7 @@ const Production = () => {
   }
 
   return (
-    <div className="space-y-6 pb-10 px-2 sm:px-4 max-w-7xl mx-auto">
+    <div className="space-y-6 pb-10 px-2 sm:px-4 w-full">
       
       {/* Production Form */}
       {renderForm()}
