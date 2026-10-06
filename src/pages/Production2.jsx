@@ -175,6 +175,47 @@ export default function Production2Page() {
   const [search, setSearch] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
+  const [headerDate, setHeaderDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const fetchData = async () => {
+    const { data, error } = await supabase.from('production2_data').select('*').eq('report_date', headerDate);
+    if (data) {
+      const grouped = {};
+      data.forEach(row => {
+         if (!grouped[row.file_name]) {
+             grouped[row.file_name] = {
+                 date: row.report_date,
+                 fileName: row.file_name,
+                 found: true,
+                 fileUrl: row.file_url,
+                 items: []
+             };
+         }
+         grouped[row.file_name].items.push({
+             label: row.item_label,
+             percent: row.percent,
+             kiln1: row.kiln1,
+             kiln2: row.kiln2,
+             total: row.total
+         });
+      });
+      setFilesData(prev => {
+        const newFiles = Object.values(grouped);
+        newFiles.forEach(nf => {
+          const existing = prev.find(p => p.fileName === nf.fileName);
+          if (existing && existing.fileUrl && !nf.fileUrl) {
+            nf.fileUrl = existing.fileUrl;
+          }
+        });
+        return newFiles;
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (headerDate) fetchData();
+  }, [headerDate]);
+
   // Manual Form State
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [editModeData, setEditModeData] = useState(null);
@@ -209,6 +250,18 @@ export default function Production2Page() {
         if (!result.found) {
           setErrorMsg(`"${file.name}" me PRODUCTION section ka data nahi mila. Format check karein.`);
         } else {
+          setProgressMsg(`Uploading ${file.name} to Storage...`);
+          const fileExt = file.name.split('.').pop();
+          const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const filePath = `${headerDate}/${uniqueName}`;
+          
+          const { error: uploadError } = await supabase.storage.from('production_pdfs').upload(filePath, file);
+          if (!uploadError) {
+             const { data: publicUrlData } = supabase.storage.from('production_pdfs').getPublicUrl(filePath);
+             result.fileUrl = publicUrlData.publicUrl;
+          } else {
+             console.error("Storage upload error", uploadError);
+          }
           newFiles.push(result);
         }
       } catch (err) {
@@ -257,6 +310,32 @@ export default function Production2Page() {
 
   const removeFile = (idxToRemove) => {
     setFilesData((prev) => prev.filter((_, idx) => idx !== idxToRemove));
+  };
+
+  const handleOcrUpload = (extractedText) => {
+    const { rows: ocrRows } = parseProductionOCR(extractedText);
+    if (!ocrRows || ocrRows.length === 0) {
+      setErrorMsg("Image me PRODUCTION data nahi mila.");
+      return;
+    }
+    
+    const mappedItems = ocrRows.map(row => ({
+      label: row.metricName,
+      percent: parseFloat(row.percentValue) || null,
+      kiln1: parseFloat(row.k1Value) || 0,
+      kiln2: parseFloat(row.k2Value) || 0,
+      total: parseFloat(row.totalValue) || 0
+    }));
+
+    const newResult = {
+      date: new Date().toISOString().split('T')[0],
+      fileName: "Image OCR Entry",
+      found: true,
+      items: mappedItems
+    };
+    
+    setFilesData((prev) => [...prev, newResult]);
+    alert("Image se data extract ho gaya!");
   };
 
   const handleManualSubmit = (e) => {
@@ -353,9 +432,12 @@ export default function Production2Page() {
     downloadBlob(toCSV(), "nspl_production_log.csv", "text/csv");
   };
 
-  const handleClearAll = () => {
-    setFilesData([]);
-    setErrorMsg("");
+  const handleClearAll = async () => {
+    if (window.confirm(`Delete all data for ${headerDate}?`)) {
+      await supabase.from('production2_data').delete().eq('report_date', headerDate);
+      setFilesData([]);
+      setErrorMsg("");
+    }
   };
 
   const filteredFiles = filesData.filter((f) => {
@@ -378,6 +460,13 @@ export default function Production2Page() {
         <div className="z-10 text-center sm:text-left mb-3 sm:mb-0">
           <p className="text-emerald-100 text-[10px] font-semibold uppercase tracking-wider mb-0.5">Module</p>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Production 2</h1>
+        </div>
+
+        <div className="z-10 flex flex-col items-center sm:items-end">
+          <label className="text-emerald-100 text-[10px] uppercase tracking-wider font-semibold mb-1">Report Date</label>
+          <div className="p-1">
+            <DateFilter date={headerDate} onChange={setHeaderDate} />
+          </div>
         </div>
       </div>
 
@@ -502,6 +591,9 @@ export default function Production2Page() {
             </button>
             <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-md transition-colors" onClick={() => document.getElementById('summaryContainer').scrollBy({ left: 800, behavior: 'smooth' })} title="Scroll Right">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+            <button className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2" onClick={handleSaveToDB} disabled={isSavingDB}>
+              {isSavingDB ? 'Saving...' : 'Save Data to DB'}
             </button>
             <button className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors shadow-sm" onClick={() => {
               setEditModeData(null);
@@ -655,6 +747,22 @@ export default function Production2Page() {
                           </td>
                           <td colSpan="2"></td>
                         </tr>
+                        {(() => {
+                          const expectedTotal = filteredItems.reduce((acc, curr) => acc + (curr.kiln1 || 0), 0) + filteredItems.reduce((acc, curr) => acc + (curr.kiln2 || 0), 0);
+                          const actualTotal = filteredItems.reduce((acc, curr) => acc + (curr.total || 0), 0);
+                          const isCorrect = Math.abs(expectedTotal - actualTotal) < 0.001;
+                          return (
+                            <tr className={isCorrect ? "bg-emerald-50/40" : "bg-rose-50/40"}>
+                              <td colSpan="3" className={`border-b border-slate-100 px-3 py-1 text-right text-[10px] font-semibold italic ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {isCorrect ? 'Calculation Verified' : 'Calculation Mismatch'}
+                              </td>
+                              <td className={`border-b border-slate-100 px-3 py-1 text-center font-bold text-[10px] ${isCorrect ? 'text-emerald-700 bg-emerald-100/50' : 'text-rose-600 bg-rose-100/50'}`}>
+                                {isCorrect ? 'Correct' : `Expected: ${fmt(expectedTotal)}`}
+                              </td>
+                              <td colSpan="2" className="border-b border-slate-100"></td>
+                            </tr>
+                          );
+                        })()}
                       </tbody>
                     </table>
                   </div>

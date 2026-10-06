@@ -3,11 +3,8 @@ import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import {
   useStockStore,
-  useTransferStore,
   useProductionStore,
-  useProduction2Store,
-  useSaudaScaleStore,
-  useSaudaPurchaseStore
+  useProduction2Store
 } from '../store/useStore'
 import { FilterBar } from '../components/FilterBar'
 
@@ -38,11 +35,100 @@ const MisReport = () => {
   )
 
   // Get data from all stores
-  const stockItems = useStockStore(state => state.items)
-  const { incomingList, outgoingList } = useTransferStore()
+  const [stockItems, setStockItems] = useState([])
+  
+  const [incomingList, setIncomingList] = useState([])
+  const [outgoingList, setOutgoingList] = useState([])
+  const [saudaSaleEntries, setSaudaSaleEntries] = useState([])
+  const [saudaPurchaseEntries, setSaudaPurchaseEntries] = useState([])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // Fetch Raw Material Stock
+      const { data: rawData } = await supabase
+        .from('raw_material_stock')
+        .select('*')
+        .gte('created_at', `${reportDate}T00:00:00+05:30`)
+        .lte('created_at', `${reportDate}T23:59:59+05:30`)
+        
+      // Fetch Coal Stock
+      const { data: coalData } = await supabase
+        .from('coal_stock')
+        .select('*')
+        .gte('created_at', `${reportDate}T00:00:00+05:30`)
+        .lte('created_at', `${reportDate}T23:59:59+05:30`)
+
+      let mappedStocks = []
+      if (rawData) {
+        mappedStocks = [...mappedStocks, ...rawData.map(item => ({
+          type: 'raw_material',
+          category: item.category,
+          material: item.material,
+          closingStock: item.closing_stock
+        }))]
+      }
+      if (coalData) {
+        mappedStocks = [...mappedStocks, ...coalData.map(item => ({
+          type: 'coal_detail',
+          category: item.category,
+          material: item.material,
+          closingStock: item.closing_stock
+        }))]
+      }
+      setStockItems(mappedStocks)
+
+      // Fetch item transfers
+      const { data: transfers, error: transferError } = await supabase
+        .from('item_transfers')
+        .select('*')
+        .gte('created_at', `${reportDate}T00:00:00+05:30`)
+        .lte('created_at', `${reportDate}T23:59:59+05:30`)
+        
+      if (!transferError && transfers) {
+        const incoming = transfers.filter(d => d.entry_type === 'incoming').map(item => ({
+          id: item.id,
+          partyName: item.party_name,
+          materialName: item.material_name,
+          vehicleNo: item.vehicle_no,
+          qty: item.qty,
+          rate: item.rate
+        }))
+        const outgoing = transfers.filter(d => d.entry_type === 'outgoing').map(item => ({
+          id: item.id,
+          partyName: item.party_name,
+          materialName: item.material_name,
+          vehicleNo: item.vehicle_no,
+          qty: item.qty,
+          rate: item.rate
+        }))
+        setIncomingList(incoming)
+        setOutgoingList(outgoing)
+      }
+
+      // Fetch Sauda Sale
+      const { data: saleData } = await supabase.from('sauda_sale').select('*')
+      if (saleData) {
+        setSaudaSaleEntries(saleData.map(item => ({
+          mainHeading: item.main_heading,
+          itemName: item.item_name,
+          balPending: item.bal_pending
+        })))
+      }
+
+      // Fetch Sauda Purchase
+      const { data: purchaseData } = await supabase.from('sauda_purchase').select('*')
+      if (purchaseData) {
+        setSaudaPurchaseEntries(purchaseData.map(item => ({
+          mainHeading: item.main_heading,
+          itemName: item.item_name,
+          balPending: item.bal_pending
+        })))
+      }
+    }
+    fetchData()
+  }, [reportDate])
+
   const production2FilesData = useProduction2Store(state => state.filesData)
-  const saudaScaleEntries = useSaudaScaleStore(state => state.entries)
-  const saudaPurchaseEntries = useSaudaPurchaseStore(state => state.entries)
 
   // 1. STOCK AGGREGATION — split into Raw Material and Coal Detail
   const rawMaterialSummary = useMemo(() => {
@@ -98,7 +184,36 @@ const MisReport = () => {
         summary[key] = (summary[key] || 0) + (Number(item.closingStock) || 0)
       }
     })
-    return summary
+
+    let coalTotal = 0
+    const finalSummary = {}
+    
+    const coalIdentifiers = [
+      'COAL',
+      'KOHINOOR',
+      'LOYAL TRADING',
+      'JBT(JAGANNATHPUR)',
+      'SUNSHINE ENTE'
+    ];
+
+    Object.entries(summary).forEach(([key, val]) => {
+      const isCoalType = coalIdentifiers.some(identifier => key.includes(identifier));
+      if (isCoalType) {
+        if (val > 0) {
+          coalTotal += val
+        }
+      } else {
+        finalSummary[key] = val
+      }
+    })
+    
+    const orderedSummary = {}
+    if (coalTotal > 0) {
+      orderedSummary['COAL'] = coalTotal
+    }
+    Object.assign(orderedSummary, finalSummary)
+
+    return orderedSummary
   }, [stockItems])
 
   // 2. INCOMING AGGREGATION
@@ -170,7 +285,7 @@ const MisReport = () => {
   // 5. SAUDA SALE AGGREGATION
   const saudaSaleSummary = useMemo(() => {
     const summary = {}
-    saudaScaleEntries.forEach(item => {
+    saudaSaleEntries.forEach(item => {
       const material = (item.mainHeading || item.itemName)?.toUpperCase().trim() || 'UNKNOWN'
       summary[material] = (summary[material] || 0) + (Number(item.balPending) || 0)
     })
@@ -179,7 +294,7 @@ const MisReport = () => {
       itemName,
       balPending
     }))
-  }, [saudaScaleEntries])
+  }, [saudaSaleEntries])
 
   // 6. SAUDA PURCHASE AGGREGATION
   const saudaPurchaseSummary = useMemo(() => {
@@ -580,6 +695,15 @@ const MisReport = () => {
                 <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-right">0.000</td>
                </tr>
             )}
+
+            {/* NOTES SECTION */}
+            <tr>
+              <td contentEditable suppressContentEditableWarning className="bg-slate-100 text-slate-800 font-bold p-1.5 border border-slate-400 uppercase tracking-wide align-top w-[120px]">
+                NOTES:
+              </td>
+              <td contentEditable suppressContentEditableWarning colSpan="2" className="border border-slate-400 p-2 text-slate-800 font-bold text-sm min-h-[60px] align-top outline-none focus:bg-slate-50 transition-colors break-words break-all whitespace-pre-wrap max-w-[100px]" placeholder="Type your notes here...">
+              </td>
+            </tr>
 
           </tbody>
         </table>

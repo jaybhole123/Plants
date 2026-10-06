@@ -69,25 +69,49 @@ const SaudaPurchase = () => {
   }, [entries, search])
 
   // --- Form Submit Handler ---
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.partyName.trim() || !form.itemName.trim()) {
       showToast('Item Name and Party Name are required.', 'error')
       return
     }
 
-    const newEntry = {
-      ...form,
-      balPending: calculatedValues.balPending,
+    const payload = {
+      date: form.date,
+      main_heading: form.mainHeading,
+      item_name: form.itemName,
+      size_mm: form.sizeMm || null,
+      party_name: form.partyName,
+      order_quantity: Number(form.orderQuantity) || 0,
+      rate_mt: Number(form.rateMt) || 0,
+      qty_received: Number(form.qtyReceived) || 0,
+      bal_pending: calculatedValues.balPending,
+      broker: form.broker || null,
+      delivery_terms: form.deliveryTerms || null,
+      payment_condition: form.paymentCondition || null,
+      reference_name: form.referenceName || null,
+      remarks: form.remarks || null,
     }
 
+    setIsLoading(true)
     if (editingId) {
-      setEntries(prev => prev.map(item => item.id === editingId ? { ...newEntry, id: item.id } : item))
-      showToast('Purchase entry updated successfully.')
+      const { error } = await supabase.from('sauda_purchase').update(payload).eq('id', editingId)
+      if (error) {
+        showToast('Failed to update entry', 'error')
+      } else {
+        showToast('Purchase entry updated successfully.')
+        await fetchPurchaseEntries()
+      }
     } else {
-      setEntries(prev => [...prev, { ...newEntry, id: Date.now() }])
-      showToast('Purchase entry added successfully.')
+      const { error } = await supabase.from('sauda_purchase').insert([payload])
+      if (error) {
+        showToast('Failed to add entry', 'error')
+      } else {
+        showToast('Purchase entry added successfully.')
+        await fetchPurchaseEntries()
+      }
     }
+    setIsLoading(false)
     resetForm()
     setIsModalOpen(false)
   }
@@ -101,12 +125,34 @@ const SaudaPurchase = () => {
     }
   }
 
-  const handleDelete = (id) => {
-    if (window.confirm('Delete this sauda entry?')) {
-      setEntries(prev => prev.filter(item => item.id !== id))
-      showToast('Purchase entry removed.')
-      if (editingId === id) resetForm()
+  const handleDelete = async (id) => {
+    if (window.confirm('Delete this purchase entry?')) {
+      setIsLoading(true)
+      const { error } = await supabase.from('sauda_purchase').delete().eq('id', id)
+      if (error) {
+        showToast('Failed to delete entry', 'error')
+      } else {
+        showToast('Purchase entry removed.')
+        await fetchPurchaseEntries()
+        if (editingId === id) resetForm()
+      }
+      setIsLoading(false)
     }
+  }
+
+  // --- Date Parser Helper for CSV ---
+  const parseDateToDB = (dateStr) => {
+    if (!dateStr) return new Date().toISOString().split('T')[0];
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return dateStr;
+    const parts = dateStr.split(/[.\-\/]/);
+    if (parts.length === 3) {
+      const d = parts[0].padStart(2, '0');
+      const m = parts[1].padStart(2, '0');
+      let y = parts[2];
+      if (y.length === 2) y = '20' + y;
+      return `${y}-${m}-${d}`;
+    }
+    return new Date().toISOString().split('T')[0];
   }
 
   // --- CSV Upload Handler ---
@@ -123,7 +169,7 @@ const SaudaPurchase = () => {
       let currentItemName = ''
       
       for (let i = 0; i < lines.length; i++) {
-        const columns = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''))
+        const columns = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''))
         
         // Skip headers
         if (columns[0] && (columns[0].toUpperCase().includes('MAIN HEADING') || columns[0].toUpperCase().includes('DATE'))) {
@@ -218,6 +264,17 @@ const SaudaPurchase = () => {
     if (!dateString || !dateString.includes('-')) return dateString
     const [year, month, day] = dateString.split('-')
     return `${day}.${month}.${year.substring(2)}`
+  }
+
+  // --- OCR Upload Handler ---
+  const handleOcrUpload = (extractedText) => {
+    const parsedData = parseSaudaPurchaseOCR(extractedText)
+    setForm(prev => ({
+      ...prev,
+      ...parsedData
+    }))
+    setIsModalOpen(true)
+    showToast('OCR extracted successfully. Please review the details.')
   }
 
   // --- Render Form Section (Modal Theme) ---
@@ -518,6 +575,23 @@ MAIN HEADING, DATE, MATERIAL, PARTY NAME, QUANTITY IN MT, RATE/MT IN RS, TCS, BH
                       <td className="px-2 py-1.5 text-right text-slate-900 font-bold border border-slate-400">{formatNumber(subBal)}</td>
                       <td className="border border-slate-400"></td>
                     </tr>
+                    
+                    {/* Subtotal Verification Row */}
+                    {(() => {
+                      const expectedSubBal = subOrder - subReceived;
+                      const isCorrect = Math.abs(expectedSubBal - subBal) < 0.001;
+                      return (
+                        <tr className={isCorrect ? "bg-emerald-50/40" : "bg-rose-50/40"}>
+                          <td colSpan="7" className={`border border-slate-400 px-2 py-1 text-right text-[10px] font-semibold italic ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {isCorrect ? 'Calculation Verified' : 'Calculation Mismatch'}
+                          </td>
+                          <td className={`border border-slate-400 px-2 py-1 text-right font-bold text-[10px] ${isCorrect ? 'text-emerald-700 bg-emerald-100/50' : 'text-rose-600 bg-rose-100/50'}`}>
+                            {isCorrect ? 'Correct' : `Expected: ${formatNumber(expectedSubBal)}`}
+                          </td>
+                          <td colSpan="6" className="border border-slate-400"></td>
+                        </tr>
+                      );
+                    })()}
                   </React.Fragment>
                 )
               })}
@@ -565,10 +639,34 @@ MAIN HEADING, DATE, MATERIAL, PARTY NAME, QUANTITY IN MT, RATE/MT IN RS, TCS, BH
             </h2>
             <div className="flex gap-1">
               <button 
-                onClick={() => {
-                  setEntries(prev => [...prev, ...csvPreview])
-                  setCsvPreview([])
-                  showToast('Data saved to table successfully.')
+                onClick={async () => {
+                  setIsLoading(true)
+                  const payloads = csvPreview.map(item => ({
+                    date: item.date,
+                    main_heading: item.mainHeading,
+                    item_name: item.itemName,
+                    size_mm: item.sizeMm || null,
+                    party_name: item.partyName,
+                    order_quantity: Number(item.orderQuantity) || 0,
+                    rate_mt: Number(item.rateMt) || 0,
+                    qty_received: Number(item.qtyReceived) || 0,
+                    bal_pending: Number(item.balPending) || 0,
+                    broker: item.broker || null,
+                    delivery_terms: item.deliveryTerms || null,
+                    payment_condition: item.paymentCondition || null,
+                    reference_name: item.referenceName || null,
+                    remarks: item.remarks || null,
+                  }))
+
+                  const { error } = await supabase.from('sauda_purchase').insert(payloads)
+                  if (error) {
+                    showToast('Failed to save bulk data to table', 'error')
+                  } else {
+                    setCsvPreview([])
+                    showToast('Data saved to table successfully.')
+                    await fetchPurchaseEntries()
+                  }
+                  setIsLoading(false)
                 }} 
                 className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md transition shadow-sm"
               >

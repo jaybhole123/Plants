@@ -250,6 +250,11 @@ const Production = () => {
             className={`px-6 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-md transition flex items-center gap-1`}
           />
 
+          <OCRImageUploader 
+            onTextExtracted={handleOcrUpload} 
+            className="px-6 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-medium rounded-md transition flex items-center gap-1"
+          />
+
           <button type="button" onClick={resetForm} className="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-md transition">
             Reset
           </button>

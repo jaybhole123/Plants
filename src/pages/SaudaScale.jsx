@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react'
-import { useSaudaScaleStore } from '../store/useStore'
+import React, { useState, useMemo, useEffect } from 'react'
+import { supabase } from '../supabase'
 import { CsvDropzone } from '../components/CsvDropzone'
 import { ImageOcrUploader } from '../components/ImageOcrUploader'
 import { FilterBar } from '../components/FilterBar'
@@ -62,25 +62,51 @@ const SaudaScale = () => {
   }, [entries, search])
 
   // --- Form Submit Handler ---
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.partyName.trim() || !form.itemName.trim()) {
       showToast('Item Name and Party Name are required.', 'error')
       return
     }
 
-    const newEntry = {
-      ...form,
-      balPending: calculatedBalance, // Set calculated value
+    const payload = {
+      date: form.date,
+      main_heading: form.mainHeading,
+      item_name: form.itemName,
+      size_mm: form.sizeMm || null,
+      party_name: form.partyName,
+      consignee_name: form.consigneeName || null,
+      sauda_quantity: Number(form.saudaQuantity) || 0,
+      rate_amt: Number(form.rateAmt) || 0,
+      prv_pending: Number(form.prvPending) || 0,
+      qty_dispatch: Number(form.qtyDispatch) || 0,
+      bal_pending: calculatedBalance,
+      broker: form.broker || null,
+      delivery_terms: form.deliveryTerms || null,
+      payment_condition: form.paymentCondition || null,
+      reference_name: form.referenceName || null,
+      remarks: form.remarks || null,
     }
 
+    setIsLoading(true)
     if (editingId) {
-      setEntries(prev => prev.map(item => item.id === editingId ? { ...newEntry, id: item.id } : item))
-      showToast('Sauda entry updated successfully.')
+      const { error } = await supabase.from('sauda_sale').update(payload).eq('id', editingId)
+      if (error) {
+        showToast('Failed to update entry', 'error')
+      } else {
+        showToast('Sauda entry updated successfully.')
+        await fetchSaudaEntries()
+      }
     } else {
-      setEntries(prev => [...prev, { ...newEntry, id: Date.now() }])
-      showToast('Sauda entry added successfully.')
+      const { error } = await supabase.from('sauda_sale').insert([payload])
+      if (error) {
+        showToast('Failed to add entry', 'error')
+      } else {
+        showToast('Sauda entry added successfully.')
+        await fetchSaudaEntries()
+      }
     }
+    setIsLoading(false)
     resetForm()
     setIsModalOpen(false)
   }
@@ -94,12 +120,36 @@ const SaudaScale = () => {
     }
   }
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Delete this sauda entry?')) {
-      setEntries(prev => prev.filter(item => item.id !== id))
-      showToast('Sauda entry removed.')
-      if (editingId === id) resetForm()
+      setIsLoading(true)
+      const { error } = await supabase.from('sauda_sale').delete().eq('id', id)
+      if (error) {
+        showToast('Failed to delete entry', 'error')
+      } else {
+        showToast('Sauda entry removed.')
+        await fetchSaudaEntries()
+        if (editingId === id) resetForm()
+      }
+      setIsLoading(false)
     }
+  }
+
+  // --- Date Parser Helper for CSV ---
+  const parseDateToDB = (dateStr) => {
+    if (!dateStr) return new Date().toISOString().split('T')[0];
+    // Check if already YYYY-MM-DD
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return dateStr;
+    // Format from DD.MM.YY or DD-MM-YY or DD/MM/YY
+    const parts = dateStr.split(/[.\-\/]/);
+    if (parts.length === 3) {
+      const d = parts[0].padStart(2, '0');
+      const m = parts[1].padStart(2, '0');
+      let y = parts[2];
+      if (y.length === 2) y = '20' + y; // Assume 20xx
+      return `${y}-${m}-${d}`;
+    }
+    return new Date().toISOString().split('T')[0];
   }
 
   // --- CSV Upload Handler ---
@@ -117,7 +167,7 @@ const SaudaScale = () => {
       let currentItemName = ''
       
       for (let i = 0; i < lines.length; i++) {
-        const columns = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''))
+        const columns = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''))
         
         // Skip headers or subtotal rows
         if (columns[0] && (columns[0].toUpperCase().includes('DATE') || columns[0] === '')) {
@@ -127,7 +177,7 @@ const SaudaScale = () => {
           continue
         }
         
-        const date = columns[0] || new Date().toISOString().split('T')[0]
+        const date = parseDateToDB(columns[0])
         const itemName = columns[1] || currentItemName
         const partyNameCheck = columns[3] || ''
         
@@ -206,6 +256,17 @@ const SaudaScale = () => {
     return `${day}.${month}.${year.substring(2)}`
   }
 
+  // --- OCR Upload Handler ---
+  const handleOcrUpload = (extractedText) => {
+    const parsedData = parseSaudaScaleOCR(extractedText)
+    setForm(prev => ({
+      ...prev,
+      ...parsedData
+    }))
+    setIsModalOpen(true)
+    showToast('OCR extracted successfully. Please review the details.')
+  }
+
   // --- Render Form Section (Modal Theme) ---
   const renderForm = () => (
     <div className="mb-6 flex gap-2">
@@ -268,11 +329,12 @@ Instructions:
 1. Use EXACTLY these 8 column headers in this exact order for the first row:
 DATE, ITEMS, PARTY NAME, SAUDA QUANTITY, RATE/MT, PRV PENDING, QTY DISPATCH, BAL PENDING
 
-2. Ensure all values are separated by commas.
-3. If a column is empty or has a hyphen (-) in the image, output an empty string for that field. 
-4. Do not include any subtotal rows or main category headers (like "DUST" or "TOTAL DUST") as data rows. Only include the actual entry rows with the party names.
-5. Make sure numeric values like quantities and rates do not have commas in them (e.g., use 1000.00 instead of 1,000.00).
-6. Output ONLY the raw CSV text inside a code block, without any extra explanations or greetings.`}
+2. You MUST output EXACTLY 14 columns for every single data row, separated by commas.
+3. If a column is empty or has a hyphen (-) in the image, you MUST output an empty field (e.g., ,, or ,"",). Do not skip the column.
+4. Enclose all text values (especially Party Name, Consignee Name, etc.) in double quotes (e.g., "Anjaneya Enterprises") to prevent commas inside names from breaking the CSV.
+5. Do not include any subtotal rows or main category headers (like "DUST" or "TOTAL DUST") as data rows. Only include the actual entry rows with the party names.
+6. Make sure numeric values like quantities and rates do not have commas in them (e.g., use 1000.00 instead of 1,000.00).
+7. Output ONLY the raw CSV text inside a code block, without any extra explanations or greetings.`}
                 </pre>
                 <button 
                   onClick={() => {
@@ -471,6 +533,23 @@ DATE, ITEMS, PARTY NAME, SAUDA QUANTITY, RATE/MT, PRV PENDING, QTY DISPATCH, BAL
                       <td className="px-2 py-1.5 text-right font-bold text-slate-900 border border-slate-400">{formatNumber(subBal)}</td>
                       <td className="border border-slate-400 print:hidden"></td>
                     </tr>
+                    
+                    {/* Subtotal Verification Row */}
+                    {(() => {
+                      const expectedSubBal = subSauda + subPrv - subDispatch;
+                      const isCorrect = Math.abs(expectedSubBal - subBal) < 0.001;
+                      return (
+                        <tr className={isCorrect ? "bg-emerald-50/40" : "bg-rose-50/40"}>
+                          <td colSpan="9" className={`border border-slate-400 px-2 py-1 text-right text-[10px] font-semibold italic ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {isCorrect ? 'Calculation Verified' : 'Calculation Mismatch'}
+                          </td>
+                          <td className={`border border-slate-400 px-2 py-1 text-right font-bold text-[10px] ${isCorrect ? 'text-emerald-700 bg-emerald-100/50' : 'text-rose-600 bg-rose-100/50'}`}>
+                            {isCorrect ? 'Correct' : `Expected: ${formatNumber(expectedSubBal)}`}
+                          </td>
+                          <td colSpan="6" className="border border-slate-400"></td>
+                        </tr>
+                      );
+                    })()}
                   </React.Fragment>
                 )
               })}
@@ -518,11 +597,37 @@ DATE, ITEMS, PARTY NAME, SAUDA QUANTITY, RATE/MT, PRV PENDING, QTY DISPATCH, BAL
             </h2>
             <div className="flex gap-1">
               <button 
-                onClick={() => {
-                  setEntries(prev => [...prev, ...csvPreview])
-                  setCsvPreview([])
-                  showToast('Data saved to table successfully.')
-                }} 
+                onClick={async () => {
+                  setIsLoading(true)
+                  const payloads = csvPreview.map(item => ({
+                    date: item.date,
+                    main_heading: item.mainHeading,
+                    item_name: item.itemName,
+                    size_mm: item.sizeMm || null,
+                    party_name: item.partyName,
+                    consignee_name: item.consigneeName || null,
+                    sauda_quantity: Number(item.saudaQuantity) || 0,
+                    rate_amt: Number(item.rateAmt) || 0,
+                    prv_pending: Number(item.prvPending) || 0,
+                    qty_dispatch: Number(item.qtyDispatch) || 0,
+                    bal_pending: Number(item.balPending) || 0,
+                    broker: item.broker || null,
+                    delivery_terms: item.deliveryTerms || null,
+                    payment_condition: item.paymentCondition || null,
+                    reference_name: item.referenceName || null,
+                    remarks: item.remarks || null,
+                  }))
+
+                  const { error } = await supabase.from('sauda_sale').insert(payloads)
+                  if (error) {
+                    showToast('Failed to save bulk data to table', 'error')
+                  } else {
+                    setCsvPreview([])
+                    showToast('Data saved to table successfully.')
+                    await fetchSaudaEntries()
+                  }
+                  setIsLoading(false)
+                }}
                 className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md transition shadow-sm"
               >
                 Save Data

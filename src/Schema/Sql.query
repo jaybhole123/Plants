@@ -1,0 +1,146 @@
+( RAW MATERIAL STOCK )
+ 
+create table public.raw_material_stock (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  category text null,
+  material text not null,
+  opening_stock numeric(15, 3) null default 0.000,
+  inward numeric(15, 3) null default 0.000,
+  consumption numeric(15, 3) null default 0.000,
+  crushing text null default '0%'::text,
+  fines3 numeric(15, 3) null default 0.000,
+  fines3_qty numeric(15, 3) null default 0.000,
+  production numeric(15, 3) null default 0.000,
+  dispatch numeric(15, 3) null default 0.000,
+  closing_stock numeric(15, 3) null default 0.000,
+  unit text null,
+  remarks text null,
+  attachments jsonb null default '[]'::jsonb,
+  report_date date not null,
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  updated_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  constraint raw_material_stock_pkey primary key (id)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_raw_material_stock_report_date on public.raw_material_stock using btree (report_date) TABLESPACE pg_default;
+
+create index IF not exists idx_raw_material_stock_material on public.raw_material_stock using btree (material) TABLESPACE pg_default;
+
+create trigger set_timestamp_raw_material_stock BEFORE
+update on raw_material_stock for EACH row
+execute FUNCTION update_updated_at_column ();
+
+( COAL DETAIL )
+
+
+create table public.coal_stock (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  updated_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  category text null default 'COAL DETAILS'::text,
+  material text not null,
+  opening_stock numeric(15, 3) null default 0.000,
+  inward numeric(15, 3) null default 0.000,
+  consumption numeric(15, 3) null default 0.000,
+  fc text null,
+  moist_loss_pct text null,
+  moist_loss_qty numeric(15, 3) null default 0.000,
+  landed_cost numeric(15, 3) null default 0.000,
+  dispatch numeric(15, 3) null default 0.000,
+  closing_stock numeric(15, 3) null default 0.000,
+  remarks text null,
+  report_date date null,
+  constraint coal_stock_pkey primary key (id)
+) TABLESPACE pg_default;
+
+
+( INCOMMING AND OUTGOIING )
+
+create table public.item_transfers (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  created_at timestamp with time zone null default now(),
+  report_date date not null,
+  entry_type text not null,
+  party_name text not null,
+  material_name text not null,
+  vehicle_no text null,
+  qty numeric(15, 3) null default 0,
+  rate numeric(15, 2) null default 0,
+  constraint item_transfers_pkey primary key (id),
+  constraint item_transfers_entry_type_check check (
+    (
+      entry_type = any (array['incoming'::text, 'outgoing'::text])
+    )
+  )
+) TABLESPACE pg_default;
+
+
+( PRODUCTION )
+
+create table public.sponge_production (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  created_at timestamp with time zone null default now(),
+  report_date date not null,
+  source_file text null default 'Manual Entry'::text,
+  item_grade text not null,
+  percent numeric(5, 2) null,
+  kiln1 numeric(15, 3) null default 0,
+  kiln2 numeric(15, 3) null default 0,
+  total numeric(15, 3) null default 0,
+  constraint sponge_production_pkey primary key (id)
+) TABLESPACE pg_default;
+
+
+
+
+(SAUDA SCALE )
+
+create table public.sauda_sale (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  created_at timestamp with time zone null default now(),
+  date date not null,
+  main_heading text null,
+  item_name text not null,
+  size_mm text null,
+  party_name text not null,
+  consignee_name text null,
+  sauda_quantity numeric(15, 3) null default 0,
+  rate_amt numeric(15, 2) null default 0,
+  prv_pending numeric(15, 3) null default 0,
+  qty_dispatch numeric(15, 3) null default 0,
+  bal_pending numeric(15, 3) null default 0,
+  broker text null,
+  delivery_terms text null,
+  payment_condition text null,
+  reference_name text null,
+  remarks text null,
+  constraint sauda_sale_pkey primary key (id)
+) TABLESPACE pg_default;
+
+
+
+( SAUDA PURCHASE )
+
+create table public.sauda_purchase (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  created_at timestamp with time zone null default now(),
+  date date not null,
+  main_heading text null,
+  item_name text not null,
+  size_mm text null,
+  party_name text not null,
+  order_quantity numeric(15, 3) null default 0,
+  rate_mt numeric(15, 2) null default 0,
+  qty_received numeric(15, 3) null default 0,
+  bal_pending numeric(15, 3) null default 0,
+  broker text null,
+  delivery_terms text null,
+  payment_condition text null,
+  reference_name text null,
+  remarks text null,
+  constraint sauda_purchase_pkey primary key (id)
+) TABLESPACE pg_default;
+
+
+
+

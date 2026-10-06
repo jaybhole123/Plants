@@ -97,14 +97,9 @@ export const useSaudaPurchaseStore = create(
   )
 )
 
-export const useProduction2Store = create(
-  persist(
-    (set, get) => ({
-      filesData: [],
-      setFilesData: (listOrFn) => set((state) => ({
-        filesData: typeof listOrFn === 'function' ? listOrFn(state.filesData) : listOrFn
-      })),
-    }),
-    { name: 'traders-production2-storage' }
-  )
-)
+export const useProduction2Store = create((set, get) => ({
+  filesData: [],
+  setFilesData: (listOrFn) => set((state) => ({
+    filesData: typeof listOrFn === 'function' ? listOrFn(state.filesData) : listOrFn
+  })),
+}))
