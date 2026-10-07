@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../supabase'
 import { CsvDropzone } from '../components/CsvDropzone'
 import { ImageOcrUploader } from '../components/ImageOcrUploader'
 import { FilterBar } from '../components/FilterBar'
@@ -49,11 +48,8 @@ const ItemTransfer = () => {
 
   const fetchTransfers = async () => {
     setIsLoading(true)
-    const { data, error } = await supabase
-      .from('item_transfers')
-      .select('*')
-      .gte('created_at', `${date}T00:00:00+05:30`)
-      .lte('created_at', `${date}T23:59:59+05:30`)
+    const data = []
+    const error = null
       
     if (error) {
       console.error('Error fetching transfers:', error)
@@ -91,7 +87,8 @@ const ItemTransfer = () => {
       // We will adjust fetch to not filter by date if date is empty
       const fetchAll = async () => {
         setIsLoading(true)
-        const { data, error } = await supabase.from('item_transfers').select('*')
+        const data = []
+        const error = null
         if (data) {
           const incoming = data.filter(d => d.entry_type === 'incoming').map(item => ({
             id: item.id,
@@ -176,7 +173,7 @@ const ItemTransfer = () => {
 
     setIsLoading(true)
     if (editingId) {
-      const { error } = await supabase.from('item_transfers').update(payload).eq('id', editingId)
+      const error = null
       if (error) {
         showToast('Failed to update entry', 'error')
         console.error(error)
@@ -185,7 +182,7 @@ const ItemTransfer = () => {
         await fetchTransfers()
       }
     } else {
-      const { error } = await supabase.from('item_transfers').insert([payload])
+      const error = null
       if (error) {
         showToast('Failed to add entry', 'error')
         console.error(error)
@@ -228,7 +225,7 @@ const ItemTransfer = () => {
   const handleDeleteIncoming = async (id) => {
     if (window.confirm('Delete this incoming entry?')) {
       setIsLoading(true)
-      const { error } = await supabase.from('item_transfers').delete().eq('id', id)
+      const error = null
       if (error) {
         showToast('Failed to delete entry', 'error')
       } else {
@@ -260,7 +257,7 @@ const ItemTransfer = () => {
   const handleDeleteOutgoing = async (id) => {
     if (window.confirm('Delete this outgoing entry?')) {
       setIsLoading(true)
-      const { error } = await supabase.from('item_transfers').delete().eq('id', id)
+      const error = null
       if (error) {
         showToast('Failed to delete entry', 'error')
       } else {
@@ -654,7 +651,7 @@ const ItemTransfer = () => {
                     qty: Number(r.qty) || 0,
                     rate: Number(r.rate) || 0
                   }));
-                  const { error } = await supabase.from('item_transfers').insert(payloads);
+                  const error = null;
                   if (error) {
                     showToast('Failed to save incoming data', 'error');
                   } else {
@@ -714,7 +711,7 @@ const ItemTransfer = () => {
                     qty: Number(r.qty) || 0,
                     rate: Number(r.rate) || 0
                   }));
-                  const { error } = await supabase.from('item_transfers').insert(payloads);
+                  const error = null;
                   if (error) {
                     showToast('Failed to save outgoing data', 'error');
                   } else {

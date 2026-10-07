@@ -4,7 +4,7 @@ import { ImageOcrUploader } from '../components/ImageOcrUploader';
 import { FilterBar } from '../components/FilterBar';
 import './Production2.css';
 import DateFilter from '../components/DateFilter';
-import { supabase } from '../supabase';
+
 
 /* ---------- Load pdf.js (classic, non-module build) with CDN fallback chain ---------- */
 const PDFJS_SOURCES = [
@@ -178,86 +178,6 @@ export default function Production2Page() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   const [headerDate, setHeaderDate] = useState(new Date().toISOString().split('T')[0]);
-  const [isSavingDB, setIsSavingDB] = useState(false);
-
-  const handleSaveToDB = async () => {
-    setIsSavingDB(true);
-    setErrorMsg("");
-    
-    const payloads = [];
-    filesData.forEach(f => {
-      f.items.forEach(item => {
-        payloads.push({
-          report_date: headerDate,
-          file_name: f.fileName,
-          file_url: f.fileUrl || null,
-          item_label: item.label,
-          percent: item.percent || null,
-          kiln1: item.kiln1 || 0,
-          kiln2: item.kiln2 || 0,
-          total: item.total || 0
-        });
-      });
-    });
-
-    if (payloads.length === 0) {
-      setErrorMsg("No data to save.");
-      setIsSavingDB(false);
-      return;
-    }
-
-    try {
-      await supabase.from('production2_data').delete().eq('report_date', headerDate);
-      const { error } = await supabase.from('production2_data').insert(payloads);
-      
-      if (error) throw error;
-      alert("Data saved successfully!");
-    } catch (err) {
-      console.error("Error saving to DB:", err);
-      setErrorMsg("Error saving to DB: " + err.message);
-    } finally {
-      setIsSavingDB(false);
-    }
-  };
-
-  const fetchData = async () => {
-    const { data, error } = await supabase.from('production2_data').select('*').eq('report_date', headerDate);
-    if (data) {
-      const grouped = {};
-      data.forEach(row => {
-         if (!grouped[row.file_name]) {
-             grouped[row.file_name] = {
-                 date: row.report_date,
-                 fileName: row.file_name,
-                 found: true,
-                 fileUrl: row.file_url,
-                 items: []
-             };
-         }
-         grouped[row.file_name].items.push({
-             label: row.item_label,
-             percent: row.percent,
-             kiln1: row.kiln1,
-             kiln2: row.kiln2,
-             total: row.total
-         });
-      });
-      setFilesData(prev => {
-        const newFiles = Object.values(grouped);
-        newFiles.forEach(nf => {
-          const existing = prev.find(p => p.fileName === nf.fileName);
-          if (existing && existing.fileUrl && !nf.fileUrl) {
-            nf.fileUrl = existing.fileUrl;
-          }
-        });
-        return newFiles;
-      });
-    }
-  };
-
-  useEffect(() => {
-    if (headerDate) fetchData();
-  }, [headerDate]);
 
   // Manual Form State
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
@@ -296,15 +216,7 @@ export default function Production2Page() {
           setProgressMsg(`Uploading ${file.name} to Storage...`);
           const fileExt = file.name.split('.').pop();
           const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-          const filePath = `${headerDate}/${uniqueName}`;
-          
-          const { error: uploadError } = await supabase.storage.from('production_pdfs').upload(filePath, file);
-          if (!uploadError) {
-             const { data: publicUrlData } = supabase.storage.from('production_pdfs').getPublicUrl(filePath);
-             result.fileUrl = publicUrlData.publicUrl;
-          } else {
-             console.error("Storage upload error", uploadError);
-          }
+          result.fileUrl = null;
           newFiles.push(result);
         }
       } catch (err) {
@@ -477,7 +389,6 @@ export default function Production2Page() {
 
   const handleClearAll = async () => {
     if (window.confirm(`Delete all data for ${headerDate}?`)) {
-      await supabase.from('production2_data').delete().eq('report_date', headerDate);
       setFilesData([]);
       setErrorMsg("");
     }
@@ -635,9 +546,7 @@ export default function Production2Page() {
             <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-md transition-colors" onClick={() => document.getElementById('summaryContainer').scrollBy({ left: 800, behavior: 'smooth' })} title="Scroll Right">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
             </button>
-            <button className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2" onClick={handleSaveToDB} disabled={isSavingDB}>
-              {isSavingDB ? 'Saving...' : 'Save Data to DB'}
-            </button>
+
             <button className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors shadow-sm" onClick={() => {
               setEditModeData(null);
               setManualDate("");

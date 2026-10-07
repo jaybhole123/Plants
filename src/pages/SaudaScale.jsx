@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { supabase } from '../supabase'
+
 import { CsvDropzone } from '../components/CsvDropzone'
 import { ImageOcrUploader } from '../components/ImageOcrUploader'
 import { FilterBar } from '../components/FilterBar'
@@ -62,7 +62,6 @@ const SaudaScale = () => {
     )
   }, [entries, search])
 
-  // --- Form Submit Handler ---
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.partyName.trim() || !form.itemName.trim()) {
@@ -71,43 +70,33 @@ const SaudaScale = () => {
     }
 
     const payload = {
+      id: editingId || Date.now() + Math.random(),
       date: form.date,
-      main_heading: form.mainHeading,
-      item_name: form.itemName,
-      size_mm: form.sizeMm || null,
-      party_name: form.partyName,
-      consignee_name: form.consigneeName || null,
-      sauda_quantity: Number(form.saudaQuantity) || 0,
-      rate_amt: Number(form.rateAmt) || 0,
-      prv_pending: Number(form.prvPending) || 0,
-      qty_dispatch: Number(form.qtyDispatch) || 0,
-      bal_pending: calculatedBalance,
+      mainHeading: form.mainHeading,
+      itemName: form.itemName,
+      sizeMm: form.sizeMm || null,
+      partyName: form.partyName,
+      consigneeName: form.consigneeName || null,
+      saudaQuantity: Number(form.saudaQuantity) || 0,
+      rateAmt: Number(form.rateAmt) || 0,
+      prvPending: Number(form.prvPending) || 0,
+      qtyDispatch: Number(form.qtyDispatch) || 0,
+      balPending: calculatedBalance,
       broker: form.broker || null,
-      delivery_terms: form.deliveryTerms || null,
-      payment_condition: form.paymentCondition || null,
-      reference_name: form.referenceName || null,
+      deliveryTerms: form.deliveryTerms || null,
+      paymentCondition: form.paymentCondition || null,
+      referenceName: form.referenceName || null,
       remarks: form.remarks || null,
     }
 
-    setIsLoading(true)
     if (editingId) {
-      const { error } = await supabase.from('sauda_sale').update(payload).eq('id', editingId)
-      if (error) {
-        showToast('Failed to update entry', 'error')
-      } else {
-        showToast('Sauda entry updated successfully.')
-        await fetchSaudaEntries()
-      }
+      setEntries(prev => prev.map(item => item.id === editingId ? { ...item, ...payload } : item))
+      showToast('Sauda entry updated successfully.')
     } else {
-      const { error } = await supabase.from('sauda_sale').insert([payload])
-      if (error) {
-        showToast('Failed to add entry', 'error')
-      } else {
-        showToast('Sauda entry added successfully.')
-        await fetchSaudaEntries()
-      }
+      setEntries(prev => [...prev, payload])
+      showToast('Sauda entry added successfully.')
     }
-    setIsLoading(false)
+    
     resetForm()
     setIsModalOpen(false)
   }
@@ -123,16 +112,9 @@ const SaudaScale = () => {
 
   const handleDelete = async (id) => {
     if (window.confirm('Delete this sauda entry?')) {
-      setIsLoading(true)
-      const { error } = await supabase.from('sauda_sale').delete().eq('id', id)
-      if (error) {
-        showToast('Failed to delete entry', 'error')
-      } else {
-        showToast('Sauda entry removed.')
-        await fetchSaudaEntries()
-        if (editingId === id) resetForm()
-      }
-      setIsLoading(false)
+      setEntries(prev => prev.filter(item => item.id !== id))
+      showToast('Sauda entry removed.')
+      if (editingId === id) resetForm()
     }
   }
 
@@ -599,35 +581,29 @@ DATE, ITEMS, PARTY NAME, SAUDA QUANTITY, RATE/MT, PRV PENDING, QTY DISPATCH, BAL
             <div className="flex gap-1">
               <button 
                 onClick={async () => {
-                  setIsLoading(true)
                   const payloads = csvPreview.map(item => ({
+                    id: Date.now() + Math.random(),
                     date: item.date,
-                    main_heading: item.mainHeading,
-                    item_name: item.itemName,
-                    size_mm: item.sizeMm || null,
-                    party_name: item.partyName,
-                    consignee_name: item.consigneeName || null,
-                    sauda_quantity: Number(item.saudaQuantity) || 0,
-                    rate_amt: Number(item.rateAmt) || 0,
-                    prv_pending: Number(item.prvPending) || 0,
-                    qty_dispatch: Number(item.qtyDispatch) || 0,
-                    bal_pending: Number(item.balPending) || 0,
+                    mainHeading: item.mainHeading,
+                    itemName: item.itemName,
+                    sizeMm: item.sizeMm || null,
+                    partyName: item.partyName,
+                    consigneeName: item.consigneeName || null,
+                    saudaQuantity: Number(item.saudaQuantity) || 0,
+                    rateAmt: Number(item.rateAmt) || 0,
+                    prvPending: Number(item.prvPending) || 0,
+                    qtyDispatch: Number(item.qtyDispatch) || 0,
+                    balPending: Number(item.balPending) || 0,
                     broker: item.broker || null,
-                    delivery_terms: item.deliveryTerms || null,
-                    payment_condition: item.paymentCondition || null,
-                    reference_name: item.referenceName || null,
+                    deliveryTerms: item.deliveryTerms || null,
+                    paymentCondition: item.paymentCondition || null,
+                    referenceName: item.referenceName || null,
                     remarks: item.remarks || null,
                   }))
 
-                  const { error } = await supabase.from('sauda_sale').insert(payloads)
-                  if (error) {
-                    showToast('Failed to save bulk data to table', 'error')
-                  } else {
-                    setCsvPreview([])
-                    showToast('Data saved to table successfully.')
-                    await fetchSaudaEntries()
-                  }
-                  setIsLoading(false)
+                  setEntries(prev => [...prev, ...payloads])
+                  setCsvPreview([])
+                  showToast('Data saved to local storage successfully.')
                 }}
                 className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md transition shadow-sm"
               >

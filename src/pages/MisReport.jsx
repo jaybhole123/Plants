@@ -7,7 +7,6 @@ import {
   useProduction2Store
 } from '../store/useStore'
 import { FilterBar } from '../components/FilterBar'
-import { supabase } from '../supabase'
 
 const formatNumber = (value) => {
   if (value === undefined || value === null || isNaN(Number(value))) return '0.000'
@@ -46,18 +45,10 @@ const MisReport = () => {
   useEffect(() => {
     const fetchData = async () => {
       // Fetch Raw Material Stock
-      const { data: rawData } = await supabase
-        .from('raw_material_stock')
-        .select('*')
-        .gte('created_at', `${reportDate}T00:00:00+05:30`)
-        .lte('created_at', `${reportDate}T23:59:59+05:30`)
+      const rawData = []
         
       // Fetch Coal Stock
-      const { data: coalData } = await supabase
-        .from('coal_stock')
-        .select('*')
-        .gte('created_at', `${reportDate}T00:00:00+05:30`)
-        .lte('created_at', `${reportDate}T23:59:59+05:30`)
+      const coalData = []
 
       let mappedStocks = []
       if (rawData) {
@@ -79,11 +70,9 @@ const MisReport = () => {
       setStockItems(mappedStocks)
 
       // Fetch item transfers
-      const { data: transfers, error: transferError } = await supabase
-        .from('item_transfers')
-        .select('*')
-        .gte('created_at', `${reportDate}T00:00:00+05:30`)
-        .lte('created_at', `${reportDate}T23:59:59+05:30`)
+      const transfers = []
+      const transferError = null
+      
         
       if (!transferError && transfers) {
         const incoming = transfers.filter(d => d.entry_type === 'incoming').map(item => ({
@@ -107,7 +96,7 @@ const MisReport = () => {
       }
 
       // Fetch Sauda Sale
-      const { data: saleData } = await supabase.from('sauda_sale').select('*')
+      const saleData = []
       if (saleData) {
         setSaudaSaleEntries(saleData.map(item => ({
           mainHeading: item.main_heading,
@@ -117,7 +106,7 @@ const MisReport = () => {
       }
 
       // Fetch Sauda Purchase
-      const { data: purchaseData } = await supabase.from('sauda_purchase').select('*')
+      const purchaseData = []
       if (purchaseData) {
         setSaudaPurchaseEntries(purchaseData.map(item => ({
           mainHeading: item.main_heading,

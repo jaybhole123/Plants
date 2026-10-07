@@ -5,7 +5,7 @@ import { ImageOcrUploader } from '../components/ImageOcrUploader'
 import { FilterBar } from '../components/FilterBar'
 import DateFilter from '../components/DateFilter'
 import OCRImageUploader from '../components/OCRImageUploader'
-import { supabase } from '../supabase'
+
 
 const initialForm = {
   category: '',
@@ -66,210 +66,23 @@ const Stock = () => {
   const storeUpdateItem = useStockStore((state) => state.updateItem)
   const storeDeleteItem = useStockStore((state) => state.deleteItem)
 
-  const [dbItems, setDbItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const fetchDbItems = async () => {
-    setIsLoading(true);
-    try {
-      const [rawResult, coalResult] = await Promise.all([
-        supabase
-          .from('raw_material_stock')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .order('material', { ascending: true })
-          .order('id', { ascending: true }),
-        supabase
-          .from('coal_stock')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .order('material', { ascending: true })
-          .order('id', { ascending: true })
-      ]);
-        
-      if (rawResult.error) throw rawResult.error;
-      if (coalResult.error) throw coalResult.error;
-      
-      const mappedRaw = rawResult.data.map(item => ({
-        id: item.id,
-        type: 'raw_material',
-        category: item.category,
-        material: item.material,
-        openingStock: Number(item.opening_stock) || 0,
-        inward: Number(item.inward) || 0,
-        consumption: Number(item.consumption) || 0,
-        crushing: item.crushing || '0%',
-        fines3: Number(item.fines3) || 0,
-        fines3Qty: Number(item.fines3_qty) || 0,
-        production: Number(item.production) || 0,
-        dispatch: Number(item.dispatch) || 0,
-        closingStock: Number(item.closing_stock) || 0,
-        unit: item.unit || 'ton',
-        remarks: item.remarks || '',
-        reportDate: item.report_date,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at
-      }));
-
-      const mappedCoal = coalResult.data.map(item => ({
-        id: item.id,
-        type: 'coal_detail',
-        category: item.category,
-        material: item.material,
-        openingStock: Number(item.opening_stock) || 0,
-        inward: Number(item.inward) || 0,
-        consumption: Number(item.consumption) || 0,
-        fc: item.fc || '',
-        moistLossPct: item.moist_loss_pct || '',
-        moistLossQty: Number(item.moist_loss_qty) || 0,
-        landedCost: Number(item.landed_cost) || 0,
-        dispatch: Number(item.dispatch) || 0,
-        closingStock: Number(item.closing_stock) || 0,
-        remarks: item.remarks || '',
-        reportDate: item.report_date,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at
-      }));
-
-      setDbItems([...mappedRaw, ...mappedCoal]);
-    } catch (err) {
-      console.error(err);
-      setToast({ type: 'error', message: 'Failed to fetch items from database.' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDbItems();
-  }, []);
+  const dbItems = storeItems;
+  const isLoading = false;
 
   const items = useMemo(() => {
     return dbItems;
   }, [dbItems]);
 
   const addItem = async (item) => {
-    if (item.type === 'coal_detail') {
-      const payload = {
-        category: item.category || 'COAL DETAILS',
-        material: item.material,
-        opening_stock: Number(item.openingStock) || 0,
-        inward: Number(item.inward) || 0,
-        consumption: Number(item.consumption) || 0,
-        fc: item.fc || '',
-        moist_loss_pct: item.moistLossPct || '',
-        moist_loss_qty: Number(item.moistLossQty) || 0,
-        landed_cost: Number(item.landedCost) || 0,
-        dispatch: Number(item.dispatch) || 0,
-        closing_stock: Number(item.closingStock) || 0,
-        remarks: item.remarks || '',
-        report_date: item.reportDate || new Date().toISOString().split('T')[0]
-      };
-      const { error } = await supabase.from('coal_stock').insert([payload]);
-      if (error) {
-        setToast({ type: 'error', message: 'Failed to add coal item to DB.' });
-        console.error(error);
-      } else {
-        await fetchDbItems();
-      }
-    } else {
-      const payload = {
-        category: item.category || '',
-        material: item.material,
-        opening_stock: Number(item.openingStock) || 0,
-        inward: Number(item.inward) || 0,
-        consumption: Number(item.consumption) || 0,
-        crushing: item.crushing || '0%',
-        fines3: parsePercentValue(item.fines3) || 0,
-        fines3_qty: Number(item.fines3Qty) || 0,
-        production: Number(item.production) || 0,
-        dispatch: Number(item.dispatch) || 0,
-        closing_stock: Number(item.closingStock) || 0,
-        unit: item.unit || 'ton',
-        remarks: item.remarks || '',
-        report_date: item.reportDate || new Date().toISOString().split('T')[0]
-      };
-      const { error } = await supabase.from('raw_material_stock').insert([payload]);
-      if (error) {
-        setToast({ type: 'error', message: 'Failed to add item to DB.' });
-        console.error(error);
-      } else {
-        await fetchDbItems();
-      }
-    }
+    storeAddItem(item);
   }
 
   const updateItem = async (id, item) => {
-    const isCoal = dbItems.some(i => i.id === id && i.type === 'coal_detail') || item.type === 'coal_detail';
-    if (isCoal) {
-      const payload = {
-        category: item.category || 'COAL DETAILS',
-        material: item.material,
-        opening_stock: Number(item.openingStock) || 0,
-        inward: Number(item.inward) || 0,
-        consumption: Number(item.consumption) || 0,
-        fc: item.fc || '',
-        moist_loss_pct: item.moistLossPct || '',
-        moist_loss_qty: Number(item.moistLossQty) || 0,
-        landed_cost: Number(item.landedCost) || 0,
-        dispatch: Number(item.dispatch) || 0,
-        closing_stock: Number(item.closingStock) || 0,
-        remarks: item.remarks || '',
-        report_date: item.reportDate || new Date().toISOString().split('T')[0]
-      };
-      const { error } = await supabase.from('coal_stock').update(payload).eq('id', id);
-      if (error) {
-        setToast({ type: 'error', message: 'Failed to update coal item in DB.' });
-        console.error(error);
-      } else {
-        await fetchDbItems();
-      }
-    } else {
-      const payload = {
-        category: item.category || '',
-        material: item.material,
-        opening_stock: Number(item.openingStock) || 0,
-        inward: Number(item.inward) || 0,
-        consumption: Number(item.consumption) || 0,
-        crushing: item.crushing || '0%',
-        fines3: parsePercentValue(item.fines3) || 0,
-        fines3_qty: Number(item.fines3Qty) || 0,
-        production: Number(item.production) || 0,
-        dispatch: Number(item.dispatch) || 0,
-        closing_stock: Number(item.closingStock) || 0,
-        unit: item.unit || 'ton',
-        remarks: item.remarks || '',
-        report_date: item.reportDate || new Date().toISOString().split('T')[0]
-      };
-      const { error } = await supabase.from('raw_material_stock').update(payload).eq('id', id);
-      if (error) {
-        setToast({ type: 'error', message: 'Failed to update item in DB.' });
-        console.error(error);
-      } else {
-        await fetchDbItems();
-      }
-    }
+    storeUpdateItem(id, item);
   }
 
   const deleteItem = async (id) => {
-    const isCoal = dbItems.some(i => i.id === id && i.type === 'coal_detail');
-    if (isCoal) {
-      const { error } = await supabase.from('coal_stock').delete().eq('id', id);
-      if (error) {
-        setToast({ type: 'error', message: 'Failed to delete coal item from DB.' });
-        console.error(error);
-      } else {
-        await fetchDbItems();
-      }
-    } else {
-      const { error } = await supabase.from('raw_material_stock').delete().eq('id', id);
-      if (error) {
-        setToast({ type: 'error', message: 'Failed to delete item from DB.' });
-        console.error(error);
-      } else {
-        await fetchDbItems();
-      }
-    }
+    storeDeleteItem(id);
   }
 
   const [form, setForm] = useState(initialForm)
@@ -567,23 +380,11 @@ const Stock = () => {
 
     setIsSaving(true);
     if (selectedId && payloads.length === 1) {
-      const { error } = await supabase.from('coal_stock').update(payloads[0]).eq('id', selectedId);
-      if (error) {
-        setToast({ type: 'error', message: 'Failed to update coal item in DB.' });
-        console.error(error);
-      } else {
-        setToast({ type: 'success', message: `Coal entry updated successfully.` })
-        await fetchDbItems();
-      }
+      storeUpdateItem(selectedId, { ...payloads[0], type: 'coal_detail' })
+      setToast({ type: 'success', message: `Coal entry updated successfully.` })
     } else {
-      const { error } = await supabase.from('coal_stock').insert(payloads);
-      if (error) {
-        setToast({ type: 'error', message: 'Failed to add coal items to DB.' });
-        console.error(error);
-      } else {
-        setToast({ type: 'success', message: `${validRows.length} coal row(s) added.` })
-        await fetchDbItems();
-      }
+      payloads.forEach(p => storeAddItem({ ...p, type: 'coal_detail' }));
+      setToast({ type: 'success', message: `${validRows.length} coal row(s) added.` })
     }
     setIsSaving(false);
 
@@ -628,14 +429,8 @@ const Stock = () => {
     }));
 
     setIsSaving(true);
-    const { error } = await supabase.from('raw_material_stock').insert(payloads);
-    if (error) {
-       setToast({ type: 'error', message: 'Failed to add items to DB.' });
-       console.error(error);
-    } else {
-       setToast({ type: 'success', message: `${validRows.length} stock row(s) added.` })
-       await fetchDbItems();
-    }
+    payloads.forEach(p => storeAddItem(p));
+    setToast({ type: 'success', message: `${validRows.length} stock row(s) added.` })
     setIsSaving(false);
 
     resetRows()

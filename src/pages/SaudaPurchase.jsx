@@ -77,41 +77,31 @@ const SaudaPurchase = () => {
     }
 
     const payload = {
+      id: editingId || Date.now() + Math.random(),
       date: form.date,
-      main_heading: form.mainHeading,
-      item_name: form.itemName,
-      size_mm: form.sizeMm || null,
-      party_name: form.partyName,
-      order_quantity: Number(form.orderQuantity) || 0,
-      rate_mt: Number(form.rateMt) || 0,
-      qty_received: Number(form.qtyReceived) || 0,
-      bal_pending: calculatedValues.balPending,
+      mainHeading: form.mainHeading,
+      itemName: form.itemName,
+      sizeMm: form.sizeMm || null,
+      partyName: form.partyName,
+      orderQuantity: Number(form.orderQuantity) || 0,
+      rateMt: Number(form.rateMt) || 0,
+      qtyReceived: Number(form.qtyReceived) || 0,
+      balPending: calculatedValues.balPending,
       broker: form.broker || null,
-      delivery_terms: form.deliveryTerms || null,
-      payment_condition: form.paymentCondition || null,
-      reference_name: form.referenceName || null,
+      deliveryTerms: form.deliveryTerms || null,
+      paymentCondition: form.paymentCondition || null,
+      referenceName: form.referenceName || null,
       remarks: form.remarks || null,
     }
 
-    setIsLoading(true)
     if (editingId) {
-      const { error } = await supabase.from('sauda_purchase').update(payload).eq('id', editingId)
-      if (error) {
-        showToast('Failed to update entry', 'error')
-      } else {
-        showToast('Purchase entry updated successfully.')
-        await fetchPurchaseEntries()
-      }
+      setEntries(prev => prev.map(item => item.id === editingId ? { ...item, ...payload } : item))
+      showToast('Purchase entry updated successfully.')
     } else {
-      const { error } = await supabase.from('sauda_purchase').insert([payload])
-      if (error) {
-        showToast('Failed to add entry', 'error')
-      } else {
-        showToast('Purchase entry added successfully.')
-        await fetchPurchaseEntries()
-      }
+      setEntries(prev => [...prev, payload])
+      showToast('Purchase entry added successfully.')
     }
-    setIsLoading(false)
+    
     resetForm()
     setIsModalOpen(false)
   }
@@ -127,16 +117,9 @@ const SaudaPurchase = () => {
 
   const handleDelete = async (id) => {
     if (window.confirm('Delete this purchase entry?')) {
-      setIsLoading(true)
-      const { error } = await supabase.from('sauda_purchase').delete().eq('id', id)
-      if (error) {
-        showToast('Failed to delete entry', 'error')
-      } else {
-        showToast('Purchase entry removed.')
-        await fetchPurchaseEntries()
-        if (editingId === id) resetForm()
-      }
-      setIsLoading(false)
+      setEntries(prev => prev.filter(item => item.id !== id))
+      showToast('Purchase entry removed.')
+      if (editingId === id) resetForm()
     }
   }
 
@@ -640,34 +623,28 @@ MAIN HEADING, DATE, MATERIAL, PARTY NAME, QUANTITY IN MT, RATE/MT IN RS, TCS, BH
             <div className="flex gap-1">
               <button 
                 onClick={async () => {
-                  setIsLoading(true)
                   const payloads = csvPreview.map(item => ({
+                    id: Date.now() + Math.random(),
                     date: item.date,
-                    main_heading: item.mainHeading,
-                    item_name: item.itemName,
-                    size_mm: item.sizeMm || null,
-                    party_name: item.partyName,
-                    order_quantity: Number(item.orderQuantity) || 0,
-                    rate_mt: Number(item.rateMt) || 0,
-                    qty_received: Number(item.qtyReceived) || 0,
-                    bal_pending: Number(item.balPending) || 0,
+                    mainHeading: item.mainHeading,
+                    itemName: item.itemName,
+                    sizeMm: item.sizeMm || null,
+                    partyName: item.partyName,
+                    orderQuantity: Number(item.orderQuantity) || 0,
+                    rateMt: Number(item.rateMt) || 0,
+                    qtyReceived: Number(item.qtyReceived) || 0,
+                    balPending: Number(item.balPending) || 0,
                     broker: item.broker || null,
-                    delivery_terms: item.deliveryTerms || null,
-                    payment_condition: item.paymentCondition || null,
-                    reference_name: item.referenceName || null,
+                    deliveryTerms: item.deliveryTerms || null,
+                    paymentCondition: item.paymentCondition || null,
+                    referenceName: item.referenceName || null,
                     remarks: item.remarks || null,
                   }))
 
-                  const { error } = await supabase.from('sauda_purchase').insert(payloads)
-                  if (error) {
-                    showToast('Failed to save bulk data to table', 'error')
-                  } else {
-                    setCsvPreview([])
-                    showToast('Data saved to table successfully.')
-                    await fetchPurchaseEntries()
-                  }
-                  setIsLoading(false)
-                }} 
+                  setEntries(prev => [...prev, ...payloads])
+                  setCsvPreview([])
+                  showToast('Data saved to local storage successfully.')
+                }}
                 className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md transition shadow-sm"
               >
                 Save Data
