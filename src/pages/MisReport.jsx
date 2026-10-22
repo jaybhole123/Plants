@@ -4,7 +4,9 @@ import jsPDF from 'jspdf'
 import {
   useStockStore,
   useProductionStore,
-  useProduction2Store
+  useProduction2Store,
+  useSaudaPurchaseStore,
+  useSaudaScaleStore
 } from '../store/useStore'
 import { FilterBar } from '../components/FilterBar'
 
@@ -34,89 +36,22 @@ const MisReport = () => {
     </button>
   )
 
-  // Get data from all stores
-  const [stockItems, setStockItems] = useState([])
+  // Get data from stores
+  const storeStockItems = useStockStore(state => state.items)
+  const storeSaudaPurchases = useSaudaPurchaseStore(state => state.entries)
+  const storeSaudaSales = useSaudaScaleStore(state => state.entries)
   
   const [incomingList, setIncomingList] = useState([])
   const [outgoingList, setOutgoingList] = useState([])
-  const [saudaSaleEntries, setSaudaSaleEntries] = useState([])
-  const [saudaPurchaseEntries, setSaudaPurchaseEntries] = useState([])
 
-  useEffect(() => {
-    const fetchData = async () => {
-      // Fetch Raw Material Stock
-      const rawData = []
-        
-      // Fetch Coal Stock
-      const coalData = []
-
-      let mappedStocks = []
-      if (rawData) {
-        mappedStocks = [...mappedStocks, ...rawData.map(item => ({
-          type: 'raw_material',
-          category: item.category,
-          material: item.material,
-          closingStock: item.closing_stock
-        }))]
-      }
-      if (coalData) {
-        mappedStocks = [...mappedStocks, ...coalData.map(item => ({
-          type: 'coal_detail',
-          category: item.category,
-          material: item.material,
-          closingStock: item.closing_stock
-        }))]
-      }
-      setStockItems(mappedStocks)
-
-      // Fetch item transfers
-      const transfers = []
-      const transferError = null
-      
-        
-      if (!transferError && transfers) {
-        const incoming = transfers.filter(d => d.entry_type === 'incoming').map(item => ({
-          id: item.id,
-          partyName: item.party_name,
-          materialName: item.material_name,
-          vehicleNo: item.vehicle_no,
-          qty: item.qty,
-          rate: item.rate
-        }))
-        const outgoing = transfers.filter(d => d.entry_type === 'outgoing').map(item => ({
-          id: item.id,
-          partyName: item.party_name,
-          materialName: item.material_name,
-          vehicleNo: item.vehicle_no,
-          qty: item.qty,
-          rate: item.rate
-        }))
-        setIncomingList(incoming)
-        setOutgoingList(outgoing)
-      }
-
-      // Fetch Sauda Sale
-      const saleData = []
-      if (saleData) {
-        setSaudaSaleEntries(saleData.map(item => ({
-          mainHeading: item.main_heading,
-          itemName: item.item_name,
-          balPending: item.bal_pending
-        })))
-      }
-
-      // Fetch Sauda Purchase
-      const purchaseData = []
-      if (purchaseData) {
-        setSaudaPurchaseEntries(purchaseData.map(item => ({
-          mainHeading: item.main_heading,
-          itemName: item.item_name,
-          balPending: item.bal_pending
-        })))
-      }
-    }
-    fetchData()
-  }, [reportDate])
+  const stockItems = useMemo(() => {
+    return storeStockItems.map(item => ({
+      type: item.type === 'coal_detail' ? 'coal_detail' : 'raw_material',
+      category: item.category,
+      material: item.material,
+      closingStock: item.closingStock || item.closing_stock || 0
+    }))
+  }, [storeStockItems])
 
   const production2FilesData = useProduction2Store(state => state.filesData)
 
@@ -272,35 +207,34 @@ const MisReport = () => {
   const prodTotalAll = Object.values(productionSummary).reduce((sum, val) => sum + val.total, 0)
 
 
-  // 5. SAUDA SALE AGGREGATION
+  // 5. SAUDA SALE AGGREGATION (Grouped by Main Heading)
   const saudaSaleSummary = useMemo(() => {
     const summary = {}
-    saudaSaleEntries.forEach(item => {
-      const material = (item.mainHeading || item.itemName)?.toUpperCase().trim() || 'UNKNOWN'
-      summary[material] = (summary[material] || 0) + (Number(item.balPending) || 0)
+    storeSaudaSales.forEach(item => {
+      const heading = (item.mainHeading || item.itemName)?.toUpperCase().trim() || 'OTHERS'
+      summary[heading] = (summary[heading] || 0) + (Number(item.balPending) || 0)
     })
-    // Convert object to array for easier rendering
     return Object.entries(summary).map(([itemName, balPending]) => ({
       itemName,
       balPending
     }))
-  }, [saudaSaleEntries])
+  }, [storeSaudaSales])
 
-  // 6. SAUDA PURCHASE AGGREGATION
+  // 6. SAUDA PURCHASE AGGREGATION (Grouped by Main Heading and Total Balance in MT)
   const saudaPurchaseSummary = useMemo(() => {
     const summary = {}
-    saudaPurchaseEntries.forEach(item => {
-      const material = (item.mainHeading || item.itemName)?.toUpperCase().trim() || 'UNKNOWN'
-      if (!summary[material]) summary[material] = 0
-      summary[material] += Number(item.balPending) || 0
+    storeSaudaPurchases.forEach(item => {
+      // Main Heading prioritization
+      const heading = (item.mainHeading || item.itemName)?.toUpperCase().trim() || 'OTHERS'
+      if (!summary[heading]) summary[heading] = 0
+      summary[heading] += Number(item.balPending) || 0
     })
 
-    // Convert object to array for easier rendering
     return Object.entries(summary).map(([itemName, balPending]) => ({
       itemName,
       balPending
     }))
-  }, [saudaPurchaseEntries])
+  }, [storeSaudaPurchases])
 
   // Filtered Lists for Hiding Rows and Search
   const matchesSearch = (str) => !search || str.toLowerCase().includes(search.toLowerCase())
