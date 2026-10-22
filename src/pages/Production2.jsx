@@ -194,72 +194,256 @@ export default function Production2Page() {
     });
   }, []);
 
+  // Process image file via OCR
+  const processImageFile = async (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    setProgressMsg(`Reading image ${file.name || ''}...`);
+    setErrorMsg("");
+
+    try {
+      // Lazy load Tesseract if needed or use imported Tesseract
+      const Tesseract = (await import('tesseract.js')).default;
+      const { data: { text } } = await Tesseract.recognize(file, 'eng', {
+        logger: m => {
+          if (m.status === 'recognizing text') {
+            setProgressMsg(`Reading image OCR... ${Math.round(m.progress * 100)}%`);
+          }
+        }
+      });
+      handleOcrResult(text);
+    } catch (err) {
+      console.error("Image OCR error:", err);
+      setErrorMsg("Image read nahi ho payi. Try again with clearer photo.");
+    } finally {
+      setProgressMsg("");
+    }
+  };
+
+  // Support global Ctrl+V paste of images while on Production 2 page
+  useEffect(() => {
+    const handleGlobalPaste = (e) => {
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      if ((activeTag === 'input' || activeTag === 'textarea') && !e.clipboardData?.files?.length) {
+        return;
+      }
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            e.preventDefault();
+            processImageFile(file);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => window.removeEventListener('paste', handleGlobalPaste);
+  }, []);
+
   const handleFiles = async (fileList) => {
-    const fileArr = Array.from(fileList || []).filter(
+    const allFiles = Array.from(fileList || []);
+    const pdfFiles = allFiles.filter(
       (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")
     );
-    if (fileArr.length === 0) {
-      setErrorMsg("Sirf PDF file(s) upload karein.");
+    const imageFiles = allFiles.filter(
+      (f) => f.type.startsWith("image/") || /\.(png|jpe?g|webp|bmp)$/i.test(f.name)
+    );
+
+    if (pdfFiles.length === 0 && imageFiles.length === 0) {
+      setErrorMsg("Sirf PDF ya Image file(s) upload karein.");
       return;
     }
     setErrorMsg("");
 
-    let done = 0;
-    const newFiles = [];
-    for (const file of fileArr) {
-      setProgressMsg(`Reading ${file.name}… (${done + 1}/${fileArr.length})`);
-      try {
-        const result = await parsePdfFile(file);
-        if (!result.found) {
-          setErrorMsg(`"${file.name}" me PRODUCTION section ka data nahi mila. Format check karein.`);
-        } else {
-          setProgressMsg(`Uploading ${file.name} to Storage...`);
-          const fileExt = file.name.split('.').pop();
-          const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-          result.fileUrl = null;
-          newFiles.push(result);
-        }
-      } catch (err) {
-        console.error(err);
-        setErrorMsg(`"${file.name}" read nahi ho payi. (${err && err.message ? err.message : "unknown error"})`);
-      }
-      done++;
+    // Process image files if dropped
+    for (const img of imageFiles) {
+      await processImageFile(img);
     }
-    setProgressMsg("");
-    setFilesData((prev) => [...prev, ...newFiles]);
+
+    // Process PDF files
+    if (pdfFiles.length > 0) {
+      let done = 0;
+      const newFiles = [];
+      for (const file of pdfFiles) {
+        setProgressMsg(`Reading ${file.name}… (${done + 1}/${pdfFiles.length})`);
+        try {
+          const result = await parsePdfFile(file);
+          if (!result.found) {
+            setErrorMsg(`"${file.name}" me PRODUCTION section ka data nahi mila. Format check karein.`);
+          } else {
+            setProgressMsg(`Uploading ${file.name} to Storage...`);
+            const fileExt = file.name.split('.').pop();
+            const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            result.fileUrl = null;
+            newFiles.push(result);
+          }
+        } catch (err) {
+          console.error(err);
+          setErrorMsg(`"${file.name}" read nahi ho payi. (${err && err.message ? err.message : "unknown error"})`);
+        }
+        done++;
+      }
+      setProgressMsg("");
+      setFilesData((prev) => [...prev, ...newFiles]);
+    }
   };
 
   const handleOcrResult = (text) => {
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l)
+    const rawLines = text.split('\n').map(l => l.trim()).filter(l => l);
     
-    const items = []
-    for (const line of lines) {
-      if (line.match(/\d/)) {
-        const parts = line.split(/\s+/)
-        const nums = parts.filter(p => !isNaN(parseFloat(p.replace(/,/g, ''))))
-        const chars = line.replace(/[\d\.\-,%]/g, '').trim()
-        
-        if (nums.length >= 1) {
-           items.push({
-             label: chars.substring(0, 30) || 'Scanned Item',
-             percent: null,
-             kiln1: parseFloat(nums[0]) || 0,
-             kiln2: 0,
-             total: nums.length > 1 ? parseFloat(nums[nums.length-1]) : parseFloat(nums[0])
-           })
+    // 1. Try to extract Date (e.g. "Date: Wednesday 21 October 2026" or "21.10.2026")
+    let extractedDate = new Date().toISOString().split('T')[0];
+    for (const l of rawLines.slice(0, 10)) {
+      // Format: 21 October 2026 or 21-10-2026 or 21.10.2026
+      const dMatch = l.match(/(\d{1,2})\s*(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})/i);
+      if (dMatch) {
+        const months = {
+          january: '01', february: '02', march: '03', april: '04', may: '05', june: '06',
+          july: '07', august: '08', september: '09', october: '10', november: '11', december: '12',
+          jan: '01', feb: '02', mar: '03', apr: '04', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
+        };
+        const day = dMatch[1].padStart(2, '0');
+        const month = months[dMatch[2].toLowerCase()] || '10';
+        const year = dMatch[3];
+        extractedDate = `${year}-${month}-${day}`;
+        break;
+      }
+      const numDateMatch = l.match(/(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})/);
+      if (numDateMatch) {
+        const d = numDateMatch[1].padStart(2, '0');
+        const m = numDateMatch[2].padStart(2, '0');
+        let y = numDateMatch[3];
+        if (y.length === 2) y = '20' + y;
+        extractedDate = `${y}-${m}-${d}`;
+        break;
+      }
+    }
+
+    // 2. Isolate strictly the "PRODUCTION" section
+    // Starts at "PRODUCTION" header and stops at "DOWN TIME REMARKS" / "DOWN TIME" / "FEED LOSS" / "REMARKS"
+    const prodIndex = rawLines.findIndex(l => {
+      const u = l.toUpperCase().replace(/[^A-Z]/g, '');
+      return u === 'PRODUCTION' || u.endsWith('PRODUCTION');
+    });
+
+    let productionLines = [];
+    if (prodIndex !== -1) {
+      for (let i = prodIndex + 1; i < rawLines.length; i++) {
+        const u = rawLines[i].toUpperCase();
+        if (
+          u.includes('DOWN TIME') || 
+          u.includes('FEED LOSS') || 
+          u.includes('REMARKS') ||
+          u.includes('CONSUMPTION') ||
+          u.includes('CAMPAIGN')
+        ) {
+          break;
+        }
+        productionLines.push(rawLines[i]);
+      }
+    } else {
+      // Fallback: look for known items directly in lines if "PRODUCTION" banner wasn't read
+      productionLines = rawLines.filter(l => {
+        const u = l.toUpperCase();
+        return (
+          u.includes('STEAM') || 
+          u.includes('SPONGE') || 
+          u.includes('GRADE') || 
+          u.includes('N.MAG') || 
+          u.includes('NMAG') || 
+          u.includes('CHAR')
+        ) && !u.includes('CONSUMPTION') && !u.includes('COST');
+      });
+    }
+
+    // 3. Known production item metrics mapping
+    const standardMetrics = [
+      { key: 'STEAM', aliases: ['STEAM', 'STEAN'] },
+      { key: 'SPONGE', aliases: ['SPONGE', 'SPONGE PROD', 'TOTAL SPONGE'] },
+      { key: '"A" GRADE', aliases: ['"A" GRADE', 'A GRADE', '"A"GRADE', 'A" GRADE', "'A' GRADE"] },
+      { key: '"B" GRADE', aliases: ['"B" GRADE', 'B GRADE', '"B"GRADE', 'B" GRADE', "'B' GRADE"] },
+      { key: 'N.MAG (CHAR+DOLO CHAR)', aliases: ['N.MAG', 'NMAG', 'NON MAG', 'NON-MAG', 'CHAR+DOLO CHAR'] }
+    ];
+
+    const items = [];
+    for (const line of productionLines) {
+      const u = line.toUpperCase();
+      // Ignore section header itself if repeated
+      if (u.replace(/[^A-Z]/g, '') === 'PRODUCTION') continue;
+
+      // Extract numeric values from the line
+      const nums = (line.match(/\d+(?:\.\d+)?/g) || []).map(n => parseFloat(n));
+      if (nums.length === 0) continue;
+
+      // Match known production metrics
+      let matchedLabel = '';
+      for (const sm of standardMetrics) {
+        if (sm.aliases.some(alias => u.includes(alias))) {
+          matchedLabel = sm.key;
+          break;
+        }
+      }
+
+      // If not standard, format text cleanly
+      if (!matchedLabel) {
+        matchedLabel = line
+          .replace(/[\d\.\-,%]/g, '')
+          .replace(/[|\[\]_]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (matchedLabel.length < 2) continue;
+      }
+
+      // The production value is usually the last or only number in the row
+      const val = nums[nums.length - 1];
+
+      // If percent is present in the line (e.g. 78% or 22%)
+      let percent = null;
+      const pctMatch = line.match(/(\d+(?:\.\d+)?)\s*%/);
+      if (pctMatch) {
+        percent = parseFloat(pctMatch[1]);
+      }
+
+      items.push({
+        label: matchedLabel,
+        percent: percent,
+        kiln1: val,
+        kiln2: 0,
+        total: val
+      });
+    }
+
+    // Auto-compute percent for "A" GRADE and "B" GRADE if total sponge exists
+    const aGradeItem = items.find(i => i.label.includes('"A" GRADE'));
+    const bGradeItem = items.find(i => i.label.includes('"B" GRADE'));
+    if (aGradeItem && bGradeItem) {
+      const sumGrade = (aGradeItem.total || 0) + (bGradeItem.total || 0);
+      if (sumGrade > 0) {
+        if (aGradeItem.percent === null) {
+          aGradeItem.percent = Math.round(((aGradeItem.total || 0) / sumGrade) * 100);
+        }
+        if (bGradeItem.percent === null) {
+          bGradeItem.percent = Math.round(((bGradeItem.total || 0) / sumGrade) * 100);
         }
       }
     }
 
     if (items.length > 0) {
       setFilesData(prev => [...prev, {
-        date: new Date().toISOString().split('T')[0],
-        fileName: 'Image Scan',
+        date: extractedDate,
+        fileName: 'MIS Production Scan',
         found: true,
         items
-      }])
+      }]);
+      setProgressMsg("");
     } else {
-      setErrorMsg('Could not extract valid data from image.')
+      setErrorMsg('Image me "PRODUCTION" section ka data nahi mil paya. Please ensure the image is clear.');
     }
   };
 
@@ -416,20 +600,34 @@ export default function Production2Page() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Production 2</h1>
         </div>
 
-        <div className="z-10 flex flex-col items-center sm:items-end">
-          <label className="text-emerald-100 text-[10px] uppercase tracking-wider font-semibold mb-1">Report Date</label>
-          <div className="p-1">
-            <DateFilter date={headerDate} onChange={setHeaderDate} />
+        <div className="z-10 flex flex-col sm:flex-row items-center sm:items-end gap-3">
+          <div className="flex flex-col items-center sm:items-end">
+            <label className="text-emerald-100 text-[10px] uppercase tracking-wider font-semibold mb-1">Report Date</label>
+            <div className="p-1 flex items-center gap-2">
+              <DateFilter date={headerDate} onChange={setHeaderDate} />
+              <ImageOcrUploader
+                onTextExtracted={handleOcrResult}
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 font-bold rounded-md transition-all shadow-sm flex items-center gap-1.5 active:scale-95 text-sm h-10 backdrop-blur-sm"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      <FilterBar 
-        searchQuery={search} 
-        setSearchQuery={setSearch} 
-        selectedDate={date} 
-        setSelectedDate={setDate} 
-      />
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-6">
+        <FilterBar 
+          searchQuery={search} 
+          setSearchQuery={setSearch} 
+          selectedDate={date} 
+          setSelectedDate={setDate} 
+        />
+        <div className="flex items-center gap-2">
+          <ImageOcrUploader
+            onTextExtracted={handleOcrResult}
+            className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-semibold rounded-lg transition-all shadow-sm flex items-center gap-1.5 active:scale-95 text-sm h-[42px]"
+          />
+        </div>
+      </div>
 
       <div className="print:hidden">
         <section
@@ -444,24 +642,18 @@ export default function Production2Page() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="application/pdf,.pdf"
+            accept="application/pdf,.pdf,image/*"
             multiple
             hidden
             onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
           />
           <div className="text-5xl mb-4 opacity-80 group-hover:scale-110 transition-transform duration-300">🏭</div>
-          <p className="text-lg font-semibold text-slate-700 mb-1">Upload Production PDF (2)</p>
-          <p className="text-sm text-slate-500">Drag & drop your PDF files here, or click to browse</p>
+          <p className="text-lg font-semibold text-slate-700 mb-1">Upload Production PDF or Image (2)</p>
+          <p className="text-sm text-slate-500">Drag & drop your PDF or Image files here, paste (Ctrl+V), or click to browse</p>
           
           {progressMsg && <p className="mt-4 text-sm font-medium text-blue-600 bg-blue-50 py-2 px-4 rounded-full inline-block">{progressMsg}</p>}
           {errorMsg && <p className="mt-4 text-sm font-medium text-rose-600 bg-rose-50 py-2 px-4 rounded-full inline-block">{errorMsg}</p>}
         </section>
-        <div className="flex justify-center mt-4">
-           <ImageOcrUploader
-             onTextExtracted={handleOcrResult}
-             className="px-6 py-3 border font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700 hover:border-indigo-300"
-           />
-        </div>
       </div>
 
         <div className="flex justify-between items-center mb-4 mt-8">

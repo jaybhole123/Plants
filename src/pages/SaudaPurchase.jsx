@@ -1,4 +1,4 @@
-                                          import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useSaudaPurchaseStore } from '../store/useStore'
 import { CsvDropzone } from '../components/CsvDropzone'
 import { ImageOcrUploader } from '../components/ImageOcrUploader'
@@ -197,39 +197,194 @@ const SaudaPurchase = () => {
   }
 
   const handleOcrResult = (text) => {
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l)
+    const rawLines = text.split('\n').map(l => l.trim()).filter(l => l)
     const newRows = []
     
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      if (line.match(/\d/)) {
-        const parts = line.split(/\s+/)
-        const nums = parts.filter(p => !isNaN(parseFloat(p.replace(/,/g, ''))))
-        const chars = line.replace(/[\d\.\-,]/g, '').trim()
+    // Known potential headings or patterns in Sauda Purchase
+    const knownHeadings = [
+      'IRONORE', 'IRON ORE',
+      'COAL/SID', 'COAL / SID', 'COAL',
+      'STEAM COAL', 'STEAM COAL/ GASIFIRE', 'STEAM COAL / GASIFIRE',
+      'DOLOCHAR/COAL', 'DOLOCHAR / COAL', 'DOLOCHAR',
+      'DOLOMITE', 'PELLET', 'SPONGE IRON'
+    ]
+
+    let currentMainHeading = form.mainHeading || ''
+    // Try to extract document level date if present (e.g. "Date- 21.10.2026")
+    let docDate = new Date().toISOString().split('T')[0]
+    for (const l of rawLines.slice(0, 5)) {
+      const match = l.match(/(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})/)
+      if (match) {
+        docDate = parseDateToDB(match[0])
+        break
+      }
+    }
+
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i].replace(/[|\[\]_]+/g, ' ').trim()
+      const upperLine = line.toUpperCase()
+
+      // 1. Skip table title/header columns
+      if (
+        upperLine.includes('MATERIAL PURCHASE') ||
+        upperLine.includes('BALANCE PENDING') ||
+        upperLine.includes('QUANTITY IN MT') ||
+        upperLine.includes('RATE/MT') ||
+        upperLine.includes('LANDING COST') ||
+        upperLine.startsWith('DATE ') ||
+        upperLine === 'DATE'
+      ) {
+        continue
+      }
+
+      // 2. Detect Main Category Heading rows (e.g. IRONORE, COAL/SID, Steam Coal/ Gasifire, DOLOCHAR/COAL, Dolomite)
+      // They typically don't have quantities/multiple numbers, or match known headings
+      const matchedHeading = knownHeadings.find(h => upperLine === h || upperLine.startsWith(h) || upperLine.includes(h))
+      const hasFewOrNoNumbers = (line.match(/\d+/g) || []).length <= 1
+      
+      if (matchedHeading && (hasFewOrNoNumbers || !line.match(/\d{2,}\.\d{2,}/))) {
+        // Standardize heading name
+        if (upperLine.includes('IRON')) currentMainHeading = 'IRONORE'
+        else if (upperLine.includes('STEAM')) currentMainHeading = 'Steam Coal/ Gasifire'
+        else if (upperLine.includes('DOLOCHAR')) currentMainHeading = 'DOLOCHAR/COAL'
+        else if (upperLine.includes('DOLOMITE')) currentMainHeading = 'Dolomite'
+        else if (upperLine.includes('COAL')) currentMainHeading = 'COAL/SID'
+        else currentMainHeading = line.toUpperCase().replace(/\(.*\)/, '').trim()
+        continue
+      }
+
+      // 3. Skip TOTAL / SUB-TOTAL rows (e.g. TOTAL IRON PURCHASE, TOTAL COAL PURCHASE)
+      if (upperLine.includes('TOTAL') && (upperLine.includes('PURCHASE') || upperLine.includes('IRON') || upperLine.includes('COAL') || upperLine.includes('DOLOMITE'))) {
+        continue
+      }
+
+      // 4. Extract data rows: must have numbers (quantities, rates, etc.)
+      const numbersInLine = line.match(/\d+(?:\.\d+)?/g) || []
+      if (numbersInLine.length >= 2) {
+        // Check if there is a row date (e.g., 02.06.26 or 02-06-2026)
+        let rowDate = docDate
+        const dateMatch = line.match(/\b(\d{1,2}[.\-\/]\d{1,2}[.\-\/]\d{2,4})\b/)
+        if (dateMatch) {
+          rowDate = parseDateToDB(dateMatch[1])
+        }
+
+        // Clean out date, numbers, punctuation from the line to extract Material & Party Name
+        let textPart = line
+        if (dateMatch) {
+          textPart = textPart.replace(dateMatch[0], '')
+        }
+        textPart = textPart
+          .replace(/\b\d+(?:\.\d+)?\*?\b/g, '') // remove numbers
+          .replace(/[|\[\]\-_:;]+/g, ' ')       // remove OCR noise symbols
+          .replace(/\s+/g, ' ')
+          .trim()
+
+        // Distinguish Material Name vs Party Name
+        let detectedMaterial = ''
+        let detectedParty = ''
+
+        // Check if common materials are in the line
+        const materialKeywords = [
+          'Iron Ore', 'Iron Ore(10-40mm)', 'Stone Chips', 
+          'Rom Coal', 'Feed Coal', 'Wash Coal', 'Steam Coal', 
+          'Dolochar', 'Dolomite'
+        ]
         
+        const matchedMat = materialKeywords.find(m => new RegExp(m, 'i').test(textPart))
+        if (matchedMat) {
+          detectedMaterial = matchedMat
+          // If Fe or Grade is present (e.g., "61-62 Fe", "38 FC", "38+/-1 FC")
+          const gradeMatch = textPart.match(/(?:\(?\d+[\+\-\/]*\d*\s*(?:FC|Fe|MM)\)?)/i)
+          if (gradeMatch) {
+            detectedMaterial += ` ${gradeMatch[0].trim()}`
+          }
+          // The rest is the Party Name
+          detectedParty = textPart
+            .replace(new RegExp(matchedMat, 'i'), '')
+            .replace(/(?:\(?\d+[\+\-\/]*\d*\s*(?:FC|Fe|MM)\)?)/gi, '')
+            .trim()
+        } else {
+          // If not matched directly, split textPart in half or by space
+          const words = textPart.split(' ')
+          if (words.length >= 4) {
+            detectedMaterial = words.slice(0, 2).join(' ')
+            detectedParty = words.slice(2).join(' ')
+          } else {
+            detectedMaterial = words[0] || 'Material'
+            detectedParty = words.slice(1).join(' ') || 'Party'
+          }
+        }
+
+        // Extract numeric columns in order:
+        // Order Quantity, Rate/MT, TCS, Bhada, Landing Cost, GST, Gross Rate, Net Rate, Qty Received, Balance
+        // If image only extracted 3-5 major numbers, map them logically
+        const nums = numbersInLine.map(n => parseFloat(n))
+        
+        let orderQuantity = '0'
+        let rateMt = '0'
+        let tcs = '0'
+        let bhada = '0'
+        let landingCost = '0'
+        let gst = '0'
+        let grossRate = '0'
+        let netRate = '0'
+        let qtyReceived = '0'
+        let balPending = '0'
+
+        if (numbersInLine.length >= 9) {
+          orderQuantity = numbersInLine[0]
+          rateMt = numbersInLine[1]
+          tcs = numbersInLine[2]
+          bhada = numbersInLine[3]
+          landingCost = numbersInLine[4]
+          gst = numbersInLine[5]
+          grossRate = numbersInLine[6]
+          netRate = numbersInLine[7]
+          qtyReceived = numbersInLine[8]
+          balPending = numbersInLine[9] || (parseFloat(orderQuantity) - parseFloat(qtyReceived)).toFixed(3)
+        } else if (numbersInLine.length >= 4) {
+          // Find largest number as Order Qty or Bal
+          orderQuantity = numbersInLine[0] || '0'
+          rateMt = numbersInLine[1] || '0'
+          qtyReceived = numbersInLine[numbersInLine.length - 2] || '0'
+          balPending = numbersInLine[numbersInLine.length - 1] || '0'
+        } else {
+          orderQuantity = numbersInLine[0] || '0'
+          rateMt = numbersInLine[1] || '0'
+          balPending = orderQuantity
+        }
+
+        // Fallback default heading if none encountered yet
+        const finalHeading = currentMainHeading || 
+          (detectedMaterial.toUpperCase().includes('IRON') ? 'IRONORE' :
+           detectedMaterial.toUpperCase().includes('STEAM') ? 'Steam Coal/ Gasifire' :
+           detectedMaterial.toUpperCase().includes('DOLOCHAR') ? 'DOLOCHAR/COAL' :
+           detectedMaterial.toUpperCase().includes('DOLOMITE') ? 'Dolomite' :
+           detectedMaterial.toUpperCase().includes('COAL') ? 'COAL/SID' : 'GENERAL')
+
         newRows.push({
           id: Date.now() + i + Math.random(),
-          date: new Date().toISOString().split('T')[0],
-          mainHeading: form.mainHeading || 'SCANNED DATA',
-          itemName: form.itemName || 'Item',
-          partyName: chars.substring(0, 30) || 'Scanned Party',
-          orderQuantity: nums[0] || '0',
-          rateMt: nums[1] || '0',
-          tcs: nums[2] || '0',
-          bhada: nums[3] || '0',
-          landingCost: nums[4] || '0',
-          gst: nums[5] || '0',
-          grossRate: nums[6] || '0',
-          netRate: nums[7] || '0',
-          qtyReceived: nums[8] || '0',
-          balPending: nums[9] || '0',
+          date: rowDate,
+          mainHeading: finalHeading,
+          itemName: detectedMaterial || 'Item',
+          partyName: detectedParty || 'Party Name',
+          orderQuantity: orderQuantity || '0',
+          rateMt: rateMt || '0',
+          tcs: tcs || '0',
+          bhada: bhada || '0',
+          landingCost: landingCost || '0',
+          gst: gst || '0',
+          grossRate: grossRate || '0',
+          netRate: netRate || '0',
+          qtyReceived: qtyReceived || '0',
+          balPending: balPending || '0',
         })
       }
     }
 
     if (newRows.length > 0) {
       setCsvPreview(newRows)
-      showToast(`Ready to preview ${newRows.length} scanned entries.`, 'success')
+      showToast(`Extracted ${newRows.length} entries with main headings preserved.`, 'success')
     } else {
       showToast('Could not extract valid data from image.', 'error')
     }
@@ -284,7 +439,7 @@ const SaudaPurchase = () => {
 
       <ImageOcrUploader
         onTextExtracted={handleOcrResult}
-        className={`px-4 py-2.5 bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 font-medium rounded-md transition-all shadow-sm flex items-center gap-2 active:scale-[0.98]`}
+        className="px-4 py-2.5 bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 font-medium rounded-md transition-all shadow-sm flex items-center gap-2 active:scale-[0.98]"
       />
 
       <button 

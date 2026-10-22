@@ -77,21 +77,85 @@ const OCRImageUploader = ({ onTextExtracted, buttonLabel = 'OCR Scan', className
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  const [isBtnDragging, setIsBtnDragging] = useState(false)
+
+  // Direct drag and drop on trigger button
+  const handleBtnDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isProcessing) setIsBtnDragging(true)
+  }
+
+  const handleBtnDragLeave = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsBtnDragging(false)
+  }
+
+  const handleBtnDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsBtnDragging(false)
+    if (isProcessing) return
+
+    const file = e.dataTransfer.files?.[0]
+    if (file && file.type.startsWith('image/')) {
+      setPreviewUrl(URL.createObjectURL(file))
+      processImage(file)
+    }
+  }
+
+  // Support global clipboard paste (Ctrl+V)
+  React.useEffect(() => {
+    const handleGlobalPaste = (e) => {
+      if (isProcessing) return
+      const activeTag = document.activeElement?.tagName?.toLowerCase()
+      if ((activeTag === 'input' || activeTag === 'textarea') && !e.clipboardData?.files?.length) {
+        return
+      }
+
+      const items = e.clipboardData?.items
+      if (!items) return
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile()
+          if (file) {
+            e.preventDefault()
+            setPreviewUrl(URL.createObjectURL(file))
+            processImage(file)
+            break
+          }
+        }
+      }
+    }
+
+    window.addEventListener('paste', handleGlobalPaste)
+    return () => window.removeEventListener('paste', handleGlobalPaste)
+  }, [isProcessing])
+
   return (
     <>
       {/* Trigger Button */}
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
+        onDragOver={handleBtnDragOver}
+        onDragLeave={handleBtnDragLeave}
+        onDrop={handleBtnDrop}
         disabled={isProcessing}
-        className={`px-4 py-2.5 bg-violet-50 text-violet-600 border border-violet-200 hover:bg-violet-100 hover:border-violet-300 font-medium rounded-md transition-all shadow-sm flex items-center gap-2 active:scale-[0.98] ${isProcessing ? 'opacity-60 cursor-wait' : ''} ${className}`}
-        title="Upload image for OCR text extraction"
+        className={`px-4 py-2.5 bg-violet-50 text-violet-600 border border-violet-200 hover:bg-violet-100 hover:border-violet-300 font-medium rounded-md transition-all shadow-sm flex items-center gap-2 active:scale-[0.98] ${
+          isBtnDragging ? 'border-dashed !border-violet-500 !bg-violet-100 !text-violet-800 scale-105 ring-2 ring-violet-400' : ''
+        } ${isProcessing ? 'opacity-60 cursor-wait' : ''} ${className}`}
+        title="Click to scan, Drag & Drop image, or press Ctrl+V to paste"
       >
         {isProcessing ? (
           <>
             <span className="animate-spin h-4 w-4 border-2 border-violet-500 border-t-transparent rounded-full"></span>
             <span className="hidden sm:inline">Processing {progress}%</span>
           </>
+        ) : isBtnDragging ? (
+          <span className="font-bold whitespace-nowrap">Drop Image Here</span>
         ) : (
           <>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

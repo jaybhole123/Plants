@@ -101,6 +101,7 @@ const Stock = () => {
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
+  const [stockPreview, setStockPreview] = useState([])
   const [coalRows, setCoalRows] = useState([{ material: '', openingStock: '', inward: '', consumption: '', fc: '', moistLossPct: '', dispatch: '', landedCost: '', closingStock: '' }])
   const [coalCategory, setCoalCategory] = useState('COAL DETAILS')
 
@@ -187,7 +188,7 @@ const Stock = () => {
       const lines = text.split('\n').map(l => l.trim()).filter(l => l)
       
       const newRows = []
-      let currentCategory = rowsCategory || ''
+      let currentCategory = rowsCategory || 'RAW IRON ORE'
 
       let startIndex = 0
       if (lines.length > 0 && lines[0].toLowerCase().includes('material')) {
@@ -229,8 +230,8 @@ const Stock = () => {
       }
       
       if (newRows.length > 0) {
-        setRows(newRows)
-        setToast({ type: 'success', message: `Imported ${newRows.length} rows from CSV.` })
+        setStockPreview(newRows)
+        setToast({ type: 'success', message: `Ready to preview ${newRows.length} stock rows.` })
       } else {
         setToast({ type: 'error', message: 'No valid data found in CSV.' })
       }
@@ -249,6 +250,7 @@ const Stock = () => {
       const lines = text.split('\n')
       
       const newRows = []
+      let currentCategory = coalCategory || 'COAL DETAILS'
       
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim()
@@ -260,9 +262,17 @@ const Stock = () => {
         if (columns[0] && (columns[0].toUpperCase() === 'MATERIAL' || columns[0].toUpperCase().includes('TOTAL'))) {
           continue
         }
+
+        const hasDataInOtherCols = columns.slice(1).some(c => c && c !== '0' && c !== '0.00' && c !== '0.000')
+        if (columns[0] && !hasDataInOtherCols && !columns[0].match(/^[0-9.-]+$/)) {
+           currentCategory = columns[0]
+           continue
+        }
         
         if (columns[0]) {
           newRows.push({
+            type: 'coal_detail',
+            category: currentCategory,
             material: columns[0] || '',
             openingStock: columns[1] || '0',
             inward: columns[2] || '0',
@@ -277,8 +287,8 @@ const Stock = () => {
       }
       
       if (newRows.length > 0) {
-        setCoalRows(newRows)
-        setToast({ type: 'success', message: `Imported ${newRows.length} coal rows from CSV.` })
+        setStockPreview(newRows)
+        setToast({ type: 'success', message: `Ready to preview ${newRows.length} coal rows.` })
       } else {
         setToast({ type: 'error', message: 'No valid data found in CSV.' })
       }
@@ -287,51 +297,209 @@ const Stock = () => {
     e.target.value = '' 
   }
 
-  const handleOcrResult = (text, type) => {
+  const handleOcrResult = (text, type = activeTab) => {
     const lines = text.split('\n').map(l => l.trim()).filter(l => l)
     const newRows = []
+
+    // Standard known categories for Raw Material Stock
+    const knownCategories = [
+      { pattern: /RAW\s*PELLET/i, label: 'RAW PELLET ORE' },
+      { pattern: /PELLET\s*ORE/i, label: 'RAW PELLET ORE' },
+      { pattern: /PROCESSED\s*IRON/i, label: 'PROCESSED IRON ORE (3-18)' },
+      { pattern: /IRON\s*FINES/i, label: 'IRON FINES (0-3)' },
+      { pattern: /FINES\s*\(?0-3\)?/i, label: 'IRON FINES (0-3)' },
+      { pattern: /RAW\s*IRON\s*ORE/i, label: 'RAW IRON ORE' },
+      { pattern: /DOLOMITE/i, label: 'DOLOMITE' },
+      { pattern: /NON\s*MAG/i, label: 'NON MAG (CHAR + DOLOCHAR)' },
+      { pattern: /DOLOCHAR/i, label: 'NON MAG (CHAR + DOLOCHAR)' },
+      { pattern: /COAL\s*DETAILS/i, label: 'COAL DETAILS' },
+    ]
     
-    for (const line of lines) {
-      if (line.match(/\d/)) {
-        const parts = line.split(/\s+/)
-        const nums = parts.filter(p => !isNaN(parseFloat(p.replace(/,/g, ''))))
-        const chars = line.replace(/[\d\.\-,]/g, '').trim()
-        
+    let currentCategory = (type === 'raw_material') ? (rowsCategory || 'RAW IRON ORE') : (coalCategory || 'COAL DETAILS')
+
+    // Document date detection (e.g. 21-Oct-26 or 22-Oct-26)
+    for (const l of lines.slice(0, 10)) {
+      // Check for formats like DD-MMM-YY or DD.MM.YYYY
+      const dateMatch = l.match(/(\d{1,2})[.\-\/]([A-Za-z]{3}|\d{1,2})[.\-\/](\d{2,4})/)
+      if (dateMatch) {
+        const [_, d, m, y] = dateMatch
+        let fullYear = y.length === 2 ? `20${y}` : y
+        let monthStr = m
+        const monthNames = { 'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04', 'MAY': '05', 'JUN': '06', 'JUL': '07', 'AUG': '08', 'SEP': '09', 'OCT': '10', 'NOV': '11', 'DEC': '12' }
+        if (monthNames[m.toUpperCase()]) {
+          monthStr = monthNames[m.toUpperCase()]
+        } else if (!isNaN(m)) {
+          monthStr = m.padStart(2, '0')
+        }
+        const formattedDate = `${fullYear}-${monthStr}-${d.padStart(2, '0')}`
+        if (!isNaN(Date.parse(formattedDate))) {
+          setReportDate(formattedDate)
+        }
+        break
+      }
+    }
+
+    // Flag for section scoping
+    let inCoalSection = false
+
+    for (let i = 0; i < lines.length; i++) {
+      const rawLine = lines[i].replace(/[|\[\]_]+/g, ' ').trim()
+      const upperLine = rawLine.toUpperCase()
+
+      // Detect start of COAL DETAILS section
+      if (upperLine.includes('COAL DETAILS') || upperLine === 'COAL' || (upperLine.startsWith('COAL') && upperLine.includes('DETAIL'))) {
+        inCoalSection = true
+        currentCategory = 'COAL DETAILS'
         if (type === 'raw_material') {
-           newRows.push({
-             category: form.category || 'RAW MATERIAL',
-             materialName: chars.substring(0, 20) || 'Item',
-             openingStock: nums[0] || '',
-             inward: nums[1] || '',
-             outward: nums[2] || '',
-             closingStock: nums[3] || ''
-           })
+          // If we are strictly scanning for Raw Material Stock (NSPL), STOP at COAL DETAILS!
+          break
+        }
+        continue
+      }
+
+      // If we are in Coal Detail tab, skip lines until we reach COAL DETAILS
+      if (type === 'coal_detail' && !inCoalSection) {
+        continue
+      }
+
+      // Skip generic headers/titles
+      if (
+        upperLine.includes('RAW MATERIAL STOCK') ||
+        upperLine.includes('OPENING STOCK') ||
+        upperLine.includes('OPENINGSTOCK') ||
+        upperLine.includes('CRUSHING') ||
+        upperLine.includes('FINES %') ||
+        upperLine.includes('FINES(-3)') ||
+        upperLine.includes('AS ON DATE') ||
+        upperLine.includes('NET CONS') ||
+        upperLine.includes('MOIST') ||
+        upperLine.includes('LANDED COST') ||
+        upperLine.startsWith('DATE ') ||
+        upperLine === 'MATERIAL' ||
+        upperLine === 'COAL'
+      ) {
+        continue
+      }
+
+      // Skip TOTAL rows (TOTAL, TOTAL IRON ORE, TOTAL COAL, etc.)
+      if (
+        upperLine.includes('TOTAL') || 
+        upperLine.startsWith('TOT ') || 
+        upperLine.includes('SUB TOTAL') || 
+        upperLine.includes('GRAND TOTAL')
+      ) {
+        continue
+      }
+
+      // Check if this line is a Category Header (Main Heading)
+      const matchedCat = knownCategories.find(c => c.pattern.test(upperLine))
+      const numberCount = (rawLine.match(/\d+([.,]\d+)?/g) || []).length
+      
+      if (matchedCat && numberCount <= 1) {
+        currentCategory = matchedCat.label
+        continue
+      }
+
+      // If text has no numbers and looks like a group header
+      if (numberCount === 0 && upperLine.length >= 4 && !upperLine.includes('DATE') && !upperLine.includes('PAGE')) {
+        currentCategory = rawLine.replace(/[^A-Za-z0-9\s\(\)\-]/g, '').trim().toUpperCase()
+        continue
+      }
+
+      // Data row processing
+      if (rawLine.match(/\d/)) {
+        // Extract numbers with optional decimal point and percent
+        const numberTokens = []
+        const regex = /[-+]?\d+(?:[.,]\d+)?%?/g
+        let match
+        while ((match = regex.exec(rawLine)) !== null) {
+          numberTokens.push(match[0].replace(/,/g, ''))
+        }
+
+        // Extract Material Name by stripping number tokens, FC, and punctuation
+        let materialName = rawLine
+        numberTokens.forEach(token => {
+          materialName = materialName.replace(token, ' ')
+        })
+        materialName = materialName.replace(/\bFC\b/gi, ' ')
+        materialName = materialName.replace(/[%()|\-_/]+/g, ' ').trim()
+        materialName = materialName.replace(/\s+/g, ' ').trim()
+
+        if (!materialName || materialName.length < 2) {
+          materialName = `Item ${newRows.length + 1}`
+        }
+
+        if (type === 'raw_material') {
+          // Columns: Opening, Inward, Consumption, Crushing, Fines%, FinesQty, Prod, Dis, Closing
+          const op = numberTokens[0] || '0'
+          const inw = numberTokens[1] || '0'
+          const cons = numberTokens[2] || '0'
+          const crush = numberTokens[3] || '0%'
+          const finesPct = numberTokens[4] || '0%'
+          const finesQ = numberTokens[5] || '0'
+          const prod = numberTokens[6] || '0'
+          const dis = numberTokens[7] || '0'
+          const closing = numberTokens[8] || (Number(op) + Number(inw) - Number(cons) - Number(finesQ) + Number(prod) - Number(dis)).toFixed(3)
+
+          newRows.push({
+            ...initialForm,
+            category: currentCategory,
+            material: materialName,
+            openingStock: op,
+            inward: inw,
+            consumption: cons,
+            crushing: crush.includes('%') ? crush : `${crush}%`,
+            fines3: finesPct.includes('%') ? finesPct : `${finesPct}%`,
+            fines3Qty: finesQ,
+            production: prod,
+            dispatch: dis,
+            closingStock: closing,
+            unit: 'ton',
+          })
         } else {
-           newRows.push({
-             category: coalCategory || 'COAL',
-             material: chars.substring(0, 20) || 'Item',
-             openingStock: nums[0] || '',
-             inward: nums[1] || '',
-             consumption: nums[2] || '',
-             fc: '-',
-             moistLossPct: '0%',
-             dispatch: nums[3] || '',
-             landedCost: nums[4] || '',
-             closingStock: nums[5] || ''
-           })
+          // Coal detail row (Columns: OPENINGSTOCK, INWARD, NET CONS., F/C, Moist.&loss, [3.50%], LANDED COST, CLOSINGSTOCK)
+          // Look for FC in original line
+          const fcMatch = rawLine.match(/(\d+)\s*FC/i)
+          const fcVal = fcMatch ? `${fcMatch[1]} FC` : (numberTokens[3] ? `${numberTokens[3]} FC` : '-')
+
+          const op = numberTokens[0] || '0'
+          const inw = numberTokens[1] || '0'
+          const cons = numberTokens[2] || '0'
+          const moistVal = numberTokens[4] || '0.000'
+          const landed = numberTokens[5] || '0'
+          const dis = numberTokens[6] || '0'
+          const closing = numberTokens[numberTokens.length - 1] || (Number(op) + Number(inw) - Number(cons)).toFixed(3)
+
+          // Subcategories in coal section (SPONGE PELLET, DOLOMITE, NON MAG, SPONGE IRON)
+          let cat = currentCategory || 'COAL DETAILS'
+          const upperMat = materialName.toUpperCase()
+          if (upperMat.includes('DOLOMITE')) cat = 'DOLOMITE'
+          else if (upperMat.includes('SPONGE PELLET')) cat = 'SPONGE PELLET'
+          else if (upperMat.includes('NON MAG') || upperMat.includes('CHAR')) cat = 'NON MAG (CHAR + DOLOCHAR)'
+          else if (upperMat.includes('SPONGE IRON')) cat = 'SPONGE IRON'
+
+          newRows.push({
+            type: 'coal_detail',
+            category: cat,
+            material: materialName,
+            openingStock: op,
+            inward: inw,
+            consumption: cons,
+            fc: fcVal,
+            moistLossPct: moistVal,
+            landedCost: landed,
+            dispatch: dis,
+            closingStock: closing,
+          })
         }
       }
     }
 
     if (newRows.length > 0) {
-       if (type === 'raw_material') {
-          setRows(newRows)
-       } else {
-          setCoalRows(newRows)
-       }
-       setToast({ type: 'success', message: `Extracted ${newRows.length} rows from image.` })
+      setStockPreview(newRows)
+      setToast({ type: 'success', message: `Extracted ${newRows.length} ${type === 'raw_material' ? 'Raw Material' : 'Coal'} rows with Main Headings. Preview ready!` })
     } else {
-       setToast({ type: 'error', message: 'Could not extract valid data from image.' })
+      setToast({ type: 'error', message: 'Could not extract valid data from image.' })
     }
   }
 
@@ -594,8 +762,24 @@ const Stock = () => {
             Coal Detail
           </button>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <DateFilter date={reportDate} onChange={setReportDate} />
+          
+          <CsvDropzone
+            onUpload={activeTab === 'raw_material' ? handleCsvUpload : handleCoalCsvUpload}
+            className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-sm text-emerald-700 font-medium rounded-lg transition-all flex items-center gap-1.5 active:scale-95 text-sm h-10"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+            </svg>
+            <span className="hidden sm:inline">CSV</span>
+          </CsvDropzone>
+
+          <ImageOcrUploader
+            onTextExtracted={(text) => handleOcrResult(text, activeTab)}
+            className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-lg transition-all shadow-sm flex items-center gap-1.5 active:scale-95 text-sm h-10"
+          />
+
           <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow shadow-indigo-500/30 transition-all flex items-center gap-2 h-10">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Add Stock Entry
@@ -934,7 +1118,7 @@ const Stock = () => {
             </CsvDropzone>
 
             <OCRImageUploader 
-              onTextExtracted={handleRawMaterialOcr} 
+              onTextExtracted={(text) => handleOcrResult(text, 'raw_material')} 
               className="px-5 py-2.5 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 shadow-sm font-medium rounded-md flex items-center gap-1 active:scale-95" 
             />
             
@@ -1095,6 +1279,190 @@ const Stock = () => {
       </div>
     </div>
   )}
+
+      {/* Uploaded Data Preview Section */}
+      {stockPreview.length > 0 && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 sm:p-6 shadow-sm print:hidden mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+            <h2 className="text-lg font-bold text-emerald-800 flex items-center gap-2">
+              <span className="bg-emerald-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{stockPreview.length}</span>
+              Preview Uploaded Stock Data
+            </h2>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={async () => {
+                  setIsSaving(true)
+                  for (const item of stockPreview) {
+                    if (item.type === 'coal_detail') {
+                      storeAddItem({
+                        type: 'coal_detail',
+                        category: item.category || 'COAL DETAILS',
+                        material: item.material,
+                        opening_stock: Number(item.openingStock) || 0,
+                        inward: Number(item.inward) || 0,
+                        consumption: Number(item.consumption) || 0,
+                        fc: item.fc || '',
+                        moist_loss_pct: item.moistLossPct || '',
+                        moist_loss_qty: Number(item.moistLossQty) || 0,
+                        landed_cost: Number(item.landedCost) || 0,
+                        dispatch: Number(item.dispatch) || 0,
+                        closing_stock: Number(item.closingStock) || 0,
+                        remarks: item.remarks || '',
+                        report_date: reportDate || new Date().toISOString().split('T')[0]
+                      })
+                    } else {
+                      storeAddItem({
+                        category: item.category || 'RAW IRON ORE',
+                        material: item.material,
+                        opening_stock: Number(item.openingStock) || 0,
+                        inward: Number(item.inward) || 0,
+                        consumption: Number(item.consumption) || 0,
+                        crushing: item.crushing || '0%',
+                        fines3: parsePercentValue(item.fines3) || 0,
+                        fines3_qty: Number(item.fines3Qty) || 0,
+                        production: Number(item.production) || 0,
+                        dispatch: Number(item.dispatch) || 0,
+                        closing_stock: Number(item.closingStock) || 0,
+                        unit: item.unit || 'ton',
+                        remarks: item.remarks || '',
+                        report_date: reportDate || new Date().toISOString().split('T')[0]
+                      })
+                    }
+                  }
+                  setIsSaving(false)
+                  setStockPreview([])
+                  setToast({ type: 'success', message: `${stockPreview.length} items saved successfully!` })
+                }}
+                disabled={isSaving}
+                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition shadow-sm active:scale-95 text-sm"
+              >
+                {isSaving ? 'Saving...' : 'Save Data'}
+              </button>
+              <button 
+                onClick={() => setStockPreview([])} 
+                className="px-6 py-2 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 font-bold rounded-lg transition active:scale-95 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-emerald-100 overflow-hidden shadow-sm">
+            <div className="overflow-x-auto max-h-[60vh]">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3">Material</th>
+                    <th className="px-4 py-3 text-right">Opening Stock</th>
+                    <th className="px-4 py-3 text-right">Inward</th>
+                    <th className="px-4 py-3 text-right">Cons.</th>
+                    {stockPreview[0]?.type !== 'coal_detail' ? (
+                      <>
+                        <th className="px-4 py-3 text-right">Crushing (+3)</th>
+                        <th className="px-4 py-3 text-right">Fines %</th>
+                        <th className="px-4 py-3 text-right">Fines Qty.</th>
+                        <th className="px-4 py-3 text-right">Prod.</th>
+                        <th className="px-4 py-3 text-right">Dis.</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="px-4 py-3 text-right">F/C</th>
+                        <th className="px-4 py-3 text-right">Moist.%</th>
+                        <th className="px-4 py-3 text-right">Landed Cost</th>
+                        <th className="px-4 py-3 text-right">Discount</th>
+                      </>
+                    )}
+                    <th className="px-4 py-3 text-right text-emerald-700 font-bold">Closing Stock</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(() => {
+                    const previewGroups = {}
+                    stockPreview.forEach(item => {
+                      const cat = item.category || (item.type === 'coal_detail' ? 'COAL DETAILS' : 'RAW IRON ORE')
+                      if (!previewGroups[cat]) previewGroups[cat] = []
+                      previewGroups[cat].push(item)
+                    })
+
+                    return Object.entries(previewGroups).map(([catName, groupItems], idx) => {
+                      const totalOp = groupItems.reduce((s, r) => s + (Number(r.openingStock) || 0), 0)
+                      const totalInw = groupItems.reduce((s, r) => s + (Number(r.inward) || 0), 0)
+                      const totalCons = groupItems.reduce((s, r) => s + (Number(r.consumption) || 0), 0)
+                      const totalFinesQ = groupItems.reduce((s, r) => s + (Number(r.fines3Qty) || 0), 0)
+                      const totalProd = groupItems.reduce((s, r) => s + (Number(r.production) || 0), 0)
+                      const totalDis = groupItems.reduce((s, r) => s + (Number(r.dispatch) || 0), 0)
+                      const totalClosing = groupItems.reduce((s, r) => s + (Number(r.closingStock) || 0), 0)
+
+                      return (
+                        <React.Fragment key={`preview-cat-${idx}`}>
+                          {/* Main Heading Group Row */}
+                          <tr className="bg-emerald-100/60 border-y border-emerald-200">
+                            <td colSpan="11" className="px-4 py-2 font-bold text-emerald-900 text-xs uppercase tracking-wider">
+                              Category: {catName}
+                            </td>
+                          </tr>
+
+                          {/* Data Rows */}
+                          {groupItems.map((r, rIdx) => (
+                            <tr key={`r-${rIdx}`} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-4 py-2.5 font-semibold text-slate-800 uppercase">{r.material}</td>
+                              <td className="px-4 py-2.5 text-right font-medium text-slate-600">{formatNumber(r.openingStock)}</td>
+                              <td className="px-4 py-2.5 text-right font-medium text-slate-600">{formatNumber(r.inward)}</td>
+                              <td className="px-4 py-2.5 text-right font-medium text-slate-600">{formatNumber(r.consumption)}</td>
+                              {r.type !== 'coal_detail' ? (
+                                <>
+                                  <td className="px-4 py-2.5 text-right text-slate-600">{r.crushing || '0%'}</td>
+                                  <td className="px-4 py-2.5 text-right text-slate-600">{formatPercentValue(r.fines3)}</td>
+                                  <td className="px-4 py-2.5 text-right text-slate-600">{formatNumber(r.fines3Qty)}</td>
+                                  <td className="px-4 py-2.5 text-right text-slate-600">{formatNumber(r.production)}</td>
+                                  <td className="px-4 py-2.5 text-right text-slate-600">{formatNumber(r.dispatch)}</td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="px-4 py-2.5 text-right text-slate-600">{r.fc || '-'}</td>
+                                  <td className="px-4 py-2.5 text-right text-slate-600">{r.moistLossPct || '0%'}</td>
+                                  <td className="px-4 py-2.5 text-right text-slate-600">{formatNumber(r.landedCost)}</td>
+                                  <td className="px-4 py-2.5 text-right text-slate-600">{formatNumber(r.dispatch)}</td>
+                                </>
+                              )}
+                              <td className="px-4 py-2.5 text-right font-bold text-emerald-700 bg-emerald-50/40">{formatNumber(r.closingStock)}</td>
+                            </tr>
+                          ))}
+
+                          {/* Subtotal Row */}
+                          <tr className="bg-slate-50 font-bold text-slate-700 border-t border-slate-200">
+                            <td className="px-4 py-2 text-[11px] uppercase text-emerald-800">Total {catName}</td>
+                            <td className="px-4 py-2 text-right">{formatNumber(totalOp)}</td>
+                            <td className="px-4 py-2 text-right">{formatNumber(totalInw)}</td>
+                            <td className="px-4 py-2 text-right">{formatNumber(totalCons)}</td>
+                            {groupItems[0]?.type !== 'coal_detail' ? (
+                              <>
+                                <td className="px-4 py-2 text-right"></td>
+                                <td className="px-4 py-2 text-right"></td>
+                                <td className="px-4 py-2 text-right">{formatNumber(totalFinesQ)}</td>
+                                <td className="px-4 py-2 text-right">{formatNumber(totalProd)}</td>
+                                <td className="px-4 py-2 text-right">{formatNumber(totalDis)}</td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="px-4 py-2 text-right"></td>
+                                <td className="px-4 py-2 text-right"></td>
+                                <td className="px-4 py-2 text-right"></td>
+                                <td className="px-4 py-2 text-right"></td>
+                              </>
+                            )}
+                            <td className="px-4 py-2 text-right text-emerald-700 font-bold">{formatNumber(totalClosing)}</td>
+                          </tr>
+                        </React.Fragment>
+                      )
+                    })
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Table Section - Exact Grid Layout with Category Headers */}
       <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden mt-8">

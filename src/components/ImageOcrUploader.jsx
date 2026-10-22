@@ -9,9 +9,14 @@ export const ImageOcrUploader = ({ onTextExtracted, className, children }) => {
   // Use a unique ID for each instance to prevent label conflicts
   const uniqueId = useRef(`ocr-upload-${Math.random().toString(36).substr(2, 9)}`).current;
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef(null);
+
+  const processFile = async (file) => {
+    if (!file || !file.type.startsWith('image/')) {
+      alert('Please select or drop an image file (JPG, PNG, WebP, etc.)');
+      return;
+    }
 
     setIsProcessing(true);
     setProgress(0);
@@ -41,8 +46,72 @@ export const ImageOcrUploader = ({ onTextExtracted, className, children }) => {
     }
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      processFile(file);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isProcessing) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (isProcessing) return;
+
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      processFile(file);
+    }
+  };
+
+  // Support global Ctrl+V paste of images while on the page
+  React.useEffect(() => {
+    const handleGlobalPaste = (e) => {
+      if (isProcessing) return;
+      // If user is typing in an input or textarea, don't intercept unless it's a file
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      if ((activeTag === 'input' || activeTag === 'textarea') && !e.clipboardData?.files?.length) {
+        return;
+      }
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            e.preventDefault();
+            processFile(file);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => window.removeEventListener('paste', handleGlobalPaste);
+  }, [isProcessing]);
+
   return (
-    <div className="relative inline-block w-full sm:w-auto">
+    <div 
+      ref={containerRef}
+      tabIndex={0}
+      className="relative inline-block w-full sm:w-auto outline-none"
+    >
       <input
         type="file"
         accept="image/*"
@@ -53,7 +122,15 @@ export const ImageOcrUploader = ({ onTextExtracted, className, children }) => {
       />
       <label
         htmlFor={uniqueId}
-        className={`${className} cursor-pointer relative overflow-hidden`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        title="Click to browse, Drag & Drop image, or Focus & Paste (Ctrl+V) image"
+        className={`${className} ${
+          isDragging 
+            ? 'border-dashed !border-indigo-500 !bg-indigo-100 !text-indigo-800 scale-105 ring-2 ring-indigo-400' 
+            : ''
+        } cursor-pointer relative overflow-hidden transition-all duration-200 select-none`}
       >
         {isProcessing ? (
           <div className="flex items-center gap-2">
@@ -63,6 +140,13 @@ export const ImageOcrUploader = ({ onTextExtracted, className, children }) => {
             </svg>
             <span>{progress}%</span>
           </div>
+        ) : isDragging ? (
+          <span className="flex items-center gap-1.5 font-bold text-indigo-700 whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            Drop Image Here
+          </span>
         ) : (
           children || (
             <div className="flex items-center gap-1.5">

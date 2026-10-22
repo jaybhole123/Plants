@@ -192,34 +192,192 @@ const SaudaScale = () => {
   }
 
   const handleOcrResult = (text) => {
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l)
+    const rawLines = text.split('\n').map(l => l.trim()).filter(l => l)
     const newRows = []
     
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      if (line.match(/\d/)) {
-        const parts = line.split(/\s+/)
-        const nums = parts.filter(p => !isNaN(parseFloat(p.replace(/,/g, ''))))
-        const chars = line.replace(/[\d\.\-,]/g, '').trim()
+    // Known potential headings or patterns in Sauda Sale
+    const knownHeadings = [
+      'GASIFIRE ASH', 'GASI FIRE ASH', 'GAS FIRE ASH', 'GASIFIRE',
+      'BED MATERIAL', 'BED',
+      'CHAR', 'DOLOCHAR',
+      'SPONGE IRON', 'SPONGE', 'DRI',
+      'BILLET', 'BILLETS',
+      'PIG IRON', 'WIRE ROD', 'TMT'
+    ]
+
+    let currentMainHeading = form.mainHeading || ''
+    // Try to extract document level date if present (e.g., "DATE-21.10.2026")
+    let docDate = new Date().toISOString().split('T')[0]
+    for (const l of rawLines.slice(0, 5)) {
+      const match = l.match(/(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})/)
+      if (match) {
+        docDate = parseDateToDB(match[0])
+        break
+      }
+    }
+
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i].replace(/[|\[\]_]+/g, ' ').trim()
+      const upperLine = line.toUpperCase().replace(/\s+/g, ' ')
+
+      // 1. Skip table title/header columns
+      if (
+        upperLine.includes('SAUDA SALE') ||
+        upperLine.includes('BALANCE PENDING') ||
+        upperLine.includes('OUTGOING') ||
+        upperLine.includes('SAUDA QTY') ||
+        upperLine.includes('SAUDA QUANTITY') ||
+        upperLine.includes('RATE/MT') ||
+        upperLine.includes('PRV. PENDING') ||
+        upperLine.includes('QTY. DISPTCH') ||
+        upperLine.includes('BAL. PENDING') ||
+        upperLine.startsWith('DATE ') ||
+        upperLine === 'DATE'
+      ) {
+        continue
+      }
+
+      // 2. Skip TOTAL / SUB-TOTAL rows (e.g. "Total", "TOTAL 1400.000", "Total 733.600")
+      // These are subtotal lines and should NOT become purchase/sale data rows!
+      if (
+        upperLine === 'TOTAL' || 
+        upperLine.startsWith('TOTAL ') || 
+        upperLine.endsWith(' TOTAL') || 
+        upperLine.includes(' TOTAL ') ||
+        upperLine.startsWith('TOT ')
+      ) {
+        continue
+      }
+
+      // 3. Detect Main Category Heading rows (e.g., "Gasi Fire Ash", "Bed Material", "Char", "Sponge Iron")
+      // These lines have no quantities or very few numbers
+      const numMatches = line.match(/\d+(?:\.\d+)?/g) || []
+      const matchedHeading = knownHeadings.find(h => 
+        upperLine === h || 
+        upperLine.startsWith(h) || 
+        upperLine === `${h} SALE` ||
+        upperLine.includes(h)
+      )
+
+      if (matchedHeading && numMatches.length <= 1) {
+        if (upperLine.includes('GASI') || upperLine.includes('FIRE ASH')) currentMainHeading = 'Gasi Fire Ash'
+        else if (upperLine.includes('BED')) currentMainHeading = 'Bed Material'
+        else if (upperLine.includes('CHAR')) currentMainHeading = 'Char'
+        else if (upperLine.includes('SPONGE')) currentMainHeading = 'Sponge Iron'
+        else if (upperLine.includes('BILLET')) currentMainHeading = 'Billet'
+        else if (upperLine.includes('PIG')) currentMainHeading = 'Pig Iron'
+        else currentMainHeading = line.trim()
+        continue
+      }
+
+      // 4. Extract data rows: must have at least 2 numbers (quantities, rates, balance)
+      if (numMatches.length >= 2) {
+        let rowDate = docDate
+        const dateMatch = line.match(/\b(\d{1,2}[.\-\/]\d{1,2}[.\-\/]\d{2,4})\b/)
+        if (dateMatch) {
+          rowDate = parseDateToDB(dateMatch[1])
+        }
+
+        // Clean out date and numbers from line to extract text (Item name + Party name)
+        let textPart = line
+        if (dateMatch) {
+          textPart = textPart.replace(dateMatch[0], '')
+        }
+        textPart = textPart
+          .replace(/\b\d+(?:\.\d+)?\*?\b/g, '') // remove numbers
+          .replace(/[|\[\]\-_:;]+/g, ' ')       // remove OCR noise symbols
+          .replace(/\s+/g, ' ')
+          .trim()
+
+        let detectedItem = ''
+        let detectedParty = ''
+
+        // Check if common item names are at the beginning
+        const itemKeywords = [
+          'Gasifire Ash', 'Gasi Fire Ash', 'Bed Material', 'Char', 
+          'Sponge Iron', 'Billet', 'Pig Iron', 'Wire Rod', 'TMT Bar', 'Dolochar'
+        ]
         
+        const matchedItem = itemKeywords.find(m => new RegExp(`^${m}`, 'i').test(textPart) || new RegExp(`\\b${m}\\b`, 'i').test(textPart))
+        if (matchedItem) {
+          detectedItem = matchedItem
+          detectedParty = textPart.replace(new RegExp(matchedItem, 'i'), '').trim()
+        } else if (currentMainHeading) {
+          // If no item name in text, default item to currentMainHeading
+          detectedItem = currentMainHeading
+          detectedParty = textPart || 'Party Name'
+        } else {
+          const words = textPart.split(' ')
+          if (words.length >= 3) {
+            detectedItem = words.slice(0, 2).join(' ')
+            detectedParty = words.slice(2).join(' ')
+          } else {
+            detectedItem = words[0] || 'Item'
+            detectedParty = words.slice(1).join(' ') || 'Party'
+          }
+        }
+
+        // Clean up party name from stray text like "(SMS)" or numbers
+        detectedParty = detectedParty.replace(/^[:\s\-]+|[:\s\-]+$/g, '').trim()
+
+        // Distribute numbers:
+        // Typical columns: Sauda Qty, Rate/MT, Prv. Pending, Qty. Dispatch, Bal. Pending
+        let saudaQuantity = '0'
+        let rateAmt = '0'
+        let prvPending = '0'
+        let qtyDispatch = '0'
+        let balPending = '0'
+
+        if (numMatches.length >= 5) {
+          saudaQuantity = numMatches[0]
+          rateAmt = numMatches[1]
+          prvPending = numMatches[2]
+          qtyDispatch = numMatches[3]
+          balPending = numMatches[4]
+        } else if (numMatches.length === 4) {
+          saudaQuantity = numMatches[0]
+          rateAmt = numMatches[1]
+          prvPending = numMatches[2]
+          balPending = numMatches[3]
+        } else if (numMatches.length === 3) {
+          saudaQuantity = numMatches[0]
+          rateAmt = numMatches[1]
+          balPending = numMatches[2]
+        } else {
+          saudaQuantity = numMatches[0] || '0'
+          rateAmt = numMatches[1] || '0'
+          balPending = saudaQuantity
+        }
+
+        // Determine final main heading for the entry
+        let finalHeading = currentMainHeading
+        if (!finalHeading) {
+          const upMat = (detectedItem || '').toUpperCase()
+          if (upMat.includes('GASI') || upMat.includes('FIRE ASH')) finalHeading = 'Gasi Fire Ash'
+          else if (upMat.includes('BED')) finalHeading = 'Bed Material'
+          else if (upMat.includes('CHAR')) finalHeading = 'Char'
+          else if (upMat.includes('SPONGE')) finalHeading = 'Sponge Iron'
+          else finalHeading = 'GENERAL'
+        }
+
         newRows.push({
           id: Date.now() + i + Math.random(),
-          date: new Date().toISOString().split('T')[0],
-          mainHeading: form.mainHeading || 'SCANNED DATA',
-          itemName: form.itemName || 'Item',
-          partyName: chars.substring(0, 30) || 'Scanned Party',
-          saudaQuantity: nums[0] || '0',
-          rateAmt: nums[1] || '0',
-          prvPending: nums[2] || '0',
-          qtyDispatch: nums[3] || '0',
-          balPending: nums[4] || '0',
+          date: rowDate,
+          mainHeading: finalHeading,
+          itemName: detectedItem || finalHeading || 'Item',
+          partyName: detectedParty || 'Party Name',
+          saudaQuantity: saudaQuantity || '0',
+          rateAmt: rateAmt || '0',
+          prvPending: prvPending || '0',
+          qtyDispatch: qtyDispatch || '0',
+          balPending: balPending || '0',
         })
       }
     }
 
     if (newRows.length > 0) {
       setCsvPreview(newRows)
-      showToast(`Ready to preview ${newRows.length} scanned entries.`, 'success')
+      showToast(`Extracted ${newRows.length} entries with main headings preserved.`, 'success')
     } else {
       showToast('Could not extract valid data from image.', 'error')
     }
@@ -523,13 +681,13 @@ DATE, ITEMS, PARTY NAME, SAUDA QUANTITY, RATE/MT, PRV PENDING, QTY DISPATCH, BAL
                       const isCorrect = Math.abs(expectedSubBal - subBal) < 0.001;
                       return (
                         <tr className={isCorrect ? "bg-emerald-50/40" : "bg-rose-50/40"}>
-                          <td colSpan="9" className={`border border-slate-400 px-2 py-1 text-right text-[10px] font-semibold italic ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          <td colSpan="7" className={`border border-slate-400 px-2 py-1 text-right text-[10px] font-semibold italic ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
                             {isCorrect ? 'Calculation Verified' : 'Calculation Mismatch'}
                           </td>
                           <td className={`border border-slate-400 px-2 py-1 text-right font-bold text-[10px] ${isCorrect ? 'text-emerald-700 bg-emerald-100/50' : 'text-rose-600 bg-rose-100/50'}`}>
                             {isCorrect ? 'Correct' : `Expected: ${formatNumber(expectedSubBal)}`}
                           </td>
-                          <td colSpan="6" className="border border-slate-400"></td>
+                          <td className="border border-slate-400 print:hidden"></td>
                         </tr>
                       );
                     })()}
