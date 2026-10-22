@@ -1,9 +1,14 @@
 import React, { useState, useRef } from 'react';
 import Tesseract from 'tesseract.js';
+import { extractFromImage } from '../utils/aiOcr';
+import AiResultModal from './AiResultModal';
 
-export const ImageOcrUploader = ({ onTextExtracted, className, children }) => {
+// With `aiPage` set, the image is read + verified by the AI endpoint and the structured
+// result goes to `onAiResult(data)`. Without it, the old Tesseract text flow is used.
+export const ImageOcrUploader = ({ onTextExtracted, aiPage, onAiResult, className, children }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [aiResult, setAiResult] = useState(null);
   const fileInputRef = useRef(null);
   
   // Use a unique ID for each instance to prevent label conflicts
@@ -20,6 +25,19 @@ export const ImageOcrUploader = ({ onTextExtracted, className, children }) => {
 
     setIsProcessing(true);
     setProgress(0);
+
+    if (aiPage) {
+      try {
+        setAiResult(await extractFromImage(file, aiPage));
+      } catch (error) {
+        console.error('AI read error:', error);
+        alert(error.message || 'Failed to read the image.');
+      } finally {
+        setIsProcessing(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+      return;
+    }
 
     try {
       const result = await Tesseract.recognize(
@@ -138,7 +156,7 @@ export const ImageOcrUploader = ({ onTextExtracted, className, children }) => {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span>{progress}%</span>
+            <span>{aiPage ? 'Reading & verifying…' : `${progress}%`}</span>
           </div>
         ) : isDragging ? (
           <span className="flex items-center gap-1.5 font-bold text-indigo-700 whitespace-nowrap">
@@ -159,6 +177,13 @@ export const ImageOcrUploader = ({ onTextExtracted, className, children }) => {
           )
         )}
       </label>
+      {aiResult && (
+        <AiResultModal
+          result={aiResult}
+          onClose={() => setAiResult(null)}
+          onApply={(data) => { setAiResult(null); onAiResult?.(data); }}
+        />
+      )}
     </div>
   );
 };

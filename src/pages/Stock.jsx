@@ -5,6 +5,7 @@ import { ImageOcrUploader } from '../components/ImageOcrUploader'
 import { FilterBar } from '../components/FilterBar'
 import DateFilter from '../components/DateFilter'
 import OCRImageUploader from '../components/OCRImageUploader'
+import { clean, toIsoDate } from '../utils/aiOcr'
 
 
 const initialForm = {
@@ -295,6 +296,51 @@ const Stock = () => {
     }
     reader.readAsText(file)
     e.target.value = '' 
+  }
+
+  // Structured result from the AI image reader -> same preview rows the CSV import builds
+  const handleAiResult = (data, type = activeTab) => {
+    const isRaw = type === 'raw_material'
+    const defaultCat = isRaw ? (rowsCategory || 'RAW IRON ORE') : (coalCategory || 'COAL DETAILS')
+    const newRows = (data.rows || [])
+      .filter((r) => clean(r.material))
+      .map((r) => isRaw
+        ? {
+            ...initialForm,
+            category: clean(r.category) || defaultCat,
+            material: clean(r.material),
+            openingStock: clean(r.openingStock) || '0',
+            inward: clean(r.inward) || '0',
+            consumption: clean(r.consumption) || '0',
+            crushing: clean(r.crushing) || '0%',
+            fines3: clean(r.fines3) || '0%',
+            fines3Qty: clean(r.fines3Qty) || '0',
+            production: clean(r.production) || '0',
+            dispatch: clean(r.dispatch) || '0',
+            closingStock: clean(r.closingStock) || '0',
+          }
+        : {
+            type: 'coal_detail',
+            category: clean(r.category) || defaultCat,
+            material: clean(r.material),
+            openingStock: clean(r.openingStock) || '0',
+            inward: clean(r.inward) || '0',
+            consumption: clean(r.consumption) || '0',
+            fc: clean(r.fc) || '-',
+            moistLossPct: clean(r.moistLossPct) || '0%',
+            landedCost: clean(r.landedCost) || '0',
+            dispatch: clean(r.dispatch) || '0',
+            closingStock: clean(r.closingStock) || '0',
+          })
+
+    if (clean(data.reportDate)) setReportDate(toIsoDate(data.reportDate))
+
+    if (newRows.length > 0) {
+      setStockPreview(newRows)
+      setToast({ type: 'success', message: `Read ${newRows.length} ${isRaw ? 'Raw Material' : 'Coal'} rows from image. Preview ready!` })
+    } else {
+      setToast({ type: 'error', message: 'No stock rows found in the image.' })
+    }
   }
 
   const handleOcrResult = (text, type = activeTab) => {
@@ -776,6 +822,8 @@ const Stock = () => {
           </CsvDropzone>
 
           <ImageOcrUploader
+            aiPage={activeTab === 'raw_material' ? 'stock_raw' : 'stock_coal'}
+            onAiResult={(data) => handleAiResult(data, activeTab)}
             onTextExtracted={(text) => handleOcrResult(text, activeTab)}
             className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-lg transition-all shadow-sm flex items-center gap-1.5 active:scale-95 text-sm h-10"
           />
@@ -1118,11 +1166,15 @@ const Stock = () => {
             </CsvDropzone>
 
             <OCRImageUploader 
+              aiPage="stock_raw"
+              onAiResult={(data) => handleAiResult(data, 'raw_material')}
               onTextExtracted={(text) => handleOcrResult(text, 'raw_material')} 
               className="px-5 py-2.5 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 shadow-sm font-medium rounded-md flex items-center gap-1 active:scale-95" 
             />
             
             <ImageOcrUploader
+              aiPage="stock_raw"
+              onAiResult={(data) => handleAiResult(data, 'raw_material')}
               onTextExtracted={(text) => handleOcrResult(text, 'raw_material')}
               className={`px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-md transition-all duration-300 flex items-center gap-1 active:scale-95`}
             />
@@ -1251,6 +1303,8 @@ const Stock = () => {
                   </CsvDropzone>
 
               <ImageOcrUploader
+                aiPage="stock_coal"
+                onAiResult={(data) => handleAiResult(data, 'coal_detail')}
                 onTextExtracted={(text) => handleOcrResult(text, 'coal')}
                 className={`px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-md transition-all duration-300 flex items-center gap-1 active:scale-95`}
               />

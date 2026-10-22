@@ -4,6 +4,7 @@ import { ImageOcrUploader } from '../components/ImageOcrUploader'
 import { FilterBar } from '../components/FilterBar'
 import DateFilter from '../components/DateFilter'
 import OCRImageUploader from '../components/OCRImageUploader'
+import { clean } from '../utils/aiOcr'
 const initialUnifiedForm = {
   type: 'incoming', // 'incoming' or 'outgoing'
   mainHeading: '',
@@ -347,6 +348,34 @@ const ItemTransfer = () => {
     }
   }
 
+  // Structured result from the AI image reader -> same preview rows the CSV import builds.
+  // `fallbackType` is the section whose button was used; the slip's own entry type wins if it states one.
+  const handleAiResult = (data, fallbackType) => {
+    const incoming = []
+    const outgoing = []
+    ;(data.rows || []).forEach((r, i) => {
+      if (!clean(r.partyName) && !clean(r.materialName)) return
+      const entry = {
+        id: Date.now() + i + Math.random(),
+        mainHeading: '',
+        partyName: clean(r.partyName),
+        materialName: clean(r.materialName),
+        vehicleNo: clean(r.vehicleNo),
+        qty: clean(r.qty) || '0',
+        rate: clean(r.rate) || '0',
+      }
+      const t = clean(r.entryType).toLowerCase() || fallbackType
+      ;(t === 'outgoing' ? outgoing : incoming).push(entry)
+    })
+    if (incoming.length) setIncomingCsvPreview(prev => [...prev, ...incoming])
+    if (outgoing.length) setOutgoingCsvPreview(prev => [...prev, ...outgoing])
+    if (incoming.length || outgoing.length) {
+      showToast(`Read ${incoming.length + outgoing.length} entries from image. Ready to preview.`)
+    } else {
+      showToast('No entries found in the image.', 'error')
+    }
+  }
+
   const handleOcrResult = (text, type) => {
     console.log("Extracted OCR Text:", text);
     // Basic heuristic to parse text into rows
@@ -490,6 +519,8 @@ const ItemTransfer = () => {
         </button>
 
         <OCRImageUploader 
+          aiPage="transfer"
+          onAiResult={(data) => handleAiResult(data, 'incoming')}
           onTextExtracted={(text) => handleOcrResult(text, 'incoming')} 
           className="px-4 py-3 bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 font-bold rounded-lg" 
         />
@@ -627,6 +658,8 @@ const ItemTransfer = () => {
             <span>Upload CSV</span>
           </CsvDropzone>
           <ImageOcrUploader
+            aiPage="transfer"
+            onAiResult={(data) => handleAiResult(data, 'incoming')}
             onTextExtracted={(text) => handleOcrResult(text, 'incoming')}
             className={`px-5 py-2 border font-bold rounded-lg transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700 hover:border-indigo-300`}
           />
@@ -687,6 +720,8 @@ const ItemTransfer = () => {
             <span>Upload CSV</span>
           </CsvDropzone>
           <ImageOcrUploader
+            aiPage="transfer"
+            onAiResult={(data) => handleAiResult(data, 'outgoing')}
             onTextExtracted={(text) => handleOcrResult(text, 'outgoing')}
             className={`px-5 py-2 border font-bold rounded-lg transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700 hover:border-indigo-300`}
           />

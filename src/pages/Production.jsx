@@ -3,6 +3,7 @@ import { useProductionStore } from '../store/useStore'
 import { CsvDropzone } from '../components/CsvDropzone'
 import { ImageOcrUploader } from '../components/ImageOcrUploader'
 import OCRImageUploader from '../components/OCRImageUploader'
+import { clean } from '../utils/aiOcr'
 const initialFormState = {
   metricName: 'Sponge Prod. (Mt)',
   percentValue: '',
@@ -194,6 +195,27 @@ const Production = () => {
     }
   }
 
+  // Structured result from the AI image reader -> same rows/remarks the CSV import fills
+  const handleAiResult = (data) => {
+    const newRows = (data.rows || [])
+      .filter((r) => clean(r.metricName))
+      .map((r) => ({
+        id: Date.now() + Math.random(),
+        metricName: clean(r.metricName),
+        percentValue: clean(r.percentValue),
+        k1Value: clean(r.k1Value),
+        k2Value: clean(r.k2Value),
+        totalValue: clean(r.totalValue),
+      }))
+    if (newRows.length > 0) {
+      setRows(newRows)
+      if (clean(data.downTimeRemarks)) setDownTimeRemarks(clean(data.downTimeRemarks))
+      showToast(`Read ${newRows.length} rows from image. Click Add Entry to save.`, 'success')
+    } else {
+      showToast('No production rows found in the image.', 'error')
+    }
+  }
+
   const handleOcrResult = (text) => {
     const lines = text.split('\n').map(l => l.trim()).filter(l => l)
     const newRows = []
@@ -247,11 +269,15 @@ const Production = () => {
           </CsvDropzone>
           
           <ImageOcrUploader
+            aiPage="production"
+            onAiResult={handleAiResult}
             onTextExtracted={handleOcrResult}
             className={`px-6 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-md transition flex items-center gap-1`}
           />
 
           <OCRImageUploader 
+            aiPage="production"
+            onAiResult={handleAiResult}
             onTextExtracted={handleOcrResult} 
             className="px-6 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-medium rounded-md transition flex items-center gap-1"
           />

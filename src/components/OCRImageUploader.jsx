@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react'
 import Tesseract from 'tesseract.js'
+import { extractFromImage } from '../utils/aiOcr'
+import AiResultModal from './AiResultModal'
 
 /**
  * Reusable OCR Image Uploader Component.
@@ -9,7 +11,8 @@ import Tesseract from 'tesseract.js'
  * - buttonLabel: (optional) Label for the button.
  * - className: (optional) Additional classes for the trigger button.
  */
-const OCRImageUploader = ({ onTextExtracted, buttonLabel = 'OCR Scan', className = '' }) => {
+const OCRImageUploader = ({ onTextExtracted, aiPage, onAiResult, buttonLabel = 'OCR Scan', className = '' }) => {
+  const [aiResult, setAiResult] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [previewUrl, setPreviewUrl] = useState(null)
@@ -33,6 +36,18 @@ const OCRImageUploader = ({ onTextExtracted, buttonLabel = 'OCR Scan', className
   const processImage = async (file) => {
     setIsProcessing(true)
     setProgress(0)
+
+    if (aiPage) {
+      try {
+        setAiResult(await extractFromImage(file, aiPage))
+      } catch (error) {
+        console.error('[AI read] Error:', error)
+        alert(error.message || 'Failed to read the image.')
+      } finally {
+        setIsProcessing(false)
+      }
+      return
+    }
 
     try {
       const { data: { text } } = await Tesseract.recognize(file, 'eng', {
@@ -152,7 +167,7 @@ const OCRImageUploader = ({ onTextExtracted, buttonLabel = 'OCR Scan', className
         {isProcessing ? (
           <>
             <span className="animate-spin h-4 w-4 border-2 border-violet-500 border-t-transparent rounded-full"></span>
-            <span className="hidden sm:inline">Processing {progress}%</span>
+            <span className="hidden sm:inline">{aiPage ? 'Reading & verifying…' : `Processing ${progress}%`}</span>
           </>
         ) : isBtnDragging ? (
           <span className="font-bold whitespace-nowrap">Drop Image Here</span>
@@ -220,7 +235,7 @@ const OCRImageUploader = ({ onTextExtracted, buttonLabel = 'OCR Scan', className
                           ></div>
                         </div>
                         <p className="text-sm font-medium text-violet-600 animate-pulse">
-                          Reading image... {progress}%
+                          {aiPage ? 'Reading image and verifying values…' : `Reading image... ${progress}%`}
                         </p>
                       </div>
                     )}
@@ -279,6 +294,14 @@ const OCRImageUploader = ({ onTextExtracted, buttonLabel = 'OCR Scan', className
             </div>
           </div>
         </div>
+      )}
+
+      {aiResult && (
+        <AiResultModal
+          result={aiResult}
+          onClose={() => setAiResult(null)}
+          onApply={(data) => { setAiResult(null); onAiResult?.(data); closeModal() }}
+        />
       )}
     </>
   )

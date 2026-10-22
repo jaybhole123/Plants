@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useProduction2Store } from '../store/useStore';
 import { ImageOcrUploader } from '../components/ImageOcrUploader';
+import AiResultModal from '../components/AiResultModal';
+import { extractFromImage, clean, toIsoDate } from '../utils/aiOcr';
 import { FilterBar } from '../components/FilterBar';
 import './Production2.css';
 import DateFilter from '../components/DateFilter';
@@ -172,6 +174,7 @@ export default function Production2Page() {
   const [isDragging, setIsDragging] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [progressMsg, setProgressMsg] = useState("");
+  const [aiResult, setAiResult] = useState(null);
   const fileInputRef = useRef(null);
   
   const [search, setSearch] = useState("");
@@ -201,19 +204,11 @@ export default function Production2Page() {
     setErrorMsg("");
 
     try {
-      // Lazy load Tesseract if needed or use imported Tesseract
-      const Tesseract = (await import('tesseract.js')).default;
-      const { data: { text } } = await Tesseract.recognize(file, 'eng', {
-        logger: m => {
-          if (m.status === 'recognizing text') {
-            setProgressMsg(`Reading image OCR... ${Math.round(m.progress * 100)}%`);
-          }
-        }
-      });
-      handleOcrResult(text);
+      setProgressMsg(`Reading & verifying ${file.name || 'image'}...`);
+      setAiResult(await extractFromImage(file, 'production'));
     } catch (err) {
       console.error("Image OCR error:", err);
-      setErrorMsg("Image read nahi ho payi. Try again with clearer photo.");
+      setErrorMsg(err?.message || "Image read nahi ho payi. Try again with clearer photo.");
     } finally {
       setProgressMsg("");
     }
@@ -292,6 +287,31 @@ export default function Production2Page() {
       setProgressMsg("");
       setFilesData((prev) => [...prev, ...newFiles]);
     }
+  };
+
+  // Structured result from the AI image reader -> same file entry the PDF flow produces
+  const handleAiResult = (data) => {
+    const numOrNull = (v) => { const n = parseFloat(clean(v).replace(/,/g, '').replace(/%$/, '')); return Number.isFinite(n) ? n : null };
+    const items = (data.rows || [])
+      .filter((r) => clean(r.metricName))
+      .map((r) => ({
+        label: clean(r.metricName),
+        percent: numOrNull(r.percentValue),
+        kiln1: numOrNull(r.k1Value),
+        kiln2: numOrNull(r.k2Value),
+        total: numOrNull(r.totalValue),
+      }));
+    if (items.length === 0) {
+      setErrorMsg('Image me PRODUCTION data nahi mila.');
+      return;
+    }
+    setErrorMsg("");
+    setFilesData((prev) => [...prev, {
+      date: clean(data.date) ? toIsoDate(data.date) : new Date().toISOString().split('T')[0],
+      fileName: 'MIS Production Scan',
+      found: true,
+      items,
+    }]);
   };
 
   const handleOcrResult = (text) => {
@@ -589,6 +609,13 @@ export default function Production2Page() {
 
   return (
     <div className="space-y-6 pb-10 px-2 sm:px-4 w-full text-slate-800">
+      {aiResult && (
+        <AiResultModal
+          result={aiResult}
+          onClose={() => setAiResult(null)}
+          onApply={(data) => { setAiResult(null); handleAiResult(data); }}
+        />
+      )}
       
       {/* Top Banner (Modern Gradient) */}
       <div className="bg-gradient-to-r from-teal-600 via-emerald-600 to-green-600 rounded p-4 sm:p-5 mb-6 shadow-md relative overflow-hidden flex flex-col sm:flex-row items-center justify-between text-white">
@@ -606,6 +633,8 @@ export default function Production2Page() {
             <div className="p-1 flex items-center gap-2">
               <DateFilter date={headerDate} onChange={setHeaderDate} />
               <ImageOcrUploader
+                aiPage="production"
+                onAiResult={handleAiResult}
                 onTextExtracted={handleOcrResult}
                 className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 font-bold rounded-md transition-all shadow-sm flex items-center gap-1.5 active:scale-95 text-sm h-10 backdrop-blur-sm"
               />
@@ -623,6 +652,8 @@ export default function Production2Page() {
         />
         <div className="flex items-center gap-2">
           <ImageOcrUploader
+            aiPage="production"
+            onAiResult={handleAiResult}
             onTextExtracted={handleOcrResult}
             className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-semibold rounded-lg transition-all shadow-sm flex items-center gap-1.5 active:scale-95 text-sm h-[42px]"
           />

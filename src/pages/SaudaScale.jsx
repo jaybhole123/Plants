@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react'
 
 import { CsvDropzone } from '../components/CsvDropzone'
 import { ImageOcrUploader } from '../components/ImageOcrUploader'
+import { clean, toIsoDate } from '../utils/aiOcr'
 import { FilterBar } from '../components/FilterBar'
 import { useSaudaScaleStore } from '../store/useStore'
 const initialForm = {
@@ -189,6 +190,30 @@ const SaudaScale = () => {
     }
     reader.readAsText(file)
     e.target.value = '' 
+  }
+
+  // Structured result from the AI image reader -> same preview rows the CSV import builds
+  const handleAiResult = (data) => {
+    const newRows = (data.rows || [])
+      .filter((r) => clean(r.partyName))
+      .map((r) => ({
+        id: Date.now() + Math.random(),
+        date: toIsoDate(r.date),
+        mainHeading: clean(r.mainHeading),
+        itemName: clean(r.itemName) || clean(r.mainHeading),
+        partyName: clean(r.partyName),
+        saudaQuantity: clean(r.saudaQuantity) || '0',
+        rateAmt: clean(r.rateAmt) || '0',
+        prvPending: clean(r.prvPending) || '0',
+        qtyDispatch: clean(r.qtyDispatch) || '0',
+        balPending: clean(r.balPending) || '0',
+      }))
+    if (newRows.length > 0) {
+      setCsvPreview(newRows)
+      showToast(`Read ${newRows.length} entries from image. Ready to preview.`)
+    } else {
+      showToast('No entries found in the image.', 'error')
+    }
   }
 
   const handleOcrResult = (text) => {
@@ -431,6 +456,8 @@ const SaudaScale = () => {
       </CsvDropzone>
 
       <ImageOcrUploader
+        aiPage="sauda_sale"
+        onAiResult={handleAiResult}
         onTextExtracted={handleOcrResult}
         className={`px-4 py-2.5 bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 font-medium rounded-md transition-all shadow-sm flex items-center gap-2 active:scale-[0.98]`}
       />
