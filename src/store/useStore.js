@@ -28,6 +28,8 @@ export const useStockStore = create(
           items: state.items.filter((item) => item.id !== id),
         })),
 
+      clearAllItems: () => set({ items: [] }),
+
       getStats: () => {
         const { items } = get()
         return {
@@ -56,6 +58,7 @@ export const useTransferStore = create(
       setOutgoingList: (listOrFn) => set((state) => ({ 
         outgoingList: typeof listOrFn === 'function' ? listOrFn(state.outgoingList) : listOrFn 
       })),
+      clearAll: () => set({ incomingList: [], outgoingList: [] }),
     }),
     { name: 'traders-transfer-storage' }
   )
@@ -68,6 +71,7 @@ export const useProductionStore = create(
       setEntries: (listOrFn) => set((state) => ({
         entries: typeof listOrFn === 'function' ? listOrFn(state.entries) : listOrFn
       })),
+      clearAll: () => set({ entries: [] }),
     }),
     { name: 'traders-production-storage' }
   )
@@ -80,6 +84,7 @@ export const useSaudaScaleStore = create(
       setEntries: (listOrFn) => set((state) => ({
         entries: typeof listOrFn === 'function' ? listOrFn(state.entries) : listOrFn
       })),
+      clearAll: () => set({ entries: [] }),
     }),
     { name: 'traders-sauda-scale-storage' }
   )
@@ -92,14 +97,21 @@ export const useSaudaPurchaseStore = create(
       setEntries: (listOrFn) => set((state) => ({
         entries: typeof listOrFn === 'function' ? listOrFn(state.entries) : listOrFn
       })),
+      clearAll: () => set({ entries: [] }),
     }),
     { name: 'traders-sauda-purchase-storage' }
   )
 )
 
-export const useProduction2Store = create((set, get) => ({
-  filesData: [],
-  setFilesData: (listOrFn) => set((state) => ({
-    filesData: typeof listOrFn === 'function' ? listOrFn(state.filesData) : listOrFn
-  })),
-}))
+export const useProduction2Store = create(
+  persist(
+    (set, get) => ({
+      filesData: [],
+      setFilesData: (listOrFn) => set((state) => ({
+        filesData: typeof listOrFn === 'function' ? listOrFn(state.filesData) : listOrFn
+      })),
+      clearAll: () => set({ filesData: [] }),
+    }),
+    { name: 'traders-production2-storage' }
+  )
+)

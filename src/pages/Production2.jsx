@@ -190,6 +190,10 @@ export default function Production2Page() {
   const [manualPercent, setManualPercent] = useState("");
   const [manualKiln1, setManualKiln1] = useState("");
 
+  // Staged / Pending files (waiting for user to click Save before writing to localStorage)
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState("");
+
   useEffect(() => {
     ensurePdfJsLoaded().catch((err) => {
       console.error("pdf.js preload failed:", err);
@@ -272,9 +276,6 @@ export default function Production2Page() {
           if (!result.found) {
             setErrorMsg(`"${file.name}" me PRODUCTION section ka data nahi mila. Format check karein.`);
           } else {
-            setProgressMsg(`Uploading ${file.name} to Storage...`);
-            const fileExt = file.name.split('.').pop();
-            const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
             result.fileUrl = null;
             newFiles.push(result);
           }
@@ -285,32 +286,60 @@ export default function Production2Page() {
         done++;
       }
       setProgressMsg("");
-      setFilesData((prev) => [...prev, ...newFiles]);
+      // Add to pending files (not directly into localStorage)
+      setPendingFiles((prev) => [...prev, ...newFiles]);
     }
   };
 
-  // Structured result from the AI image reader -> same file entry the PDF flow produces
+  // Structured result from the AI image reader -> goes to pending files
   const handleAiResult = (data) => {
     const numOrNull = (v) => { const n = parseFloat(clean(v).replace(/,/g, '').replace(/%$/, '')); return Number.isFinite(n) ? n : null };
-    const items = (data.rows || [])
+    const rawItems = (data.rows || [])
       .filter((r) => clean(r.metricName))
-      .map((r) => ({
-        label: clean(r.metricName),
-        percent: numOrNull(r.percentValue),
-        kiln1: numOrNull(r.k1Value),
-        kiln2: numOrNull(r.k2Value),
-        total: numOrNull(r.totalValue),
-      }));
-    if (items.length === 0) {
+      .map((r) => {
+        let label = clean(r.metricName);
+        let k1 = numOrNull(r.k1Value);
+        let k2 = numOrNull(r.k2Value);
+        let tot = numOrNull(r.totalValue);
+        let pct = numOrNull(r.percentValue);
+
+        // Normalize when only one number was placed in either k1Value or totalValue
+        if (k1 !== null && tot === null) tot = k1;
+        if (tot !== null && k1 === null) k1 = tot;
+
+        return {
+          label,
+          percent: pct,
+          kiln1: k1,
+          kiln2: k2 ?? 0,
+          total: tot,
+        };
+      });
+
+    // Auto-calculate percent for "A" GRADE and "B" GRADE if missing
+    const aItem = rawItems.find(i => i.label.toUpperCase().includes('A') && i.label.toUpperCase().includes('GRADE'));
+    const bItem = rawItems.find(i => i.label.toUpperCase().includes('B') && i.label.toUpperCase().includes('GRADE'));
+    if (aItem && bItem) {
+      const aVal = aItem.kiln1 || aItem.total || 0;
+      const bVal = bItem.kiln1 || bItem.total || 0;
+      const totalSponge = aVal + bVal;
+      if (totalSponge > 0) {
+        if (aItem.percent === null) aItem.percent = parseFloat(((aVal / totalSponge) * 100).toFixed(2));
+        if (bItem.percent === null) bItem.percent = parseFloat(((bVal / totalSponge) * 100).toFixed(2));
+      }
+    }
+
+    if (rawItems.length === 0) {
       setErrorMsg('Image me PRODUCTION data nahi mila.');
       return;
     }
     setErrorMsg("");
-    setFilesData((prev) => [...prev, {
+    // Staged in pending files; will only be saved to local storage upon clicking "Save to Storage"
+    setPendingFiles((prev) => [...prev, {
       date: clean(data.date) ? toIsoDate(data.date) : new Date().toISOString().split('T')[0],
       fileName: 'MIS Production Scan',
       found: true,
-      items,
+      items: rawItems,
     }]);
   };
 
@@ -420,7 +449,7 @@ export default function Production2Page() {
         if (matchedLabel.length < 2) continue;
       }
 
-      // The production value is usually the last or only number in the row
+      // The production value is usually the last number in the row
       const val = nums[nums.length - 1];
 
       // If percent is present in the line (e.g. 78% or 22%)
@@ -440,22 +469,24 @@ export default function Production2Page() {
     }
 
     // Auto-compute percent for "A" GRADE and "B" GRADE if total sponge exists
-    const aGradeItem = items.find(i => i.label.includes('"A" GRADE'));
-    const bGradeItem = items.find(i => i.label.includes('"B" GRADE'));
+    const aGradeItem = items.find(i => i.label.toUpperCase().includes('A') && i.label.toUpperCase().includes('GRADE'));
+    const bGradeItem = items.find(i => i.label.toUpperCase().includes('B') && i.label.toUpperCase().includes('GRADE'));
     if (aGradeItem && bGradeItem) {
-      const sumGrade = (aGradeItem.total || 0) + (bGradeItem.total || 0);
+      const aVal = aGradeItem.total || aGradeItem.kiln1 || 0;
+      const bVal = bGradeItem.total || bGradeItem.kiln1 || 0;
+      const sumGrade = aVal + bVal;
       if (sumGrade > 0) {
         if (aGradeItem.percent === null) {
-          aGradeItem.percent = Math.round(((aGradeItem.total || 0) / sumGrade) * 100);
+          aGradeItem.percent = parseFloat(((aVal / sumGrade) * 100).toFixed(2));
         }
         if (bGradeItem.percent === null) {
-          bGradeItem.percent = Math.round(((bGradeItem.total || 0) / sumGrade) * 100);
+          bGradeItem.percent = parseFloat(((bVal / sumGrade) * 100).toFixed(2));
         }
       }
     }
 
     if (items.length > 0) {
-      setFilesData(prev => [...prev, {
+      setPendingFiles(prev => [...prev, {
         date: extractedDate,
         fileName: 'MIS Production Scan',
         found: true,
@@ -469,6 +500,25 @@ export default function Production2Page() {
 
   const removeFile = (idxToRemove) => {
     setFilesData((prev) => prev.filter((_, idx) => idx !== idxToRemove));
+  };
+
+  const removePendingFile = (idxToRemove) => {
+    setPendingFiles((prev) => prev.filter((_, idx) => idx !== idxToRemove));
+  };
+
+  const clearPendingFiles = () => {
+    setPendingFiles([]);
+  };
+
+  const handleSavePendingToStorage = () => {
+    if (pendingFiles.length === 0) return;
+    setFilesData((prev) => [...prev, ...pendingFiles]);
+    const count = pendingFiles.length;
+    setPendingFiles([]);
+    setSaveSuccessMsg(`${count} entry/file(s) successfully saved to Local Storage!`);
+    setTimeout(() => {
+      setSaveSuccessMsg("");
+    }, 4000);
   };
 
   const handleOcrUpload = (extractedText) => {
@@ -493,8 +543,7 @@ export default function Production2Page() {
       items: mappedItems
     };
     
-    setFilesData((prev) => [...prev, newResult]);
-    alert("Image se data extract ho gaya!");
+    setPendingFiles((prev) => [...prev, newResult]);
   };
 
   const handleManualSubmit = (e) => {
@@ -657,6 +706,19 @@ export default function Production2Page() {
             onTextExtracted={handleOcrResult}
             className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-semibold rounded-lg transition-all shadow-sm flex items-center gap-1.5 active:scale-95 text-sm h-[42px]"
           />
+          <button
+            onClick={() => {
+              if (window.confirm("Kya aap Production 2 ka saara saved data delete (reset) karna chahte hain?")) {
+                setFilesData([]);
+                setErrorMsg("");
+              }
+            }}
+            className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-semibold rounded-lg shadow-sm transition-all flex items-center gap-1.5 active:scale-95 text-sm h-[42px]"
+            title="Reset All Production 2 Data"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            Reset Data
+          </button>
         </div>
       </div>
 
@@ -686,6 +748,101 @@ export default function Production2Page() {
           {errorMsg && <p className="mt-4 text-sm font-medium text-rose-600 bg-rose-50 py-2 px-4 rounded-full inline-block">{errorMsg}</p>}
         </section>
       </div>
+
+      {/* Success Notification Alert */}
+      {saveSuccessMsg && (
+        <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl shadow-sm animate-in fade-in duration-200">
+          <svg className="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <div className="flex-1 font-semibold text-sm">{saveSuccessMsg}</div>
+          <button onClick={() => setSaveSuccessMsg("")} className="text-emerald-700 hover:text-emerald-900 text-xs font-bold uppercase tracking-wider px-2 py-1">Dismiss</button>
+        </div>
+      )}
+
+      {/* Pending / Staged Data (Direct Upload not saved to LocalStorage yet) */}
+      {pendingFiles.length > 0 && (
+        <div className="bg-amber-50/70 border-2 border-amber-300 rounded-2xl p-4 sm:p-6 shadow-md transition-all">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-amber-200">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-200 text-amber-900">
+                  Pending Verification
+                </span>
+                <span className="text-xs text-amber-700 font-medium">
+                  ({pendingFiles.length} file/record staged)
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-amber-950 mt-1">
+                Uploaded Data Preview (Not yet in LocalStorage)
+              </h3>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Review below. Click <strong>"Save to Local Storage"</strong> to permanently store and view in Production Data.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={clearPendingFiles}
+                className="px-4 py-2 text-xs font-semibold text-rose-700 bg-white hover:bg-rose-50 border border-rose-300 rounded-lg shadow-sm transition-all active:scale-95"
+              >
+                Discard All
+              </button>
+              <button
+                type="button"
+                onClick={handleSavePendingToStorage}
+                className="px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-lg shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                Save to Local Storage
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+            {pendingFiles.map((file, pIdx) => (
+              <div key={pIdx} className="bg-white border border-amber-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+                <div className="px-3.5 py-2.5 bg-amber-100/50 border-b border-amber-200 flex items-center justify-between">
+                  <div className="truncate mr-2">
+                    <span className="text-[11px] font-bold text-indigo-700 block">{file.date || "No Date"}</span>
+                    <span className="text-xs font-medium text-slate-800 truncate block" title={file.fileName}>{file.fileName}</span>
+                  </div>
+                  <button
+                    onClick={() => removePendingFile(pIdx)}
+                    className="text-xs text-rose-600 hover:text-rose-800 font-semibold p-1 hover:bg-rose-50 rounded"
+                    title="Remove item"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div className="p-2 max-h-48 overflow-y-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="text-[10px] text-slate-500 uppercase border-b border-slate-100 font-semibold">
+                        <th className="py-1">Item</th>
+                        <th className="py-1 text-right">Kiln-1</th>
+                        <th className="py-1 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-slate-700 divide-y divide-slate-50">
+                      {file.items.map((it, itIdx) => (
+                        <tr key={itIdx}>
+                          <td className="py-1 pr-1 truncate max-w-[120px]" title={it.label}>{it.label}</td>
+                          <td className="py-1 text-right font-mono text-slate-600">{fmt(it.kiln1)}</td>
+                          <td className="py-1 text-right font-mono font-medium text-slate-900">{it.total === null ? '—' : fmt(it.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
         <div className="flex justify-between items-center mb-4 mt-8">
           <h2 className="text-xl font-bold text-slate-800 tracking-tight">Production Data</h2>

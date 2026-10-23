@@ -66,12 +66,33 @@ const Stock = () => {
   const storeAddItem = useStockStore((state) => state.addItem)
   const storeUpdateItem = useStockStore((state) => state.updateItem)
   const storeDeleteItem = useStockStore((state) => state.deleteItem)
+  const storeClearAllItems = useStockStore((state) => state.clearAllItems)
 
   const dbItems = storeItems;
   const isLoading = false;
 
   const items = useMemo(() => {
-    return dbItems;
+    return (dbItems || []).map((item) => ({
+      ...item,
+      category: item.category || 'RAW IRON ORE',
+      material: item.material || '',
+      openingStock: item.openingStock ?? item.opening_stock ?? 0,
+      inward: item.inward ?? 0,
+      consumption: item.consumption ?? 0,
+      crushing: item.crushing ?? '0%',
+      fines3: item.fines3 ?? 0,
+      fines3Qty: item.fines3Qty ?? item.fines3_qty ?? 0,
+      production: item.production ?? 0,
+      dispatch: item.dispatch ?? 0,
+      closingStock: item.closingStock ?? item.closing_stock ?? 0,
+      fc: item.fc ?? '-',
+      moistLossPct: item.moistLossPct ?? item.moist_loss_pct ?? '0%',
+      moistLossQty: item.moistLossQty ?? item.moist_loss_qty ?? 0,
+      landedCost: item.landedCost ?? item.landed_cost ?? 0,
+      unit: item.unit ?? 'ton',
+      remarks: item.remarks ?? '',
+      reportDate: item.reportDate ?? item.report_date ?? (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : ''),
+    }));
   }, [dbItems]);
 
   const addItem = async (item) => {
@@ -121,8 +142,8 @@ const Stock = () => {
       if (activeTab === 'raw_material' && isCoal) return false
 
       if (reportDate) {
-        const createdDate = new Date(item.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
-        if (createdDate !== reportDate) return false
+        const itemDate = item.reportDate || (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : '')
+        if (itemDate && itemDate !== reportDate) return false
       }
 
       return item.material.toLowerCase().includes(normalized) ||
@@ -333,8 +354,6 @@ const Stock = () => {
             closingStock: clean(r.closingStock) || '0',
           })
 
-    if (clean(data.reportDate)) setReportDate(toIsoDate(data.reportDate))
-
     if (newRows.length > 0) {
       setStockPreview(newRows)
       setToast({ type: 'success', message: `Read ${newRows.length} ${isRaw ? 'Raw Material' : 'Coal'} rows from image. Preview ready!` })
@@ -362,28 +381,6 @@ const Stock = () => {
     ]
     
     let currentCategory = (type === 'raw_material') ? (rowsCategory || 'RAW IRON ORE') : (coalCategory || 'COAL DETAILS')
-
-    // Document date detection (e.g. 21-Oct-26 or 22-Oct-26)
-    for (const l of lines.slice(0, 10)) {
-      // Check for formats like DD-MMM-YY or DD.MM.YYYY
-      const dateMatch = l.match(/(\d{1,2})[.\-\/]([A-Za-z]{3}|\d{1,2})[.\-\/](\d{2,4})/)
-      if (dateMatch) {
-        const [_, d, m, y] = dateMatch
-        let fullYear = y.length === 2 ? `20${y}` : y
-        let monthStr = m
-        const monthNames = { 'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04', 'MAY': '05', 'JUN': '06', 'JUL': '07', 'AUG': '08', 'SEP': '09', 'OCT': '10', 'NOV': '11', 'DEC': '12' }
-        if (monthNames[m.toUpperCase()]) {
-          monthStr = monthNames[m.toUpperCase()]
-        } else if (!isNaN(m)) {
-          monthStr = m.padStart(2, '0')
-        }
-        const formattedDate = `${fullYear}-${monthStr}-${d.padStart(2, '0')}`
-        if (!isNaN(Date.parse(formattedDate))) {
-          setReportDate(formattedDate)
-        }
-        break
-      }
-    }
 
     // Flag for section scoping
     let inCoalSection = false
@@ -576,21 +573,40 @@ const Stock = () => {
       return
     }
 
-    const payloads = validRows.map((r) => ({
-      category: coalCategory || 'COAL DETAILS',
-      material: r.material,
-      opening_stock: Number(r.openingStock) || 0,
-      inward: Number(r.inward) || 0,
-      consumption: Number(r.consumption) || 0,
-      fc: r.fc || '',
-      moist_loss_pct: r.moistLossPct || '',
-      moist_loss_qty: Number(r.moistLossQty) || 0,
-      landed_cost: Number(r.landedCost) || 0,
-      dispatch: Number(r.dispatch) || 0,
-      closing_stock: Number(r.closingStock) || 0,
-      remarks: r.remarks || '',
-      report_date: reportDate || new Date().toISOString().split('T')[0]
-    }));
+    const payloads = validRows.map((r) => {
+      const op = Number(r.openingStock) || 0
+      const inw = Number(r.inward) || 0
+      const cons = Number(r.consumption) || 0
+      const moistQ = Number(r.moistLossQty) || 0
+      const landed = Number(r.landedCost) || 0
+      const dis = Number(r.dispatch) || 0
+      const closing = Number(r.closingStock) || (op + inw - cons)
+      const dateVal = reportDate || new Date().toISOString().split('T')[0]
+      const catVal = coalCategory || 'COAL DETAILS'
+
+      return {
+        type: 'coal_detail',
+        category: catVal,
+        material: r.material.trim(),
+        openingStock: op,
+        opening_stock: op,
+        inward: inw,
+        consumption: cons,
+        fc: r.fc || '',
+        moistLossPct: r.moistLossPct || '',
+        moist_loss_pct: r.moistLossPct || '',
+        moistLossQty: moistQ,
+        moist_loss_qty: moistQ,
+        landedCost: landed,
+        landed_cost: landed,
+        dispatch: dis,
+        closingStock: closing,
+        closing_stock: closing,
+        remarks: r.remarks || '',
+        reportDate: dateVal,
+        report_date: dateVal,
+      }
+    });
 
     setIsSaving(true);
     if (selectedId && payloads.length === 1) {
@@ -625,22 +641,39 @@ const Stock = () => {
       }
     }
 
-    const payloads = validRows.map((r) => ({
-      category: r.category || rowsCategory || '',
-      material: r.material.trim(),
-      opening_stock: Number(r.openingStock) || 0,
-      inward: Number(r.inward) || 0,
-      consumption: Number(r.consumption) || 0,
-      crushing: r.crushing || '0%',
-      fines3: parsePercentValue(r.fines3) || 0,
-      fines3_qty: Number(r.fines3Qty) || 0,
-      production: Number(r.production) || 0,
-      dispatch: Number(r.dispatch) || 0,
-      closing_stock: Number(r.closingStock) || 0,
-      unit: r.unit,
-      remarks: r.remarks ? r.remarks.trim() : '',
-      report_date: reportDate || new Date().toISOString().split('T')[0]
-    }));
+    const payloads = validRows.map((r) => {
+      const op = Number(r.openingStock) || 0
+      const inw = Number(r.inward) || 0
+      const cons = Number(r.consumption) || 0
+      const finesPct = parsePercentValue(r.fines3) || 0
+      const finesQ = Number(r.fines3Qty) || 0
+      const prod = Number(r.production) || 0
+      const dis = Number(r.dispatch) || 0
+      const closing = Number(r.closingStock) || (op + inw - cons - finesQ + prod - dis)
+      const dateVal = reportDate || new Date().toISOString().split('T')[0]
+      const catVal = r.category || rowsCategory || 'RAW IRON ORE'
+
+      return {
+        category: catVal,
+        material: r.material.trim(),
+        openingStock: op,
+        opening_stock: op,
+        inward: inw,
+        consumption: cons,
+        crushing: r.crushing || '0%',
+        fines3: finesPct,
+        fines3Qty: finesQ,
+        fines3_qty: finesQ,
+        production: prod,
+        dispatch: dis,
+        closingStock: closing,
+        closing_stock: closing,
+        unit: r.unit || 'ton',
+        remarks: r.remarks ? r.remarks.trim() : '',
+        reportDate: dateVal,
+        report_date: dateVal,
+      }
+    });
 
     setIsSaving(true);
     payloads.forEach(p => storeAddItem(p));
@@ -831,6 +864,20 @@ const Stock = () => {
           <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow shadow-indigo-500/30 transition-all flex items-center gap-2 h-10">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Add Stock Entry
+          </button>
+
+          <button
+            onClick={() => {
+              if (window.confirm("Kya aap sach me Stock ka saara data reset (clear) karna chahte hain?")) {
+                storeClearAllItems();
+                setToast({ type: 'success', message: 'Stock data reset ho gaya!' });
+              }
+            }}
+            className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-semibold rounded-lg shadow-sm transition-all flex items-center gap-1.5 active:scale-95 text-sm h-10"
+            title="Reset All Stock Data"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            Reset Data
           </button>
         </div>
       </div>
@@ -1338,54 +1385,96 @@ const Stock = () => {
       {stockPreview.length > 0 && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 sm:p-6 shadow-sm print:hidden mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-            <h2 className="text-lg font-bold text-emerald-800 flex items-center gap-2">
-              <span className="bg-emerald-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{stockPreview.length}</span>
-              Preview Uploaded Stock Data
-            </h2>
-            <div className="flex items-center gap-2">
+            <div>
+              <h2 className="text-lg font-bold text-emerald-800 flex items-center gap-2">
+                <span className="bg-emerald-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{stockPreview.length}</span>
+                Preview Uploaded Stock Data
+              </h2>
+              <p className="text-xs text-emerald-700 mt-1">
+                Data will be saved for date: <strong className="underline">{reportDate || new Date().toISOString().split('T')[0]}</strong>
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-emerald-300 rounded-lg shadow-sm">
+                <label className="text-xs font-bold text-emerald-700 uppercase">Save Date:</label>
+                <input 
+                  type="date" 
+                  value={reportDate || new Date().toISOString().split('T')[0]} 
+                  onChange={(e) => setReportDate(e.target.value)}
+                  className="text-xs font-semibold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
+                />
+              </div>
               <button 
                 onClick={async () => {
                   setIsSaving(true)
+                  const targetDate = reportDate || new Date().toISOString().split('T')[0]
                   for (const item of stockPreview) {
+                    const dateVal = targetDate
                     if (item.type === 'coal_detail') {
+                      const op = Number(item.openingStock) || 0
+                      const inw = Number(item.inward) || 0
+                      const cons = Number(item.consumption) || 0
+                      const moistQ = Number(item.moistLossQty) || 0
+                      const landed = Number(item.landedCost) || 0
+                      const dis = Number(item.dispatch) || 0
+                      const closing = Number(item.closingStock) || (op + inw - cons)
                       storeAddItem({
                         type: 'coal_detail',
                         category: item.category || 'COAL DETAILS',
                         material: item.material,
-                        opening_stock: Number(item.openingStock) || 0,
-                        inward: Number(item.inward) || 0,
-                        consumption: Number(item.consumption) || 0,
+                        openingStock: op,
+                        opening_stock: op,
+                        inward: inw,
+                        consumption: cons,
                         fc: item.fc || '',
+                        moistLossPct: item.moistLossPct || '',
                         moist_loss_pct: item.moistLossPct || '',
-                        moist_loss_qty: Number(item.moistLossQty) || 0,
-                        landed_cost: Number(item.landedCost) || 0,
-                        dispatch: Number(item.dispatch) || 0,
-                        closing_stock: Number(item.closingStock) || 0,
+                        moistLossQty: moistQ,
+                        moist_loss_qty: moistQ,
+                        landedCost: landed,
+                        landed_cost: landed,
+                        dispatch: dis,
+                        closingStock: closing,
+                        closing_stock: closing,
                         remarks: item.remarks || '',
-                        report_date: reportDate || new Date().toISOString().split('T')[0]
+                        reportDate: dateVal,
+                        report_date: dateVal,
                       })
                     } else {
+                      const op = Number(item.openingStock) || 0
+                      const inw = Number(item.inward) || 0
+                      const cons = Number(item.consumption) || 0
+                      const finesPct = parsePercentValue(item.fines3) || 0
+                      const finesQ = Number(item.fines3Qty) || 0
+                      const prod = Number(item.production) || 0
+                      const dis = Number(item.dispatch) || 0
+                      const closing = Number(item.closingStock) || (op + inw - cons - finesQ + prod - dis)
                       storeAddItem({
                         category: item.category || 'RAW IRON ORE',
                         material: item.material,
-                        opening_stock: Number(item.openingStock) || 0,
-                        inward: Number(item.inward) || 0,
-                        consumption: Number(item.consumption) || 0,
+                        openingStock: op,
+                        opening_stock: op,
+                        inward: inw,
+                        consumption: cons,
                         crushing: item.crushing || '0%',
-                        fines3: parsePercentValue(item.fines3) || 0,
-                        fines3_qty: Number(item.fines3Qty) || 0,
-                        production: Number(item.production) || 0,
-                        dispatch: Number(item.dispatch) || 0,
-                        closing_stock: Number(item.closingStock) || 0,
+                        fines3: finesPct,
+                        fines3Qty: finesQ,
+                        fines3_qty: finesQ,
+                        production: prod,
+                        dispatch: dis,
+                        closingStock: closing,
+                        closing_stock: closing,
                         unit: item.unit || 'ton',
                         remarks: item.remarks || '',
-                        report_date: reportDate || new Date().toISOString().split('T')[0]
+                        reportDate: dateVal,
+                        report_date: dateVal,
                       })
                     }
                   }
                   setIsSaving(false)
                   setStockPreview([])
-                  setToast({ type: 'success', message: `${stockPreview.length} items saved successfully!` })
+                  setReportDate(targetDate)
+                  setToast({ type: 'success', message: `${stockPreview.length} items saved successfully for ${targetDate}!` })
                 }}
                 disabled={isSaving}
                 className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition shadow-sm active:scale-95 text-sm"
@@ -1567,13 +1656,14 @@ const Stock = () => {
                   </>
                 )}
                 <th className="px-4 py-3 text-right break-words text-indigo-500">Closing Stock</th>
+                <th className="px-4 py-3 text-left break-words">Remarks</th>
                 <th className="px-4 py-3 text-center break-words">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {Object.keys(groupedAndTotals).length === 0 ? (
                 <tr>
-                  <td colSpan={activeTab === 'raw_material' ? 11 : 10} className="text-center py-16 bg-slate-50/50">
+                  <td colSpan={activeTab === 'raw_material' ? 12 : 11} className="text-center py-16 bg-slate-50/50">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
                     <p className="text-slate-500 font-medium text-sm">No stock items found.</p>
                     <p className="text-slate-400 text-xs mt-1">Use the form above to add new inventory data.</p>

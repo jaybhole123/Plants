@@ -47,8 +47,21 @@ Read only the coal section. Skip TOTAL rows. "reportDate" is the sheet date as Y
       { metricName: str, percentValue: str, k1Value: str, k2Value: str, totalValue: str },
       { date: str, downTimeRemarks: str }
     ),
-    hint: `Sponge iron daily PRODUCTION report. Read only the PRODUCTION table: each row is a grade/metric (e.g. "A" GRADE, "B" GRADE, SPONGE DUST, DOLO CHAR) with Percent, Kiln 1, Kiln 2 and Total.
-Rows with fewer columns: leave missing cells "". "downTimeRemarks" is all text after "DOWN TIME REMARKS" / "REMARKS :". "date" is YYYY-MM-DD.`,
+    hint: `MIS REPORT / Sponge iron daily PRODUCTION report.
+CRITICAL INSTRUCTION:
+- Read ONLY the "PRODUCTION" section/table in the sheet. Ignore "IRON ORE CONSUMPTION", "DOLOMITE CONSUMPTION", "COAL CONSUMPTION", "SPECIFIC COST", and "DOWN TIME REMARKS".
+- Rows under PRODUCTION typically include:
+  * STEAM (e.g. 204)
+  * SPONGE (Total sponge e.g. 134.00)
+  * "A" GRADE (e.g. 114.00)
+  * "B" GRADE (e.g. 20.00)
+  * N.MAG (CHAR+DOLO CHAR) (e.g. 50.00)
+- In single-kiln / single-total sheets where there is only one quantity column on the right:
+  * metricName: The label (e.g. 'STEAM', 'SPONGE', '"A" GRADE', '"B" GRADE', 'N.MAG (CHAR+DOLO CHAR)').
+  * For "A" GRADE and "B" GRADE, set k1Value to its quantity (e.g. 114.00 for "A" GRADE, 20.00 for "B" GRADE) and totalValue to the same quantity (e.g. 114.00 and 20.00). If SPONGE is 134.00, percentValue can be calculated or left blank if not written.
+  * For STEAM, SPONGE, N.MAG: set totalValue and k1Value to the number shown in that row.
+- "date" is the sheet date as YYYY-MM-DD (e.g., from "Date: Wednesday 21 October 2026" -> "2026-10-21").
+- Skip empty rows. Do not extract rows outside the PRODUCTION block.`,
   },
   sauda_sale: {
     schema: table({

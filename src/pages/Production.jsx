@@ -29,7 +29,7 @@ const formatNumber = (value) => {
 }
 
 const Production = () => {
-  const { entries, setEntries } = useProductionStore()
+  const { entries, setEntries, clearAll } = useProductionStore()
   const [rows, setRows] = useState([{ ...initialFormState, id: Date.now() }])
   const [editingId, setEditingId] = useState(null)
   const [editRows, setEditRows] = useState([])
@@ -283,7 +283,22 @@ const Production = () => {
           />
 
           <button type="button" onClick={resetForm} className="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-md transition">
-            Reset
+            Reset Form
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm("Kya aap Production ka saara saved data delete (reset) karna chahte hain?")) {
+                clearAll();
+                showToast("Production data reset ho gaya!");
+              }
+            }}
+            className="px-5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-medium rounded-md transition flex items-center gap-1 active:scale-95"
+            title="Reset All Stored Production Data"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            Reset All Data
           </button>
         </div>
       </div>
