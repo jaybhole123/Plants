@@ -1,25 +1,14 @@
 // Client side of the AI image reader. The OpenAI key never reaches the browser:
 // we only POST the image to our own /api/ocr endpoint (see server/ocrHandler.js).
+import { assessImage } from './imageQuality'
 
 const MAX_SIDE = 3600
 
-// Downscale big phone photos so the upload stays small; keeps text readable.
-const toDataUrl = (file) =>
+const loadImage = (file) =>
   new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
     const img = new Image()
-    img.onload = () => {
-      const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height))
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.round(img.width * scale)
-      canvas.height = Math.round(img.height * scale)
-      const ctx = canvas.getContext('2d')
-      ctx.imageSmoothingEnabled = true
-      ctx.imageSmoothingQuality = 'high'
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-      URL.revokeObjectURL(url)
-      resolve(canvas.toDataURL('image/jpeg', 0.96))
-    }
+    img.onload = () => resolve({ img, url })
     img.onerror = () => {
       URL.revokeObjectURL(url)
       reject(new Error('Could not read the image file'))
@@ -27,21 +16,41 @@ const toDataUrl = (file) =>
     img.src = url
   })
 
+// Downscale big phone photos so the upload stays small; keeps text readable.
+const toDataUrl = (img) => {
+  const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(img.width * scale)
+  canvas.height = Math.round(img.height * scale)
+  const ctx = canvas.getContext('2d')
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+  return canvas.toDataURL('image/jpeg', 0.96)
+}
+
 /**
  * @param {File} file
  * @param {'stock_raw'|'stock_coal'|'transfer'|'production'|'sauda_sale'|'sauda_purchase'} page
- * @returns {Promise<{data: object, verification: {status: string, corrections: object[], unreadable: string[], warnings: string[], message?: string}}>}
+ * @returns {Promise<{data: object, quality: {ok: boolean, issues: string[]}, verification: {status: string, corrections: object[], unreadable: string[], warnings: string[], message?: string}}>}
  */
 export async function extractFromImage(file, page) {
-  const image = await toDataUrl(file)
+  const { img, url } = await loadImage(file)
+  let image, quality
+  try {
+    quality = assessImage(img)
+    image = toDataUrl(img)
+  } finally {
+    URL.revokeObjectURL(url)
+  }
   const res = await fetch('/api/ocr', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ page, image }),
   })
   const json = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(json.error || `Image reading failed (${res.status})`)
-  return json
+  if (!res.ok) throw new Error(json.error || `Image reading failed (${res.status}). Is the /api/ocr server running?`)
+  return { ...json, quality: { ok: quality.ok, issues: quality.issues } }
 }
 
 export const clean = (v) => String(v ?? '').trim()

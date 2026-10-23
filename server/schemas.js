@@ -1,5 +1,5 @@
-// Page-wise extraction schemas + prompt hints for the AI image reader.
-// All leaf values are strings so figures are kept exactly as printed (e.g. "12%", "1,250.500").
+// Page-wise extraction schemas, prompt hints, output cleaning and arithmetic cross-checks
+// for the AI image reader. All leaf values are strings; cleaning turns them into app-ready values.
 
 const str = { type: 'string' }
 
@@ -13,6 +13,34 @@ const obj = (properties) => ({
 const table = (rowProps, extra = {}) =>
   obj({ ...extra, rows: { type: 'array', items: obj(rowProps) } })
 
+// numeric: digits + optional decimal point (and a trailing % where the cell is a percentage)
+// pct:     numeric cells that may legitimately carry a trailing %
+// date:    normalised to YYYY-MM-DD
+const FIELDS = {
+  stock_raw: {
+    numeric: ['openingStock', 'inward', 'consumption', 'fines3Qty', 'production', 'dispatch', 'closingStock'],
+    pct: ['crushing', 'fines3'],
+    date: ['reportDate'],
+  },
+  stock_coal: {
+    numeric: ['openingStock', 'inward', 'consumption', 'fc', 'landedCost', 'dispatch', 'closingStock'],
+    pct: ['moistLossPct'],
+    date: ['reportDate'],
+  },
+  transfer: { numeric: ['qty', 'rate'], pct: [], date: [] },
+  production: { numeric: ['k1Value', 'k2Value', 'totalValue'], pct: ['percentValue'], date: ['date'] },
+  sauda_sale: {
+    numeric: ['saudaQuantity', 'rateAmt', 'prvPending', 'qtyDispatch', 'balPending'],
+    pct: [],
+    date: ['date'],
+  },
+  sauda_purchase: {
+    numeric: ['orderQuantity', 'rateMt', 'tcs', 'bhada', 'landingCost', 'gst', 'grossRate', 'netRate', 'qtyReceived', 'balPending'],
+    pct: [],
+    date: ['date'],
+  },
+}
+
 export const PAGES = {
   stock_raw: {
     schema: table(
@@ -22,28 +50,11 @@ export const PAGES = {
       },
       { reportDate: str }
     ),
-    hint: `Daily RAW MATERIAL STOCK sheet. Columns left to right:
-1. MATERIAL: Name of the material item (e.g. Lloyds Metals (10-40), Pellet Ore, BACHELI (10-20), NMDC BACHELI (10-150), Bacheli Fines, Drclo Fines (62), Lloyds Metals Fines, Pellet Fines).
-2. OPENING STOCK: Very important! Pay close attention to 4-digit numbers with decimals. E.g. for "Lloyds Metals Fines" it is "3157.529" (NOT 317.529). Copy every digit and decimal carefully!
-3. INWARD: Values in inward column (e.g. "337.390", "500.000", "125.000").
-4. CONS. / CONSUMPTION: E.g. "625.000", "240.660".
-5. CRUSHING / SCREEN (+3): E.g. "500.000".
-6. FINES(-3) %: E.g. "20%", "1%".
-7. FINES(-3) QTY: E.g. "125.000", "0.000".
-8. PROD. / PRODUCTION: E.g. "0.000".
-9. DIS. / DISPATCH: E.g. "0.000".
-10. CLOSING STOCK: E.g. "5315.633", "392.113", "637.220", "152.429", "139.465", "3282.529", "38.856".
-
-CRITICAL CATEGORY RULES:
-- Group headings in the table:
-  * "RAW IRON ORE"
-  * "RAW PELLET ORE"
-  * "PROCESSED IRON ORE (3-18)"
-  * "IRON FINES (0-3)"
-- Put every material row into its exact parent "category" (e.g. Bacheli Fines, Drclo Fines (62), Lloyds Metals Fines, Pellet Fines ALL belong to "IRON FINES (0-3)").
-- Stop before "COAL DETAILS".
-- Skip "TOTAL", "SUB TOTAL", and "TOTAL IRON ORE" summary rows.
-- "reportDate": extract the AS ON DATE header date as YYYY-MM-DD (e.g. "2026-10-22").`,
+    hint: `RAW MATERIAL STOCK sheet (table of materials with stock columns). Typical columns left to right: Material, Opening Stock, Inward, Consumption, Crushing/Screen, Fines %, Fines qty, Production, Dispatch, Closing Stock; headers may be worded slightly differently or be in a different order - match each value to the column header printed above it.
+Copy every digit of long numbers carefully (do not drop a digit from 4-digit integer parts such as 1234.567).
+Group heading rows (bold/centered rows with no figures, e.g. "RAW IRON ORE") go in "category" for the rows beneath them; each material row gets its own parent heading. Headings are not data rows.
+Read only the raw-material part: stop before any COAL section and ignore TOTAL / SUB TOTAL / GRAND TOTAL rows.
+"reportDate" = the "AS ON DATE" date if the sheet prints one, otherwise the main date at the top of the sheet. Blank cells stay "".`,
   },
   stock_coal: {
     schema: table(
@@ -53,85 +64,150 @@ CRITICAL CATEGORY RULES:
       },
       { reportDate: str }
     ),
-    hint: `COAL DETAILS & MISCELLANEOUS STOCK section of the stock sheet (from "COAL DETAILS" header all the way down to the end of the sheet, including items after "TOTAL COAL" like SPONGE PELLET, DOLOMITE, NON MAG, SPONGE IRON, etc.).
-Table columns left to right:
-1. COAL / MATERIAL name
-2. OPENING STOCK
-3. INWARD
-4. NET CONS. / CONSUMPTION
-5. F/C (e.g. "52 FC", "33 FC", or empty)
-6. Moist. & loss / Moisture loss % (e.g. "0.000", "1.364", "3.50%")
-7. LANDED COST: Very important! Look for the "LANDED COST" column (contains figures like "8,000", "6,350", "3,700", "9,800", "4,700", "6,200", "8,500", "7,800", "5,800", "50.000", "134.000"). Extract the exact numeric string without currency symbols into "landedCost". DO NOT leave it empty or 0 if a value is printed in that column!
-8. DISPATCH / DIS. (e.g. "0.000", "77.230", "123.600")
-9. CLOSING STOCK
-
-CRITICAL RULES:
-- Read all coal rows under COAL DETAILS.
-- ALSO read ALL rows printed AFTER "TOTAL COAL" till the end of the table (e.g. SPONGE PELLET, DOLOMITE, NON MAG (Char+Dolochar), SPONGE IRON). Set their "category" to "COAL DETAILS" or their respective category.
-- ONLY skip the summary rows named "TOTAL COAL" or "TOTAL". Do NOT stop reading at "TOTAL COAL"!
-- "reportDate": extract the AS ON DATE / date printed in the top header as YYYY-MM-DD.`,
+    hint: `COAL DETAILS section of a stock sheet, including any extra item rows printed below the coal TOTAL row down to the end of the table (e.g. other materials listed after "TOTAL COAL"). Typical columns: Material, Opening Stock, Inward, Consumption (net cons.), F/C (fixed carbon), Moisture loss, Landed Cost, Dispatch, Closing Stock; match each value to the header printed above it.
+Read all coal rows and also the item rows after the coal TOTAL row; skip only TOTAL rows. "category": the coal section heading for coal rows, and the row's own heading/label for extra item rows after the total.
+"fc" = the number only. Read the Landed Cost column carefully and never leave it empty when a value is printed there. Dispatch/Production-type figures printed in the extra rows go in their matching columns.
+"reportDate" = the "AS ON DATE" date if the sheet prints one, otherwise the main date at the top. Blank cells stay "".`,
   },
   transfer: {
     schema: table({ entryType: str, partyName: str, materialName: str, vehicleNo: str, qty: str, rate: str }),
-    hint: `Incoming / Outgoing material slip, gate pass or register. One row per entry.
-"entryType" is "incoming" or "outgoing" if the document says so, otherwise "". "vehicleNo" is the truck number exactly as written (e.g. CG04XX1234).`,
+    hint: `Incoming / outgoing material record: a register, gate pass, slip, or a chat message (e.g. WhatsApp/Telegram screenshot). One row per entry.
+"entryType": "incoming" or "outgoing" - take it from the heading/label that applies to the lines below it ("" if not stated). "materialName" and "partyName" are separate: material = what was moved, party = the company/person. Words like "advance payment" or "loading payment" are not part of either. "qty" = the quantity number only (no unit). A number in brackets after the quantity (like "Mt(3)") is a trip/vehicle count, NOT the quantity. "rate" = the price number only (drop @, /-, Rs, currency). "vehicleNo" = vehicle number exactly as written, else "".`,
   },
   production: {
     schema: table(
       { metricName: str, percentValue: str, k1Value: str, k2Value: str, totalValue: str },
       { date: str, downTimeRemarks: str }
     ),
-    hint: `MIS REPORT / Sponge iron daily PRODUCTION report.
-CRITICAL INSTRUCTION:
-- Read ONLY the "PRODUCTION" section/table in the sheet. Ignore "IRON ORE CONSUMPTION", "DOLOMITE CONSUMPTION", "COAL CONSUMPTION", "SPECIFIC COST", and "DOWN TIME REMARKS".
-- Rows under PRODUCTION typically include:
-  * STEAM (e.g. 204)
-  * SPONGE (Total sponge e.g. 134.00)
-  * "A" GRADE (e.g. 114.00)
-  * "B" GRADE (e.g. 20.00)
-  * N.MAG (CHAR+DOLO CHAR) (e.g. 50.00)
-- In single-kiln / single-total sheets where there is only one quantity column on the right:
-  * metricName: The label (e.g. 'STEAM', 'SPONGE', '"A" GRADE', '"B" GRADE', 'N.MAG (CHAR+DOLO CHAR)').
-  * For "A" GRADE and "B" GRADE, set k1Value to its quantity (e.g. 114.00 for "A" GRADE, 20.00 for "B" GRADE) and totalValue to the same quantity (e.g. 114.00 and 20.00). If SPONGE is 134.00, percentValue can be calculated or left blank if not written.
-  * For STEAM, SPONGE, N.MAG: set totalValue and k1Value to the number shown in that row.
-- "date" is the sheet date as YYYY-MM-DD (e.g., from "Date: Wednesday 21 October 2026" -> "2026-10-21").
-- Skip empty rows. Do not extract rows outside the PRODUCTION block.`,
+    hint: `Daily PRODUCTION report (it may be one section of a bigger MIS page - ignore all other sections such as consumption tables, costs and down-time). Read only the production table: each row is a grade/metric with some of these value columns: percent, kiln 1, kiln 2, total. Put each number under the column header it sits below.
+If the table has just ONE value column, that single quantity is the row's total: put it in "totalValue" AND in "k1Value", and leave percentValue and k2Value "". Never calculate a percentage; leave percentValue "" unless it is printed.
+"downTimeRemarks" = the text written in the remarks box next to the "REMARKS" label (not the label itself, not other captions such as "feed loss time"); if only a dash is written, return "-". "date" = the report date.`,
   },
   sauda_sale: {
     schema: table({
       date: str, mainHeading: str, itemName: str, partyName: str,
       saudaQuantity: str, rateAmt: str, prvPending: str, qtyDispatch: str, balPending: str,
     }),
-    hint: `SAUDA (sales order) sheet or weighbridge slip. One row per party/order. "mainHeading" is the bold item group above the rows (e.g. GASIFIRE ASH, BED MATERIAL, CHAR). Columns: Date, Item, Party, Sauda Qty, Rate, Previous Pending, Qty Dispatched, Balance Pending. Dates as YYYY-MM-DD.`,
+    hint: `SAUDA (sales order) sheet. One row per order/party. "mainHeading" = the bold group heading above a set of rows. Typical columns: Date, Item, Party, Sauda Quantity, Rate, Previous Pending, Qty Dispatched, Balance Pending - match each value to its column header. Skip TOTAL rows.`,
   },
   sauda_purchase: {
     schema: table({
-      date: str, mainHeading: str, itemName: str, partyName: str,
-      orderQuantity: str, rateMt: str, qtyReceived: str, balPending: str,
+      date: str, mainHeading: str, itemName: str, partyName: str, orderQuantity: str, rateMt: str,
+      tcs: str, bhada: str, landingCost: str, gst: str, grossRate: str, netRate: str,
+      qtyReceived: str, balPending: str,
     }),
-    hint: `SAUDA PURCHASE (purchase order) sheet or receipt. One row per party/order. "mainHeading" is the item group heading. Columns: Date, Item, Party, Order Qty, Rate per MT, Qty Received, Balance Pending. Dates as YYYY-MM-DD.`,
+    hint: `SAUDA PURCHASE / MATERIAL PURCHASE sheet. One row per entry; skip TOTAL rows. "mainHeading" = the coloured/bold group heading above a set of rows. Typical columns: Date, Material, Party Name, Quantity (MT), Rate/MT, Tcs, Bhada, Landing Cost, GST, Gross Rate, Net Rate, Qty Received till date, Balance (MT) - match each value to its column header; blank cells stay "".`,
   },
 }
+
+// ---------- cleaning ----------
+
+// Common Cyrillic/Greek look-alikes the model occasionally emits inside Latin text
+const LOOKALIKE = { а: 'a', е: 'e', о: 'o', р: 'p', с: 'c', х: 'x', у: 'y', і: 'i', ј: 'j', А: 'A', В: 'B', Е: 'E', К: 'K', М: 'M', Н: 'H', О: 'O', Р: 'P', С: 'C', Т: 'T', Х: 'X' }
+
+const cleanText = (v) =>
+  String(v ?? '')
+    .replace(/[Ѐ-ӿ]/g, (c) => LOOKALIKE[c] ?? c)
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+// "123.600 Mt(5)" -> "123.600", "@330/-" -> "330", "30,011" -> "30011", "9100*" -> "9100", "52 FC" -> "52", "-" -> ""
+export const cleanNumber = (v, allowPct = false) => {
+  const s = String(v ?? '').replace(/,/g, '').replace(/[−–]/g, '-')
+  const m = s.match(/-?\d+(?:\.\d+)?|-?\.\d+/)
+  if (!m) return ''
+  const hasPct = allowPct && new RegExp(`${m[0].replace('.', '\\.')}\\s*%`).test(s)
+  return m[0] + (hasPct ? '%' : '')
+}
+
+const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 }
+const pad = (n) => String(n).padStart(2, '0')
+
+export const cleanDate = (v) => {
+  const s = String(v ?? '').trim()
+  if (!s) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  let m = s.match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})$/)
+  if (m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`
+  m = s.match(/(\d{1,2})[.\-/ ]+([A-Za-z]{3,9})[.\-/ ,]+(\d{2,4})/)
+  if (m && MONTHS[m[2].slice(0, 3).toLowerCase()]) {
+    const y = m[3].length === 2 ? '20' + m[3] : m[3]
+    return `${y}-${pad(MONTHS[m[2].slice(0, 3).toLowerCase()])}-${pad(m[1])}`
+  }
+  m = s.match(/(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})/)
+  if (m) return `${m[3].length === 2 ? '20' + m[3] : m[3]}-${pad(m[2])}-${pad(m[1])}`
+  return ''
+}
+
+// Returns a cleaned copy of the model output. Never invents values: unparseable numbers become "".
+export const sanitize = (page, data) => {
+  const f = FIELDS[page]
+  const fix = (obj) => {
+    const out = {}
+    for (const [k, v] of Object.entries(obj)) {
+      if (k === 'rows') continue
+      if (f.numeric.includes(k)) out[k] = cleanNumber(v)
+      else if (f.pct.includes(k)) out[k] = cleanNumber(v, true)
+      else if (f.date.includes(k)) out[k] = cleanDate(v)
+      else out[k] = cleanText(v)
+    }
+    return out
+  }
+  return { ...fix(data || {}), rows: (data?.rows || []).map(fix) }
+}
+
+// ---------- arithmetic cross-checks (done in code, not by the model) ----------
 
 const num = (v) => {
   const n = parseFloat(String(v ?? '').replace(/,/g, ''))
   return Number.isFinite(n) ? n : null
 }
+const near = (a, b, tol = 0.011) => Math.abs(a - b) <= tol
 
-// Arithmetic cross-checks done in code (not by the model). Returned as warnings only.
+// Warnings only; a warning means "these figures don't add up, check the photo", not "wrong".
 export const crossChecks = (page, data) => {
   const warnings = []
-  const rows = data?.rows || []
-  rows.forEach((r, i) => {
+  ;(data?.rows || []).forEach((r, i) => {
+    const who = r.partyName || r.material || r.metricName || ''
+    const label = `Row ${i + 1}${who ? ` (${who})` : ''}`
+
     if (page === 'sauda_sale') {
       const s = num(r.saudaQuantity), p = num(r.prvPending), d = num(r.qtyDispatch), b = num(r.balPending)
-      if ([s, d, b].every((x) => x !== null) && Math.abs(s + (p || 0) - d - b) > 0.01)
-        warnings.push(`Row ${i + 1} (${r.partyName}): Sauda + Prev Pending - Dispatch = ${(s + (p || 0) - d).toFixed(3)} but sheet shows Balance ${b}`)
+      if (b === null || d === null) return
+      const ok = [p !== null ? p - d : null, s !== null && p !== null ? s + p - d : null, s !== null ? s - d : null]
+        .some((x) => x !== null && near(x, b))
+      if (!ok) warnings.push(`${label}: Balance ${b} does not match Prev Pending - Dispatch (or Sauda - Dispatch).`)
     }
+
     if (page === 'sauda_purchase') {
       const o = num(r.orderQuantity), q = num(r.qtyReceived), b = num(r.balPending)
-      if ([o, q, b].every((x) => x !== null) && Math.abs(o - q - b) > 0.01)
-        warnings.push(`Row ${i + 1} (${r.partyName}): Order - Received = ${(o - q).toFixed(3)} but sheet shows Balance ${b}`)
+      if (o !== null && q !== null && b !== null && !near(o - q, b))
+        warnings.push(`${label}: Order - Received = ${(o - q).toFixed(3)} but Balance shows ${b}.`)
+    }
+
+    if (page === 'stock_raw') {
+      const o = num(r.openingStock), c = num(r.closingStock)
+      if (o === null || c === null || num(r.production) || num(r.dispatch)) return
+      const exp = o + (num(r.inward) || 0) - (num(r.consumption) || 0)
+      if (!near(exp, c)) warnings.push(`${label}: Opening + Inward - Consumption = ${exp.toFixed(3)} but Closing shows ${c}.`)
+    }
+
+    if (page === 'stock_coal') {
+      const o = num(r.openingStock), c = num(r.closingStock)
+      if (o === null || c === null || num(r.dispatch)) return
+      const base = o + (num(r.inward) || 0) - (num(r.consumption) || 0)
+      const moist = num(r.moistLossPct)
+      // closing may or may not have the moisture-loss quantity deducted
+      if (!near(base, c) && !(moist !== null && near(base - moist, c)))
+        warnings.push(`${label}: Opening + Inward - Consumption = ${base.toFixed(3)} but Closing shows ${c}.`)
+    }
+
+    if (page === 'production') {
+      const a = num(r.k1Value), b = num(r.k2Value), t = num(r.totalValue)
+      if (a !== null && b !== null && t !== null && !near(a + b, t, 0.02))
+        warnings.push(`${label}: Kiln1 + Kiln2 = ${(a + b).toFixed(3)} but Total shows ${t}.`)
     }
   })
   return warnings

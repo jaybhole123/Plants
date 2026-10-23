@@ -1,6 +1,7 @@
 import React from 'react'
 
 const BADGE = {
+  read: { text: 'Read by AI - please review', cls: 'bg-sky-100 text-sky-800 border-sky-300' },
   verified: { text: 'Verified', cls: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
   corrected: { text: 'Corrected by verifier', cls: 'bg-amber-100 text-amber-800 border-amber-300' },
   unverified: { text: 'Not verified', cls: 'bg-rose-100 text-rose-800 border-rose-300' },
@@ -12,7 +13,8 @@ const BADGE = {
  */
 const AiResultModal = ({ result, onApply, onClose }) => {
   const { data, verification: v } = result
-  const badge = BADGE[v.status] || BADGE.unverified
+  const quality = result.quality || { ok: true, issues: [] }
+  const badge = !quality.ok ? BADGE.read : (BADGE[v.status] || BADGE.unverified)
   const rowCount = data?.rows?.length || 0
 
   return (
@@ -28,6 +30,16 @@ const AiResultModal = ({ result, onApply, onClose }) => {
           <p>
             <strong>{rowCount}</strong> row{rowCount === 1 ? '' : 's'} found. Review the values on the page after applying; nothing is saved until you save it.
           </p>
+
+          {!quality.ok && (
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 text-amber-900">
+              <p className="font-semibold mb-1">Photo quality warning</p>
+              <ul className="list-disc pl-5">
+                {quality.issues.map((q, i) => <li key={i}>{q}</li>)}
+              </ul>
+              <p className="mt-1 text-xs">Numbers from a poor photo can look right but be wrong. Check each value against the paper, or retake the photo.</p>
+            </div>
+          )}
 
           {v.status === 'unverified' && (
             <p className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-rose-800">
@@ -62,7 +74,7 @@ const AiResultModal = ({ result, onApply, onClose }) => {
 
           {v.warnings.length > 0 && (
             <div>
-              <p className="font-semibold mb-1">Totals don't match</p>
+              <p className="font-semibold mb-1">Figures that don't add up (check these rows)</p>
               <ul className="space-y-1">
                 {v.warnings.map((w, i) => (
                   <li key={i} className="bg-rose-50 border border-rose-200 rounded-md px-3 py-2 text-rose-800">{w}</li>
@@ -72,7 +84,9 @@ const AiResultModal = ({ result, onApply, onClose }) => {
           )}
 
           <p className="text-xs text-slate-500">
-            "Verified" means a second AI pass compared the values with the image. It is not a guarantee, so please review before saving.
+            {v.status === 'verified' || v.status === 'corrected'
+              ? '"Verified" means a second AI pass compared the values with the image. It is not a guarantee, so please review before saving.'
+              : 'The values were read directly from the image. The AI can still misread digits, so please review before saving.'}
           </p>
         </div>
 
