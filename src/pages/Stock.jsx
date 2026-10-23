@@ -344,14 +344,14 @@ const Stock = () => {
             type: 'coal_detail',
             category: clean(r.category) || defaultCat,
             material: clean(r.material),
-            openingStock: clean(r.openingStock) || '0',
-            inward: clean(r.inward) || '0',
-            consumption: clean(r.consumption) || '0',
+            openingStock: clean(r.openingStock).replace(/,/g, '') || '0',
+            inward: clean(r.inward).replace(/,/g, '') || '0',
+            consumption: clean(r.consumption).replace(/,/g, '') || '0',
             fc: clean(r.fc) || '-',
             moistLossPct: clean(r.moistLossPct) || '0%',
-            landedCost: clean(r.landedCost) || '0',
-            dispatch: clean(r.dispatch) || '0',
-            closingStock: clean(r.closingStock) || '0',
+            landedCost: clean(r.landedCost).replace(/,/g, '') || '0',
+            dispatch: clean(r.dispatch).replace(/,/g, '') || '0',
+            closingStock: clean(r.closingStock).replace(/,/g, '') || '0',
           })
 
     if (newRows.length > 0) {
@@ -1512,7 +1512,7 @@ const Stock = () => {
                         <th className="px-4 py-3 text-right">F/C</th>
                         <th className="px-4 py-3 text-right">Moist.%</th>
                         <th className="px-4 py-3 text-right">Landed Cost</th>
-                        <th className="px-4 py-3 text-right">Discount</th>
+                        <th className="px-4 py-3 text-right">Dispatch</th>
                       </>
                     )}
                     <th className="px-4 py-3 text-right text-emerald-700 font-bold">Closing Stock</th>

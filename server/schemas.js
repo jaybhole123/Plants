@@ -34,8 +34,23 @@ Stop before any COAL DETAILS section. Skip TOTAL / SUB TOTAL rows. "reportDate" 
       },
       { reportDate: str }
     ),
-    hint: `COAL DETAILS section of the stock sheet. Columns: Material, Opening Stock, Inward, Consumption, F/C (fixed carbon), Moisture loss %, Landed Cost, Dispatch, Closing Stock.
-Read only the coal section. Skip TOTAL rows. "reportDate" is the sheet date as YYYY-MM-DD.`,
+    hint: `COAL DETAILS & MISCELLANEOUS STOCK section of the stock sheet (from "COAL DETAILS" header all the way down to the end of the sheet, including items after "TOTAL COAL" like SPONGE PELLET, DOLOMITE, NON MAG, SPONGE IRON, etc.).
+Table columns left to right:
+1. COAL / MATERIAL name
+2. OPENING STOCK
+3. INWARD
+4. NET CONS. / CONSUMPTION
+5. F/C (e.g. "52 FC", "33 FC", or empty)
+6. Moist. & loss / Moisture loss % (e.g. "0.000", "1.364", "3.50%")
+7. LANDED COST: Very important! Look for the "LANDED COST" column (contains figures like "8,000", "6,350", "3,700", "9,800", "4,700", "6,200", "8,500", "7,800", "5,800", "50.000", "134.000"). Extract the exact numeric string without currency symbols into "landedCost". DO NOT leave it empty or 0 if a value is printed in that column!
+8. DISPATCH / DIS. (e.g. "0.000", "77.230", "123.600")
+9. CLOSING STOCK
+
+CRITICAL RULES:
+- Read all coal rows under COAL DETAILS.
+- ALSO read ALL rows printed AFTER "TOTAL COAL" till the end of the table (e.g. SPONGE PELLET, DOLOMITE, NON MAG (Char+Dolochar), SPONGE IRON). Set their "category" to "COAL DETAILS" or their respective category.
+- ONLY skip the summary rows named "TOTAL COAL" or "TOTAL". Do NOT stop reading at "TOTAL COAL"!
+- "reportDate": extract the AS ON DATE / date printed in the top header as YYYY-MM-DD.`,
   },
   transfer: {
     schema: table({ entryType: str, partyName: str, materialName: str, vehicleNo: str, qty: str, rate: str }),

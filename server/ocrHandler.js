@@ -91,7 +91,15 @@ export async function handleOcr(req, res, env) {
   if (!key) return send(res, 500, { error: 'OPENAI_API_KEY is not set on the server (.env)' })
 
   let payload
-  try { payload = JSON.parse(await readBody(req)) } catch (e) { return send(res, 400, { error: e.message }) }
+  try {
+    if (req.body && typeof req.body === 'object') {
+      payload = req.body
+    } else if (typeof req.body === 'string') {
+      payload = JSON.parse(req.body)
+    } else {
+      payload = JSON.parse(await readBody(req))
+    }
+  } catch (e) { return send(res, 400, { error: e.message }) }
   const { page, image } = payload || {}
   const cfg = PAGES[page]
   if (!cfg) return send(res, 400, { error: `Unknown page "${page}"` })

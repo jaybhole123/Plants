@@ -40,13 +40,19 @@ const OCRImageUploader = ({ onTextExtracted, aiPage, onAiResult, buttonLabel = '
     if (aiPage) {
       try {
         setAiResult(await extractFromImage(file, aiPage))
+        setIsProcessing(false)
+        return
       } catch (error) {
         console.error('[AI read] Error:', error)
-        alert(error.message || 'Failed to read the image.')
-      } finally {
-        setIsProcessing(false)
+        // If server 404 (no backend deployed or server offline), fallback to client-side Tesseract OCR
+        if (error.message && (error.message.includes('404') || error.message.includes('Failed to fetch'))) {
+          console.warn('[AI read] Server endpoint /api/ocr not available (404). Falling back to client-side OCR...')
+        } else {
+          alert(error.message || 'Failed to read the image.')
+          setIsProcessing(false)
+          return
+        }
       }
-      return
     }
 
     try {
