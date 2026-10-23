@@ -1,0 +1,114 @@
+{
+ "rows": [
+  {
+   "date": "2026-08-17",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Maa Durga Steel & Power(Raipur)",
+   "saudaQuantity": "1915",
+   "rateAmt": "4400",
+   "prvPending": "907",
+   "qtyDispatch": "0",
+   "balPending": "907"
+  },
+  {
+   "date": "2026-08-10",
+   "mainHeading": "Slag",
+   "itemName": "Slag Grit",
+   "partyName": "Jindal Mining Services",
+   "saudaQuantity": "785",
+   "rateAmt": "5500",
+   "prvPending": "785",
+   "qtyDispatch": "0",
+   "balPending": "785"
+  },
+  {
+   "date": "2026-08-07",
+   "mainHeading": "Slag",
+   "itemName": "Slag Grit",
+   "partyName": "Anand Minerals(Nagpur)",
+   "saudaQuantity": "1450",
+   "rateAmt": "2350",
+   "prvPending": "1450",
+   "qtyDispatch": "1160",
+   "balPending": "290"
+  },
+  {
+   "date": "2026-08-05",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Gupta Brothers(Korba)",
+   "saudaQuantity": "845",
+   "rateAmt": "4150",
+   "prvPending": "294",
+   "qtyDispatch": "0",
+   "balPending": "294"
+  },
+  {
+   "date": "2026-08-18",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Shree Balaji Traders",
+   "saudaQuantity": "800",
+   "rateAmt": "11800",
+   "prvPending": "683",
+   "qtyDispatch": "683",
+   "balPending": "0"
+  },
+  {
+   "date": "2026-08-14",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 100mm",
+   "partyName": "Singhal Fly Ash Bricks(Satna)",
+   "saudaQuantity": "5",
+   "rateAmt": "26000",
+   "prvPending": "2",
+   "qtyDispatch": "0",
+   "balPending": "2"
+  },
+  {
+   "date": "2026-08-08",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Siddhi Vinayak Metals",
+   "saudaQuantity": "1535",
+   "rateAmt": "28300",
+   "prvPending": "335",
+   "qtyDispatch": "268",
+   "balPending": "67"
+  },
+  {
+   "date": "2026-08-01",
+   "mainHeading": "Sponge Iron",
+   "itemName": "Sponge Iron Lumps",
+   "partyName": "Gupta Brothers(Korba)",
+   "saudaQuantity": "410",
+   "rateAmt": "8200",
+   "prvPending": "410",
+   "qtyDispatch": "0",
+   "balPending": "410"
+  },
+  {
+   "date": "2026-08-02",
+   "mainHeading": "Sponge Iron",
+   "itemName": "Sponge Iron Lumps",
+   "partyName": "Hanuman Sponge Udyog",
+   "saudaQuantity": "1790",
+   "rateAmt": "49400",
+   "prvPending": "1790",
+   "qtyDispatch": "1790",
+   "balPending": "0"
+  },
+  {
+   "date": "2026-08-17",
+   "mainHeading": "Sponge Iron",
+   "itemName": "Sponge Iron Lumps",
+   "partyName": "Om Sai Enterprises",
+   "saudaQuantity": "750",
+   "rateAmt": "32800",
+   "prvPending": "750",
+   "qtyDispatch": "375",
+   "balPending": "375"
+  }
+ ]
+}

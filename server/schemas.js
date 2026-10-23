@@ -155,7 +155,19 @@ export const sanitize = (page, data) => {
     }
     return out
   }
-  return { ...fix(data || {}), rows: (data?.rows || []).map(fix) }
+  let rows = (data?.rows || []).map(fix)
+  if (page === 'production') {
+    // Single value column (only a quantity printed on the right): the app wants it as both Kiln 1 and Total,
+    // regardless of which of the two the model filled.
+    rows = rows.map((r) => {
+      if (r.percentValue === '' && r.k2Value === '') {
+        if (r.totalValue !== '' && r.k1Value === '') return { ...r, k1Value: r.totalValue }
+        if (r.k1Value !== '' && r.totalValue === '') return { ...r, totalValue: r.k1Value }
+      }
+      return r
+    })
+  }
+  return { ...fix(data || {}), rows }
 }
 
 // ---------- arithmetic cross-checks (done in code, not by the model) ----------

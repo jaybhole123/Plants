@@ -1,0 +1,100 @@
+{
+  "rows": [
+    {
+      "entryType": "incoming",
+      "partyName": "Hira Ferro Alloys",
+      "materialName": "Limestone",
+      "vehicleNo": "",
+      "qty": "388.548",
+      "rate": "280"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "SECL Korba",
+      "materialName": "Iron ore",
+      "vehicleNo": "",
+      "qty": "134.607",
+      "rate": "650"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Agrawal Coke",
+      "materialName": "Coal",
+      "vehicleNo": "",
+      "qty": "121.455",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Sharda Energy",
+      "materialName": "Char",
+      "vehicleNo": "",
+      "qty": "257.937",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "shri Om Sai Logistics",
+      "materialName": "Char",
+      "vehicleNo": "",
+      "qty": "101.947",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Rolling mil sms",
+      "materialName": "Sponge dust",
+      "vehicleNo": "",
+      "qty": "337.951",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Hira Ferro Alloys",
+      "materialName": "Sponge iron",
+      "vehicleNo": "",
+      "qty": "130.812",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Lloyds metals",
+      "materialName": "Sponge dust",
+      "vehicleNo": "OD18 XL 2099",
+      "qty": "58.367",
+      "rate": "440"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Rolling mil sms",
+      "materialName": "Gasi fire ash",
+      "vehicleNo": "",
+      "qty": "379.424",
+      "rate": "350"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Jindal Steel",
+      "materialName": "Coal",
+      "vehicleNo": "",
+      "qty": "187.496",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Vedanta Ltd",
+      "materialName": "Limestone",
+      "vehicleNo": "",
+      "qty": "17.981",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Sharda Energy",
+      "materialName": "Coal",
+      "vehicleNo": "",
+      "qty": "32.257",
+      "rate": ""
+    }
+  ]
+}

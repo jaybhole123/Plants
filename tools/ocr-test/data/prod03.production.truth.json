@@ -1,0 +1,41 @@
+{
+ "date": "2026-10-21",
+ "downTimeRemarks": "-",
+ "rows": [
+  {
+   "metricName": "STEAM",
+   "percentValue": "",
+   "k1Value": "218.4",
+   "k2Value": "52.1",
+   "totalValue": "270.5"
+  },
+  {
+   "metricName": "SPONGE",
+   "percentValue": "",
+   "k1Value": "81.6",
+   "k2Value": "107.1",
+   "totalValue": "188.7"
+  },
+  {
+   "metricName": "\"B\" GRADE",
+   "percentValue": "",
+   "k1Value": "59.2",
+   "k2Value": "75.8",
+   "totalValue": "135.0"
+  },
+  {
+   "metricName": "N.MAG (CHAR+DOLO CHAR)",
+   "percentValue": "",
+   "k1Value": "80.0",
+   "k2Value": "103.4",
+   "totalValue": "183.4"
+  },
+  {
+   "metricName": "DOLO CHAR",
+   "percentValue": "",
+   "k1Value": "72.6",
+   "k2Value": "115.6",
+   "totalValue": "188.2"
+  }
+ ]
+}

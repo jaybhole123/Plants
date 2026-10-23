@@ -1,0 +1,68 @@
+{
+ "rows": [
+  {
+   "date": "2026-08-06",
+   "mainHeading": "Pet Coke",
+   "itemName": "Calcined Pet Coke",
+   "partyName": "Rathi Steel Corp",
+   "orderQuantity": "11.000",
+   "rateMt": "4300",
+   "tcs": "",
+   "bhada": "",
+   "landingCost": "4300",
+   "gst": "215",
+   "grossRate": "4515",
+   "netRate": "",
+   "qtyReceived": "8.250",
+   "balPending": "2.750"
+  },
+  {
+   "date": "2026-08-17",
+   "mainHeading": "Dolomite",
+   "itemName": "Dolomite Lumps",
+   "partyName": "Balaji Cement Agency(Rewa)",
+   "orderQuantity": "237.000",
+   "rateMt": "11800",
+   "tcs": "41",
+   "bhada": "",
+   "landingCost": "11841",
+   "gst": "592",
+   "grossRate": "12433",
+   "netRate": "",
+   "qtyReceived": "204.915",
+   "balPending": "32.085"
+  },
+  {
+   "date": "2026-08-20",
+   "mainHeading": "Dolomite",
+   "itemName": "Dolomite Powder",
+   "partyName": "Mahalaxmi Foundry",
+   "orderQuantity": "292.000",
+   "rateMt": "3600",
+   "tcs": "",
+   "bhada": "",
+   "landingCost": "6600",
+   "gst": "330",
+   "grossRate": "6930",
+   "netRate": "",
+   "qtyReceived": "0.000",
+   "balPending": "292.000"
+  },
+  {
+   "date": "2026-08-14",
+   "mainHeading": "Dolomite",
+   "itemName": "Dolomite Powder",
+   "partyName": "Krishna Cement Works(Bilaspur)",
+   "orderQuantity": "197.000",
+   "rateMt": "14800",
+   "tcs": "0",
+   "bhada": "",
+   "landingCost": "17600",
+   "gst": "880",
+   "grossRate": "18480",
+   "netRate": "",
+   "qtyReceived": "0.000",
+   "balPending": "197.000"
+  }
+ ]
+}

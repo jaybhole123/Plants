@@ -1,0 +1,84 @@
+{
+  "rows": [
+    {
+      "entryType": "incoming",
+      "partyName": "Om Sai Logistics",
+      "materialName": "Iron ore",
+      "vehicleNo": "MP27 RV 1523",
+      "qty": "284.320",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Rolling mil sms",
+      "materialName": "Coke breeze",
+      "vehicleNo": "MH22 WZ 5977",
+      "qty": "397.506",
+      "rate": "510"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "SECL Korba",
+      "materialName": "Sponge iron",
+      "vehicleNo": "MP17 HQ 6195",
+      "qty": "228.196",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Sharda Energy",
+      "materialName": "Fly ash",
+      "vehicleNo": "OD11 GG 9801",
+      "qty": "321.020",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Shri Om Sai Logistics",
+      "materialName": "Fly ash",
+      "vehicleNo": "MP10 RL 6471",
+      "qty": "226.799",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Godawari Power",
+      "materialName": "Coal",
+      "vehicleNo": "MP07 CV 7785",
+      "qty": "131.515",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "SECL Korba",
+      "materialName": "Raw coal",
+      "vehicleNo": "OD05 VJ 1135",
+      "qty": "139.416",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Raipur Cement Ltd",
+      "materialName": "Coal",
+      "vehicleNo": "OD08 JL 4344",
+      "qty": "199.472",
+      "rate": "490"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Vedanta Ltd",
+      "materialName": "Dolomite",
+      "vehicleNo": "OD05 PK 6137",
+      "qty": "390.237",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Maa Durga Traders",
+      "materialName": "Limestone",
+      "vehicleNo": "CG06 OY 3323",
+      "qty": "214.647",
+      "rate": "480"
+    }
+  ]
+}

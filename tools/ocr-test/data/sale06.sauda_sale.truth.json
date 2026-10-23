@@ -1,0 +1,158 @@
+{
+ "rows": [
+  {
+   "date": "2026-08-02",
+   "mainHeading": "Bed Material",
+   "itemName": "Bed Material 3-10mm",
+   "partyName": "Pooja Industries",
+   "saudaQuantity": "27.47",
+   "rateAmt": "1600",
+   "prvPending": "24.16",
+   "qtyDispatch": "24.16",
+   "balPending": "0.00"
+  },
+  {
+   "date": "2026-08-16",
+   "mainHeading": "Bed Material",
+   "itemName": "Bed Material 0-3mm",
+   "partyName": "Mahalaxmi Foundry",
+   "saudaQuantity": "28.87",
+   "rateAmt": "5700",
+   "prvPending": "21.01",
+   "qtyDispatch": "16.80",
+   "balPending": "4.21"
+  },
+  {
+   "date": "2026-08-05",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 100mm",
+   "partyName": "Radhe Refractories",
+   "saudaQuantity": "39.88",
+   "rateAmt": "46300",
+   "prvPending": "39.88",
+   "qtyDispatch": "31.90",
+   "balPending": "7.98"
+  },
+  {
+   "date": "2026-08-10",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 100mm",
+   "partyName": "Kamdhenu Traders",
+   "saudaQuantity": "6.85",
+   "rateAmt": "49900",
+   "prvPending": "6.85",
+   "qtyDispatch": "0.00",
+   "balPending": "6.85"
+  },
+  {
+   "date": "2026-08-06",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Sharma Minerals & Co.",
+   "saudaQuantity": "9.49",
+   "rateAmt": "23400",
+   "prvPending": "9.49",
+   "qtyDispatch": "9.49",
+   "balPending": "0.00"
+  },
+  {
+   "date": "2026-08-19",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 100mm",
+   "partyName": "Patel Bricks & Blocks(Anuppur)",
+   "saudaQuantity": "7.16",
+   "rateAmt": "38600",
+   "prvPending": "1.86",
+   "qtyDispatch": "0.93",
+   "balPending": "0.93"
+  },
+  {
+   "date": "2026-08-20",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Narmada Infra Products",
+   "saudaQuantity": "27.74",
+   "rateAmt": "14300",
+   "prvPending": "27.74",
+   "qtyDispatch": "0.00",
+   "balPending": "27.74"
+  },
+  {
+   "date": "2026-08-10",
+   "mainHeading": "Sponge Iron",
+   "itemName": "Sponge Iron Lumps",
+   "partyName": "Jindal Mining Services",
+   "saudaQuantity": "34.43",
+   "rateAmt": "11600",
+   "prvPending": "32.91",
+   "qtyDispatch": "9.87",
+   "balPending": "23.04"
+  },
+  {
+   "date": "2026-08-12",
+   "mainHeading": "Sponge Iron",
+   "itemName": "DRI 3-20mm",
+   "partyName": "Mahalaxmi Foundry",
+   "saudaQuantity": "7.76",
+   "rateAmt": "43000",
+   "prvPending": "7.76",
+   "qtyDispatch": "2.32",
+   "balPending": "5.44"
+  },
+  {
+   "date": "2026-08-17",
+   "mainHeading": "Sponge Iron",
+   "itemName": "Sponge Iron Lumps",
+   "partyName": "Maa Durga Steel & Power(Raipur)",
+   "saudaQuantity": "4.58",
+   "rateAmt": "17900",
+   "prvPending": "1.26",
+   "qtyDispatch": "0.00",
+   "balPending": "1.26"
+  },
+  {
+   "date": "2026-08-13",
+   "mainHeading": "Sponge Iron",
+   "itemName": "Sponge Iron Fines",
+   "partyName": "Krishna Cement Works(Bilaspur)",
+   "saudaQuantity": "26.18",
+   "rateAmt": "15200",
+   "prvPending": "16.62",
+   "qtyDispatch": "13.29",
+   "balPending": "3.33"
+  },
+  {
+   "date": "2026-08-18",
+   "mainHeading": "Char",
+   "itemName": "Char Fines",
+   "partyName": "Radhe Refractories",
+   "saudaQuantity": "16.76",
+   "rateAmt": "4700",
+   "prvPending": "16.76",
+   "qtyDispatch": "0.00",
+   "balPending": "16.76"
+  },
+  {
+   "date": "2026-08-18",
+   "mainHeading": "Char",
+   "itemName": "Char 5-20",
+   "partyName": "Mahalaxmi Foundry",
+   "saudaQuantity": "33.02",
+   "rateAmt": "8850",
+   "prvPending": "16.79",
+   "qtyDispatch": "13.43",
+   "balPending": "3.36"
+  },
+  {
+   "date": "2026-08-15",
+   "mainHeading": "Char",
+   "itemName": "Dolochar",
+   "partyName": "Krishna Cement Works(Bilaspur)",
+   "saudaQuantity": "9.29",
+   "rateAmt": "5150",
+   "prvPending": "9.29",
+   "qtyDispatch": "4.64",
+   "balPending": "4.65"
+  }
+ ]
+}

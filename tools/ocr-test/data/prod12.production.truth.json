@@ -1,0 +1,55 @@
+{
+ "date": "2026-10-17",
+ "downTimeRemarks": "Shutdown for refractory patch work in Kiln 2 (4 hrs)",
+ "rows": [
+  {
+   "metricName": "SPONGE",
+   "percentValue": "71.3",
+   "k1Value": "99.028",
+   "k2Value": "37.325",
+   "totalValue": "136.353"
+  },
+  {
+   "metricName": "\"A\" GRADE",
+   "percentValue": "45.7",
+   "k1Value": "114.206",
+   "k2Value": "89.779",
+   "totalValue": "203.985"
+  },
+  {
+   "metricName": "\"B\" GRADE",
+   "percentValue": "58.6",
+   "k1Value": "122.297",
+   "k2Value": "75.142",
+   "totalValue": "197.439"
+  },
+  {
+   "metricName": "N.MAG (CHAR+DOLO CHAR)",
+   "percentValue": "17.12",
+   "k1Value": "126.666",
+   "k2Value": "88.406",
+   "totalValue": "215.072"
+  },
+  {
+   "metricName": "DOLO CHAR",
+   "percentValue": "95.3",
+   "k1Value": "",
+   "k2Value": "44.910",
+   "totalValue": "44.910"
+  },
+  {
+   "metricName": "\"C\" GRADE",
+   "percentValue": "37.16",
+   "k1Value": "119.426",
+   "k2Value": "82.890",
+   "totalValue": "202.316"
+  },
+  {
+   "metricName": "CHAR",
+   "percentValue": "54.9",
+   "k1Value": "33.469",
+   "k2Value": "114.829",
+   "totalValue": "148.298"
+  }
+ ]
+}

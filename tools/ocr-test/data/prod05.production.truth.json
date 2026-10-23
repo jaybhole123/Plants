@@ -1,0 +1,55 @@
+{
+ "date": "2026-10-04",
+ "downTimeRemarks": "-",
+ "rows": [
+  {
+   "metricName": "STEAM",
+   "percentValue": "",
+   "k1Value": "304.16",
+   "k2Value": "",
+   "totalValue": "304.16"
+  },
+  {
+   "metricName": "SPONGE",
+   "percentValue": "",
+   "k1Value": "196.19",
+   "k2Value": "",
+   "totalValue": "196.19"
+  },
+  {
+   "metricName": "\"A\" GRADE",
+   "percentValue": "",
+   "k1Value": "193.49",
+   "k2Value": "",
+   "totalValue": "193.49"
+  },
+  {
+   "metricName": "\"B\" GRADE",
+   "percentValue": "",
+   "k1Value": "252.33",
+   "k2Value": "",
+   "totalValue": "252.33"
+  },
+  {
+   "metricName": "N.MAG (CHAR+DOLO CHAR)",
+   "percentValue": "",
+   "k1Value": "60.99",
+   "k2Value": "",
+   "totalValue": "60.99"
+  },
+  {
+   "metricName": "DOLO CHAR",
+   "percentValue": "",
+   "k1Value": "214.68",
+   "k2Value": "",
+   "totalValue": "214.68"
+  },
+  {
+   "metricName": "\"C\" GRADE",
+   "percentValue": "",
+   "k1Value": "62.16",
+   "k2Value": "",
+   "totalValue": "62.16"
+  }
+ ]
+}

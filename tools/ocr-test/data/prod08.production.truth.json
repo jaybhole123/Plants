@@ -1,0 +1,27 @@
+{
+ "date": "2026-10-22",
+ "downTimeRemarks": "Kiln 2 stopped 2 hrs for belt repair",
+ "rows": [
+  {
+   "metricName": "STEAM",
+   "percentValue": "",
+   "k1Value": "65.104",
+   "k2Value": "",
+   "totalValue": "65.104"
+  },
+  {
+   "metricName": "\"C\" GRADE",
+   "percentValue": "",
+   "k1Value": "128.166",
+   "k2Value": "",
+   "totalValue": "128.166"
+  },
+  {
+   "metricName": "CHAR",
+   "percentValue": "",
+   "k1Value": "115.271",
+   "k2Value": "",
+   "totalValue": "115.271"
+  }
+ ]
+}

@@ -1,0 +1,34 @@
+{
+ "date": "2026-10-09",
+ "downTimeRemarks": "Kiln 2 stopped 2 hrs for belt repair",
+ "rows": [
+  {
+   "metricName": "STEAM",
+   "percentValue": "",
+   "k1Value": "22.20",
+   "k2Value": "",
+   "totalValue": "22.20"
+  },
+  {
+   "metricName": "\"A\" GRADE",
+   "percentValue": "",
+   "k1Value": "128.79",
+   "k2Value": "38.93",
+   "totalValue": "167.72"
+  },
+  {
+   "metricName": "DOLO CHAR",
+   "percentValue": "",
+   "k1Value": "81.79",
+   "k2Value": "62.73",
+   "totalValue": "144.52"
+  },
+  {
+   "metricName": "SPONGE DUST",
+   "percentValue": "",
+   "k1Value": "39.05",
+   "k2Value": "108.30",
+   "totalValue": "147.35"
+  }
+ ]
+}

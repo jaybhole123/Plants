@@ -1,0 +1,44 @@
+{
+  "rows": [
+    {
+      "entryType": "incoming",
+      "partyName": "SHRI Om Sai Logistics",
+      "materialName": "Limestone",
+      "vehicleNo": "OD17 SK 8944",
+      "qty": "14.499",
+      "rate": "630"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Agrawal Coke",
+      "materialName": "Fly ash",
+      "vehicleNo": "MP24 SF 9289",
+      "qty": "129.126",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Kamal Sponge",
+      "materialName": "Coke breeze",
+      "vehicleNo": "",
+      "qty": "210.171",
+      "rate": "650"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Rolling mil sms",
+      "materialName": "Sponge dust",
+      "vehicleNo": "",
+      "qty": "60.262",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Lloyds metals",
+      "materialName": "Fly ash",
+      "vehicleNo": "",
+      "qty": "68.715",
+      "rate": "295"
+    }
+  ]
+}

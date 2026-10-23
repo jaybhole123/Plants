@@ -1,0 +1,246 @@
+{
+ "rows": [
+  {
+   "date": "2026-08-02",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Gasifier Fire Ash",
+   "partyName": "Pooja Industries",
+   "saudaQuantity": "31.290",
+   "rateAmt": "3050",
+   "prvPending": "31.290",
+   "qtyDispatch": "0.000",
+   "balPending": "31.290"
+  },
+  {
+   "date": "2026-08-19",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Ash Fines",
+   "partyName": "Ganesh Enterprises(Jabalpur)",
+   "saudaQuantity": "37.750",
+   "rateAmt": "3300",
+   "prvPending": "37.750",
+   "qtyDispatch": "11.325",
+   "balPending": "26.425"
+  },
+  {
+   "date": "2026-08-05",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Gasifier Fire Ash",
+   "partyName": "Mahalaxmi Foundry",
+   "saudaQuantity": "39.560",
+   "rateAmt": "3900",
+   "prvPending": "39.560",
+   "qtyDispatch": "31.648",
+   "balPending": "7.912"
+  },
+  {
+   "date": "2026-08-13",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Gasifier Fire Ash",
+   "partyName": "Om Sai Enterprises",
+   "saudaQuantity": "36.290",
+   "rateAmt": "7950",
+   "prvPending": "36.290",
+   "qtyDispatch": "29.032",
+   "balPending": "7.258"
+  },
+  {
+   "date": "2026-08-10",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Gasifier Fire Ash",
+   "partyName": "Anand Minerals(Nagpur)",
+   "saudaQuantity": "33.650",
+   "rateAmt": "1300",
+   "prvPending": "7.722",
+   "qtyDispatch": "7.722",
+   "balPending": "0.000"
+  },
+  {
+   "date": "2026-08-17",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Bajrang Coke Industries",
+   "saudaQuantity": "20.850",
+   "rateAmt": "50600",
+   "prvPending": "6.735",
+   "qtyDispatch": "6.735",
+   "balPending": "0.000"
+  },
+  {
+   "date": "2026-08-06",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 100mm",
+   "partyName": "Laxmi Narayan Ispat(Raigarh)",
+   "saudaQuantity": "39.320",
+   "rateAmt": "23600",
+   "prvPending": "39.320",
+   "qtyDispatch": "0.000",
+   "balPending": "39.320"
+  },
+  {
+   "date": "2026-08-17",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Siddhi Vinayak Metals",
+   "saudaQuantity": "4.870",
+   "rateAmt": "43600",
+   "prvPending": "4.870",
+   "qtyDispatch": "1.461",
+   "balPending": "3.409"
+  },
+  {
+   "date": "2026-08-10",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Vishal Alloys Ltd",
+   "saudaQuantity": "10.360",
+   "rateAmt": "16800",
+   "prvPending": "8.409",
+   "qtyDispatch": "0.000",
+   "balPending": "8.409"
+  },
+  {
+   "date": "2026-08-20",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Amba Shakti Udyog(Gwalior)",
+   "saudaQuantity": "37.870",
+   "rateAmt": "15100",
+   "prvPending": "37.870",
+   "qtyDispatch": "18.935",
+   "balPending": "18.935"
+  },
+  {
+   "date": "2026-08-14",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Ganesh Enterprises(Jabalpur)",
+   "saudaQuantity": "20.570",
+   "rateAmt": "5900",
+   "prvPending": "19.816",
+   "qtyDispatch": "0.000",
+   "balPending": "19.816"
+  },
+  {
+   "date": "2026-08-03",
+   "mainHeading": "Slag",
+   "itemName": "Slag Grit",
+   "partyName": "Mahalaxmi Foundry",
+   "saudaQuantity": "18.730",
+   "rateAmt": "9300",
+   "prvPending": "8.002",
+   "qtyDispatch": "0.000",
+   "balPending": "8.002"
+  },
+  {
+   "date": "2026-08-10",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Vishal Alloys Ltd",
+   "saudaQuantity": "15.290",
+   "rateAmt": "1300",
+   "prvPending": "10.955",
+   "qtyDispatch": "3.286",
+   "balPending": "7.669"
+  },
+  {
+   "date": "2026-08-15",
+   "mainHeading": "Slag",
+   "itemName": "Slag Grit",
+   "partyName": "Jindal Mining Services",
+   "saudaQuantity": "8.540",
+   "rateAmt": "6200",
+   "prvPending": "7.308",
+   "qtyDispatch": "0.000",
+   "balPending": "7.308"
+  },
+  {
+   "date": "2026-08-14",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Shree Balaji Traders",
+   "saudaQuantity": "10.020",
+   "rateAmt": "3150",
+   "prvPending": "10.020",
+   "qtyDispatch": "10.020",
+   "balPending": "0.000"
+  },
+  {
+   "date": "2026-08-19",
+   "mainHeading": "Mill Scale",
+   "itemName": "Mill Scale",
+   "partyName": "Siddhi Vinayak Metals",
+   "saudaQuantity": "23.350",
+   "rateAmt": "6400",
+   "prvPending": "23.350",
+   "qtyDispatch": "23.350",
+   "balPending": "0.000"
+  },
+  {
+   "date": "2026-08-05",
+   "mainHeading": "Mill Scale",
+   "itemName": "Mill Scale",
+   "partyName": "Balaji Cement Agency(Rewa)",
+   "saudaQuantity": "5.820",
+   "rateAmt": "1650",
+   "prvPending": "5.820",
+   "qtyDispatch": "5.820",
+   "balPending": "0.000"
+  },
+  {
+   "date": "2026-08-01",
+   "mainHeading": "Mill Scale",
+   "itemName": "Scale Fines",
+   "partyName": "Maa Durga Steel & Power(Raipur)",
+   "saudaQuantity": "30.180",
+   "rateAmt": "4300",
+   "prvPending": "30.180",
+   "qtyDispatch": "24.144",
+   "balPending": "6.036"
+  },
+  {
+   "date": "2026-08-18",
+   "mainHeading": "Mill Scale",
+   "itemName": "Mill Scale",
+   "partyName": "Singhal Fly Ash Bricks(Satna)",
+   "saudaQuantity": "20.010",
+   "rateAmt": "850",
+   "prvPending": "20.010",
+   "qtyDispatch": "6.003",
+   "balPending": "14.007"
+  },
+  {
+   "date": "2026-08-14",
+   "mainHeading": "Sponge Iron",
+   "itemName": "Sponge Iron Lumps",
+   "partyName": "Pooja Industries",
+   "saudaQuantity": "32.820",
+   "rateAmt": "29500",
+   "prvPending": "32.820",
+   "qtyDispatch": "16.410",
+   "balPending": "16.410"
+  },
+  {
+   "date": "2026-08-03",
+   "mainHeading": "Sponge Iron",
+   "itemName": "Sponge Iron Lumps",
+   "partyName": "Shree Balaji Traders",
+   "saudaQuantity": "7.320",
+   "rateAmt": "7200",
+   "prvPending": "7.320",
+   "qtyDispatch": "5.856",
+   "balPending": "1.464"
+  },
+  {
+   "date": "2026-08-10",
+   "mainHeading": "Sponge Iron",
+   "itemName": "DRI 3-20mm",
+   "partyName": "Hanuman Sponge Udyog",
+   "saudaQuantity": "1.070",
+   "rateAmt": "43900",
+   "prvPending": "0.235",
+   "qtyDispatch": "0.235",
+   "balPending": "0.000"
+  }
+ ]
+}

@@ -1,0 +1,48 @@
+{
+ "date": "2026-10-09",
+ "downTimeRemarks": "Shutdown for refractory patch work in Kiln 2 (4 hrs)",
+ "rows": [
+  {
+   "metricName": "STEAM",
+   "percentValue": "90.10",
+   "k1Value": "106.21",
+   "k2Value": "61.59",
+   "totalValue": "167.80"
+  },
+  {
+   "metricName": "SPONGE",
+   "percentValue": "21.90",
+   "k1Value": "78.22",
+   "k2Value": "",
+   "totalValue": "78.22"
+  },
+  {
+   "metricName": "\"A\" GRADE",
+   "percentValue": "34.36",
+   "k1Value": "68.39",
+   "k2Value": "21.43",
+   "totalValue": "89.82"
+  },
+  {
+   "metricName": "N.MAG (CHAR+DOLO CHAR)",
+   "percentValue": "3.46",
+   "k1Value": "31.87",
+   "k2Value": "68.87",
+   "totalValue": "100.74"
+  },
+  {
+   "metricName": "SPONGE DUST",
+   "percentValue": "40.0",
+   "k1Value": "60.21",
+   "k2Value": "34.29",
+   "totalValue": "94.50"
+  },
+  {
+   "metricName": "\"C\" GRADE",
+   "percentValue": "17.95",
+   "k1Value": "113.03",
+   "k2Value": "78.03",
+   "totalValue": "191.06"
+  }
+ ]
+}

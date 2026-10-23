@@ -1,0 +1,36 @@
+{
+  "rows": [
+    {
+      "entryType": "outgoing",
+      "partyName": "Jindal Steel",
+      "materialName": "Gasi fire ash",
+      "vehicleNo": "",
+      "qty": "10.273",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "SECL Korba",
+      "materialName": "Fly ash",
+      "vehicleNo": "",
+      "qty": "113.627",
+      "rate": "545"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Om Sai Logistics",
+      "materialName": "Sponge iron",
+      "vehicleNo": "",
+      "qty": "173.599",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Agrawal Coke",
+      "materialName": "Fly ash",
+      "vehicleNo": "",
+      "qty": "37.963",
+      "rate": "500"
+    }
+  ]
+}

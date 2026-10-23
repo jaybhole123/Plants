@@ -1,0 +1,53 @@
+{
+  "reportDate": "2026-10-04",
+  "rows": [
+    {
+      "category": "COAL DETAILS",
+      "material": "Washed Coal Dhanbad",
+      "openingStock": "2211",
+      "inward": "62",
+      "consumption": "1318",
+      "fc": "35",
+      "moistLossPct": "15.3%",
+      "landedCost": "8785",
+      "dispatch": "2050",
+      "closingStock": "5743"
+    },
+    {
+      "category": "COAL DETAILS",
+      "material": "WCL Chandrapur Coal",
+      "openingStock": "2989",
+      "inward": "2146",
+      "consumption": "1933",
+      "fc": "41",
+      "moistLossPct": "11.8%",
+      "landedCost": "3729",
+      "dispatch": "852",
+      "closingStock": "3654"
+    },
+    {
+      "category": "COAL DETAILS",
+      "material": "Coal Dust Fines",
+      "openingStock": "2875",
+      "inward": "473",
+      "consumption": "378",
+      "fc": "37",
+      "moistLossPct": "5.9%",
+      "landedCost": "4295",
+      "dispatch": "1905",
+      "closingStock": "1874"
+    },
+    {
+      "category": "COAL DETAILS",
+      "material": "South African Coal RB3",
+      "openingStock": "495",
+      "inward": "2448",
+      "consumption": "572",
+      "fc": "39",
+      "moistLossPct": "10.9%",
+      "landedCost": "7397",
+      "dispatch": "574",
+      "closingStock": "4460"
+    }
+  ]
+}

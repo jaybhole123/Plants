@@ -1,0 +1,92 @@
+{
+  "rows": [
+    {
+      "entryType": "outgoing",
+      "partyName": "Jindal Steel",
+      "materialName": "Fly ash",
+      "vehicleNo": "CG04 DX 9482",
+      "qty": "62.875",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Jindal Steel",
+      "materialName": "Limestone",
+      "vehicleNo": "OD01 VG 4873",
+      "qty": "6.957",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Raipur Cement Ltd",
+      "materialName": "Fly ash",
+      "vehicleNo": "OD12 WA 4448",
+      "qty": "253.643",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Hira Ferro Alloys",
+      "materialName": "Coke breeze",
+      "vehicleNo": "MH17 JX 6244",
+      "qty": "273.219",
+      "rate": "350"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Rolling mil sms",
+      "materialName": "Limestone",
+      "vehicleNo": "OD18 TR 8980",
+      "qty": "207.645",
+      "rate": "570"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Hira Ferro Alloys",
+      "materialName": "Fly ash",
+      "vehicleNo": "MH20 BD 9437",
+      "qty": "200.089",
+      "rate": "295"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Godawari Power",
+      "materialName": "Gasi fire ash",
+      "vehicleNo": "CG08 UD 5346",
+      "qty": "376.076",
+      "rate": "410"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "SECL Korba",
+      "materialName": "Iron ore",
+      "vehicleNo": "MP05 SO 8787",
+      "qty": "216.352",
+      "rate": "295"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Agrawal Coke",
+      "materialName": "Iron ore",
+      "vehicleNo": "MH30 FN 9827",
+      "qty": "38.008",
+      "rate": "370"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Rolling mil sms",
+      "materialName": "Mill scale",
+      "vehicleNo": "MP19 ZX 1950",
+      "qty": "283.229",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Raipur Cement Ltd",
+      "materialName": "Raw coal",
+      "vehicleNo": "CG10 WN 2824",
+      "qty": "145.604",
+      "rate": ""
+    }
+  ]
+}

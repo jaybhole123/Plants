@@ -1,0 +1,69 @@
+{
+ "date": "2026-10-10",
+ "downTimeRemarks": "-",
+ "rows": [
+  {
+   "metricName": "STEAM",
+   "percentValue": "51.6",
+   "k1Value": "80.93",
+   "k2Value": "25.56",
+   "totalValue": "106.49"
+  },
+  {
+   "metricName": "SPONGE",
+   "percentValue": "49.4",
+   "k1Value": "62.79",
+   "k2Value": "84.29",
+   "totalValue": "147.08"
+  },
+  {
+   "metricName": "\"A\" GRADE",
+   "percentValue": "24.4",
+   "k1Value": "58.28",
+   "k2Value": "28.80",
+   "totalValue": "87.08"
+  },
+  {
+   "metricName": "\"B\" GRADE",
+   "percentValue": "60.41",
+   "k1Value": "25.56",
+   "k2Value": "91.28",
+   "totalValue": "116.84"
+  },
+  {
+   "metricName": "N.MAG (CHAR+DOLO CHAR)",
+   "percentValue": "32.04",
+   "k1Value": "123.45",
+   "k2Value": "81.96",
+   "totalValue": "205.41"
+  },
+  {
+   "metricName": "DOLO CHAR",
+   "percentValue": "3.21",
+   "k1Value": "100.67",
+   "k2Value": "76.61",
+   "totalValue": "177.28"
+  },
+  {
+   "metricName": "SPONGE DUST",
+   "percentValue": "9.7",
+   "k1Value": "41.37",
+   "k2Value": "",
+   "totalValue": "41.37"
+  },
+  {
+   "metricName": "\"C\" GRADE",
+   "percentValue": "29.0",
+   "k1Value": "124.13",
+   "k2Value": "119.79",
+   "totalValue": "243.92"
+  },
+  {
+   "metricName": "CHAR",
+   "percentValue": "14.5",
+   "k1Value": "30.58",
+   "k2Value": "90.11",
+   "totalValue": "120.69"
+  }
+ ]
+}

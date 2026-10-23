@@ -1,0 +1,68 @@
+{
+  "rows": [
+    {
+      "entryType": "outgoing",
+      "partyName": "Lloyds metals",
+      "materialName": "Sponge iron",
+      "vehicleNo": "",
+      "qty": "32.458",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Jindal Steel",
+      "materialName": "Sponge iron",
+      "vehicleNo": "",
+      "qty": "325.509",
+      "rate": "730"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "SHRI Om Sai Logistics",
+      "materialName": "Coke breeze",
+      "vehicleNo": "",
+      "qty": "136.532",
+      "rate": "740"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "SECL Korba",
+      "materialName": "Sponge iron",
+      "vehicleNo": "",
+      "qty": "245.217",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Agrawal Coke",
+      "materialName": "Fly ash",
+      "vehicleNo": "",
+      "qty": "180.210",
+      "rate": "865"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Lloyds metals",
+      "materialName": "Raw coal",
+      "vehicleNo": "",
+      "qty": "397.397",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Jindal Steel",
+      "materialName": "Dolomite",
+      "vehicleNo": "",
+      "qty": "334.439",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Rolling mil sms",
+      "materialName": "Sponge dust",
+      "vehicleNo": "",
+      "qty": "93.257",
+      "rate": ""
+    }
+  ]
+}

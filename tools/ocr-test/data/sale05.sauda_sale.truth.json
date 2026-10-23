@@ -1,0 +1,136 @@
+{
+ "rows": [
+  {
+   "date": "2026-08-16",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Balaji Cement Agency(Rewa)",
+   "saudaQuantity": "2.20",
+   "rateAmt": "9700",
+   "prvPending": "1.27",
+   "qtyDispatch": "0.63",
+   "balPending": "0.64"
+  },
+  {
+   "date": "2026-08-20",
+   "mainHeading": "Slag",
+   "itemName": "Slag Grit",
+   "partyName": "Om Sai Enterprises",
+   "saudaQuantity": "4.76",
+   "rateAmt": "7200",
+   "prvPending": "2.73",
+   "qtyDispatch": "2.73",
+   "balPending": "0.00"
+  },
+  {
+   "date": "2026-08-14",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Bajrang Coke Industries",
+   "saudaQuantity": "16.26",
+   "rateAmt": "2650",
+   "prvPending": "12.42",
+   "qtyDispatch": "9.93",
+   "balPending": "2.49"
+  },
+  {
+   "date": "2026-08-08",
+   "mainHeading": "Slag",
+   "itemName": "Slag Grit",
+   "partyName": "Radhe Refractories",
+   "saudaQuantity": "38.59",
+   "rateAmt": "6900",
+   "prvPending": "30.38",
+   "qtyDispatch": "0.00",
+   "balPending": "30.38"
+  },
+  {
+   "date": "2026-08-18",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Sharma Minerals & Co.",
+   "saudaQuantity": "2.06",
+   "rateAmt": "8200",
+   "prvPending": "2.06",
+   "qtyDispatch": "0.00",
+   "balPending": "2.06"
+  },
+  {
+   "date": "2026-08-12",
+   "mainHeading": "Bed Material",
+   "itemName": "Bed Material 0-3mm",
+   "partyName": "Om Sai Enterprises",
+   "saudaQuantity": "6.64",
+   "rateAmt": "7550",
+   "prvPending": "6.57",
+   "qtyDispatch": "1.97",
+   "balPending": "4.60"
+  },
+  {
+   "date": "2026-08-19",
+   "mainHeading": "Bed Material",
+   "itemName": "Bed Material 3-10mm",
+   "partyName": "Gupta Brothers(Korba)",
+   "saudaQuantity": "14.22",
+   "rateAmt": "3900",
+   "prvPending": "4.28",
+   "qtyDispatch": "3.42",
+   "balPending": "0.86"
+  },
+  {
+   "date": "2026-08-11",
+   "mainHeading": "Bed Material",
+   "itemName": "Bed Material 3-10mm",
+   "partyName": "Om Sai Enterprises",
+   "saudaQuantity": "34.84",
+   "rateAmt": "5900",
+   "prvPending": "33.70",
+   "qtyDispatch": "0.00",
+   "balPending": "33.70"
+  },
+  {
+   "date": "2026-08-02",
+   "mainHeading": "Bed Material",
+   "itemName": "Bed Material 3-10mm",
+   "partyName": "Maa Durga Steel & Power(Raipur)",
+   "saudaQuantity": "28.57",
+   "rateAmt": "1750",
+   "prvPending": "28.57",
+   "qtyDispatch": "0.00",
+   "balPending": "28.57"
+  },
+  {
+   "date": "2026-08-20",
+   "mainHeading": "Bed Material",
+   "itemName": "Bed Material 0-3mm",
+   "partyName": "Anand Minerals(Nagpur)",
+   "saudaQuantity": "17.92",
+   "rateAmt": "5200",
+   "prvPending": "17.92",
+   "qtyDispatch": "17.92",
+   "balPending": "0.00"
+  },
+  {
+   "date": "2026-08-10",
+   "mainHeading": "Mill Scale",
+   "itemName": "Mill Scale",
+   "partyName": "Shiv Shakti Metaliks(Durg)",
+   "saudaQuantity": "37.30",
+   "rateAmt": "9000",
+   "prvPending": "11.37",
+   "qtyDispatch": "0.00",
+   "balPending": "11.37"
+  },
+  {
+   "date": "2026-08-18",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Gasifier Fire Ash",
+   "partyName": "Gupta Brothers(Korba)",
+   "saudaQuantity": "15.25",
+   "rateAmt": "5050",
+   "prvPending": "15.25",
+   "qtyDispatch": "0.00",
+   "balPending": "15.25"
+  }
+ ]
+}

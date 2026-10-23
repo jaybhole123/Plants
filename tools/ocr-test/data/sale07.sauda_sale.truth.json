@@ -1,0 +1,202 @@
+{
+ "rows": [
+  {
+   "date": "2026-08-20",
+   "mainHeading": "Mill Scale",
+   "itemName": "Scale Fines",
+   "partyName": "Agarwal Coal Carriers",
+   "saudaQuantity": "37.100",
+   "rateAmt": "2300",
+   "prvPending": "37.100",
+   "qtyDispatch": "29.680",
+   "balPending": "7.420"
+  },
+  {
+   "date": "2026-08-07",
+   "mainHeading": "Mill Scale",
+   "itemName": "Mill Scale",
+   "partyName": "Singhal Fly Ash Bricks(Satna)",
+   "saudaQuantity": "20.210",
+   "rateAmt": "1750",
+   "prvPending": "7.430",
+   "qtyDispatch": "7.430",
+   "balPending": "0.000"
+  },
+  {
+   "date": "2026-08-13",
+   "mainHeading": "Mill Scale",
+   "itemName": "Scale Fines",
+   "partyName": "Radhe Refractories",
+   "saudaQuantity": "23.340",
+   "rateAmt": "3050",
+   "prvPending": "23.340",
+   "qtyDispatch": "0.000",
+   "balPending": "23.340"
+  },
+  {
+   "date": "2026-08-06",
+   "mainHeading": "Mill Scale",
+   "itemName": "Scale Fines",
+   "partyName": "Sharma Minerals & Co.",
+   "saudaQuantity": "3.580",
+   "rateAmt": "400",
+   "prvPending": "3.580",
+   "qtyDispatch": "0.000",
+   "balPending": "3.580"
+  },
+  {
+   "date": "2026-08-06",
+   "mainHeading": "Mill Scale",
+   "itemName": "Mill Scale",
+   "partyName": "Agarwal Coal Carriers",
+   "saudaQuantity": "9.870",
+   "rateAmt": "400",
+   "prvPending": "5.452",
+   "qtyDispatch": "1.635",
+   "balPending": "3.817"
+  },
+  {
+   "date": "2026-08-18",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Ganesh Enterprises(Jabalpur)",
+   "saudaQuantity": "23.270",
+   "rateAmt": "8200",
+   "prvPending": "18.289",
+   "qtyDispatch": "0.000",
+   "balPending": "18.289"
+  },
+  {
+   "date": "2026-08-03",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 100mm",
+   "partyName": "Krishna Cement Works(Bilaspur)",
+   "saudaQuantity": "35.520",
+   "rateAmt": "27000",
+   "prvPending": "28.069",
+   "qtyDispatch": "8.420",
+   "balPending": "19.649"
+  },
+  {
+   "date": "2026-08-19",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Maa Durga Steel & Power(Raipur)",
+   "saudaQuantity": "17.690",
+   "rateAmt": "8250",
+   "prvPending": "14.534",
+   "qtyDispatch": "14.534",
+   "balPending": "0.000"
+  },
+  {
+   "date": "2026-08-09",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Gupta Brothers(Korba)",
+   "saudaQuantity": "24.500",
+   "rateAmt": "200",
+   "prvPending": "13.741",
+   "qtyDispatch": "6.870",
+   "balPending": "6.871"
+  },
+  {
+   "date": "2026-08-14",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Gupta Brothers(Korba)",
+   "saudaQuantity": "9.720",
+   "rateAmt": "4750",
+   "prvPending": "7.017",
+   "qtyDispatch": "0.000",
+   "balPending": "7.017"
+  },
+  {
+   "date": "2026-08-11",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Pooja Industries",
+   "saudaQuantity": "34.780",
+   "rateAmt": "8150",
+   "prvPending": "17.120",
+   "qtyDispatch": "0.000",
+   "balPending": "17.120"
+  },
+  {
+   "date": "2026-08-02",
+   "mainHeading": "Char",
+   "itemName": "Char Fines",
+   "partyName": "Om Sai Enterprises",
+   "saudaQuantity": "24.000",
+   "rateAmt": "2150",
+   "prvPending": "24.000",
+   "qtyDispatch": "7.200",
+   "balPending": "16.800"
+  },
+  {
+   "date": "2026-08-04",
+   "mainHeading": "Char",
+   "itemName": "Char Fines",
+   "partyName": "Ganesh Enterprises(Jabalpur)",
+   "saudaQuantity": "14.710",
+   "rateAmt": "1450",
+   "prvPending": "14.710",
+   "qtyDispatch": "14.710",
+   "balPending": "0.000"
+  },
+  {
+   "date": "2026-08-11",
+   "mainHeading": "Char",
+   "itemName": "Char 5-20",
+   "partyName": "Jindal Mining Services",
+   "saudaQuantity": "24.500",
+   "rateAmt": "1350",
+   "prvPending": "12.239",
+   "qtyDispatch": "3.671",
+   "balPending": "8.568"
+  },
+  {
+   "date": "2026-08-20",
+   "mainHeading": "Sponge Iron",
+   "itemName": "Sponge Iron Fines",
+   "partyName": "Patel Bricks & Blocks(Anuppur)",
+   "saudaQuantity": "17.480",
+   "rateAmt": "38900",
+   "prvPending": "17.480",
+   "qtyDispatch": "0.000",
+   "balPending": "17.480"
+  },
+  {
+   "date": "2026-08-20",
+   "mainHeading": "Sponge Iron",
+   "itemName": "DRI 3-20mm",
+   "partyName": "Agarwal Coal Carriers",
+   "saudaQuantity": "34.490",
+   "rateAmt": "11900",
+   "prvPending": "28.433",
+   "qtyDispatch": "22.746",
+   "balPending": "5.687"
+  },
+  {
+   "date": "2026-08-12",
+   "mainHeading": "Sponge Iron",
+   "itemName": "Sponge Iron Fines",
+   "partyName": "Maa Durga Steel & Power(Raipur)",
+   "saudaQuantity": "3.410",
+   "rateAmt": "32400",
+   "prvPending": "1.220",
+   "qtyDispatch": "0.000",
+   "balPending": "1.220"
+  },
+  {
+   "date": "2026-08-05",
+   "mainHeading": "Sponge Iron",
+   "itemName": "DRI 3-20mm",
+   "partyName": "Hanuman Sponge Udyog",
+   "saudaQuantity": "21.690",
+   "rateAmt": "25100",
+   "prvPending": "21.690",
+   "qtyDispatch": "0.000",
+   "balPending": "21.690"
+  }
+ ]
+}

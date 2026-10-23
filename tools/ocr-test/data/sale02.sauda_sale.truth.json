@@ -1,0 +1,70 @@
+{
+ "rows": [
+  {
+   "date": "2026-08-09",
+   "mainHeading": "Char",
+   "itemName": "Char Fines",
+   "partyName": "Bajrang Coke Industries",
+   "saudaQuantity": "11.35",
+   "rateAmt": "1550",
+   "prvPending": "11.35",
+   "qtyDispatch": "0.00",
+   "balPending": "11.35"
+  },
+  {
+   "date": "2026-08-15",
+   "mainHeading": "Char",
+   "itemName": "Char 5-20",
+   "partyName": "Sharma Minerals & Co.",
+   "saudaQuantity": "36.20",
+   "rateAmt": "10000",
+   "prvPending": "36.20",
+   "qtyDispatch": "18.10",
+   "balPending": "18.10"
+  },
+  {
+   "date": "2026-08-03",
+   "mainHeading": "Char",
+   "itemName": "Char Fines",
+   "partyName": "Om Sai Enterprises",
+   "saudaQuantity": "35.97",
+   "rateAmt": "6700",
+   "prvPending": "29.10",
+   "qtyDispatch": "0.00",
+   "balPending": "29.10"
+  },
+  {
+   "date": "2026-08-15",
+   "mainHeading": "Bed Material",
+   "itemName": "Bed Material 3-10mm",
+   "partyName": "Rathi Steel Corp",
+   "saudaQuantity": "9.42",
+   "rateAmt": "5600",
+   "prvPending": "9.42",
+   "qtyDispatch": "0.00",
+   "balPending": "9.42"
+  },
+  {
+   "date": "2026-08-13",
+   "mainHeading": "Bed Material",
+   "itemName": "Bed Material 3-10mm",
+   "partyName": "Radhe Refractories",
+   "saudaQuantity": "22.29",
+   "rateAmt": "1750",
+   "prvPending": "22.29",
+   "qtyDispatch": "22.29",
+   "balPending": "0.00"
+  },
+  {
+   "date": "2026-08-09",
+   "mainHeading": "Bed Material",
+   "itemName": "Bed Material 3-10mm",
+   "partyName": "Shree Balaji Traders",
+   "saudaQuantity": "10.21",
+   "rateAmt": "3950",
+   "prvPending": "3.46",
+   "qtyDispatch": "2.76",
+   "balPending": "0.70"
+  }
+ ]
+}

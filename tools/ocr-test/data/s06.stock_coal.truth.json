@@ -1,0 +1,53 @@
+{
+  "reportDate": "2026-10-14",
+  "rows": [
+    {
+      "category": "COAL",
+      "material": "SECL Gevra Coal G-9",
+      "openingStock": "111.36",
+      "inward": "2190.80",
+      "consumption": "832.61",
+      "fc": "32",
+      "moistLossPct": "",
+      "landedCost": "6898.08",
+      "dispatch": "",
+      "closingStock": "3364.21"
+    },
+    {
+      "category": "COAL",
+      "material": "ECL Raniganj Coal G-12",
+      "openingStock": "3541.89",
+      "inward": "1921.20",
+      "consumption": "481.29",
+      "fc": "35",
+      "moistLossPct": "",
+      "landedCost": "6294.45",
+      "dispatch": "",
+      "closingStock": "5877.14"
+    },
+    {
+      "category": "COAL",
+      "material": "MCL Talcher Coal G-11",
+      "openingStock": "2236.78",
+      "inward": "1213.05",
+      "consumption": "1475.95",
+      "fc": "31",
+      "moistLossPct": "",
+      "landedCost": "6100.59",
+      "dispatch": "",
+      "closingStock": "2299.05"
+    },
+    {
+      "category": "COAL",
+      "material": "Imported Indonesian Coal",
+      "openingStock": "4783.33",
+      "inward": "1394.18",
+      "consumption": "1500.18",
+      "fc": "39",
+      "moistLossPct": "",
+      "landedCost": "8675.24",
+      "dispatch": "",
+      "closingStock": "3868.22"
+    }
+  ]
+}

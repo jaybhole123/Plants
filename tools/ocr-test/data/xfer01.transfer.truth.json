@@ -1,0 +1,52 @@
+{
+  "rows": [
+    {
+      "entryType": "outgoing",
+      "partyName": "Om Sai Logistics",
+      "materialName": "Char",
+      "vehicleNo": "CG19 HF 3057",
+      "qty": "346.962",
+      "rate": "360"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Hira Ferro Alloys",
+      "materialName": "Sponge iron",
+      "vehicleNo": "",
+      "qty": "54.871",
+      "rate": "840"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Vedanta Ltd",
+      "materialName": "Fly ash",
+      "vehicleNo": "",
+      "qty": "243.047",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Agrawal Coke",
+      "materialName": "Sponge dust",
+      "vehicleNo": "",
+      "qty": "256.526",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Godawari Power",
+      "materialName": "Dolomite",
+      "vehicleNo": "",
+      "qty": "15.644",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Agrawal Coke",
+      "materialName": "Coal",
+      "vehicleNo": "",
+      "qty": "368.610",
+      "rate": ""
+    }
+  ]
+}

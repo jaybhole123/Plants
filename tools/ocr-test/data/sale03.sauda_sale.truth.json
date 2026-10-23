@@ -1,0 +1,92 @@
+{
+ "rows": [
+  {
+   "date": "2026-08-05",
+   "mainHeading": "Slag",
+   "itemName": "Slag Grit",
+   "partyName": "Mahalaxmi Foundry",
+   "saudaQuantity": "3.31",
+   "rateAmt": "",
+   "prvPending": "2.60",
+   "qtyDispatch": "",
+   "balPending": "1.82"
+  },
+  {
+   "date": "2026-08-09",
+   "mainHeading": "Mill Scale",
+   "itemName": "Scale Fines",
+   "partyName": "Om Sai Enterprises",
+   "saudaQuantity": "3.13",
+   "rateAmt": "",
+   "prvPending": "1.78",
+   "qtyDispatch": "",
+   "balPending": "0.36"
+  },
+  {
+   "date": "2026-08-07",
+   "mainHeading": "Mill Scale",
+   "itemName": "Scale Fines",
+   "partyName": "Sharma Minerals & Co.",
+   "saudaQuantity": "38.44",
+   "rateAmt": "",
+   "prvPending": "38.44",
+   "qtyDispatch": "",
+   "balPending": "7.69"
+  },
+  {
+   "date": "2026-08-17",
+   "mainHeading": "Mill Scale",
+   "itemName": "Mill Scale",
+   "partyName": "Bajrang Coke Industries",
+   "saudaQuantity": "9.09",
+   "rateAmt": "",
+   "prvPending": "3.32",
+   "qtyDispatch": "",
+   "balPending": "1.66"
+  },
+  {
+   "date": "2026-08-17",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Sharma Minerals & Co.",
+   "saudaQuantity": "36.34",
+   "rateAmt": "",
+   "prvPending": "19.14",
+   "qtyDispatch": "",
+   "balPending": "19.14"
+  },
+  {
+   "date": "2026-08-13",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 100mm",
+   "partyName": "Krishna Cement Works(Bilaspur)",
+   "saudaQuantity": "25.13",
+   "rateAmt": "",
+   "prvPending": "25.13",
+   "qtyDispatch": "",
+   "balPending": "25.13"
+  },
+  {
+   "date": "2026-08-19",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Ganesh Enterprises(Jabalpur)",
+   "saudaQuantity": "1.77",
+   "rateAmt": "",
+   "prvPending": "1.77",
+   "qtyDispatch": "",
+   "balPending": "1.77"
+  },
+  {
+   "date": "2026-08-17",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 100mm",
+   "partyName": "Singhal Fly Ash Bricks(Satna)",
+   "saudaQuantity": "1.69",
+   "rateAmt": "",
+   "prvPending": "1.41",
+   "qtyDispatch": "",
+   "balPending": "0.00"
+  }
+ ]
+}

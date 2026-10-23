@@ -1,0 +1,44 @@
+{
+  "reportDate": "2026-09-09",
+  "rows": [
+    {
+      "category": "RAW IRON ORE",
+      "material": "Iron Ore Slimes",
+      "openingStock": "1105",
+      "inward": "1140",
+      "consumption": "1030",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "",
+      "production": "",
+      "dispatch": "123",
+      "closingStock": "6786"
+    },
+    {
+      "category": "RAW IRON ORE",
+      "material": "Iron Ore Lump - Barbil",
+      "openingStock": "7441",
+      "inward": "1727",
+      "consumption": "2747",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "",
+      "production": "",
+      "dispatch": "2833",
+      "closingStock": "4308"
+    },
+    {
+      "category": "DOLOMITE",
+      "material": "Dolomite 5-20",
+      "openingStock": "531",
+      "inward": "1666",
+      "consumption": "13",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "",
+      "production": "",
+      "dispatch": "1217",
+      "closingStock": "823"
+    }
+  ]
+}

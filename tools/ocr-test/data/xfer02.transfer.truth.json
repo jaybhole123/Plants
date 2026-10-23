@@ -1,0 +1,76 @@
+{
+  "rows": [
+    {
+      "entryType": "outgoing",
+      "partyName": "shri Maa Durga Traders",
+      "materialName": "Gasi fire ash",
+      "vehicleNo": "OD15 HD 6893",
+      "qty": "159.406",
+      "rate": "770"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Kamal Sponge",
+      "materialName": "Limestone",
+      "vehicleNo": "",
+      "qty": "172.483",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Kamal Sponge",
+      "materialName": "Sponge dust",
+      "vehicleNo": "",
+      "qty": "200.900",
+      "rate": "220"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "SHRI Bageshwar Enterprises",
+      "materialName": "Coal",
+      "vehicleNo": "",
+      "qty": "178.947",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Rolling mil sms",
+      "materialName": "Sponge dust",
+      "vehicleNo": "",
+      "qty": "291.644",
+      "rate": "350"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Jindal Steel",
+      "materialName": "Sponge iron",
+      "vehicleNo": "",
+      "qty": "361.975",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Hira Ferro Alloys",
+      "materialName": "Sponge iron",
+      "vehicleNo": "",
+      "qty": "95.938",
+      "rate": "790"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Bageshwar Enterprises",
+      "materialName": "Sponge dust",
+      "vehicleNo": "",
+      "qty": "396.532",
+      "rate": "200"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Raipur Cement Ltd",
+      "materialName": "Char",
+      "vehicleNo": "",
+      "qty": "233.025",
+      "rate": "475"
+    }
+  ]
+}

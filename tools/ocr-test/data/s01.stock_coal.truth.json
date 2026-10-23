@@ -1,0 +1,53 @@
+{
+  "reportDate": "2026-10-03",
+  "rows": [
+    {
+      "category": "COAL DETAILS",
+      "material": "ECL Raniganj Coal G-12",
+      "openingStock": "1028.57",
+      "inward": "2318.65",
+      "consumption": "2432.29",
+      "fc": "39",
+      "moistLossPct": "6.9",
+      "landedCost": "6992.41",
+      "dispatch": "1693.15",
+      "closingStock": "162.58"
+    },
+    {
+      "category": "COAL DETAILS",
+      "material": "WCL Chandrapur Coal",
+      "openingStock": "3216.33",
+      "inward": "2374.80",
+      "consumption": "2174.00",
+      "fc": "32",
+      "moistLossPct": "9.9",
+      "landedCost": "7936.66",
+      "dispatch": "1053.38",
+      "closingStock": "5239.25"
+    },
+    {
+      "category": "COAL DETAILS",
+      "material": "Washed Coal Dhanbad",
+      "openingStock": "262.36",
+      "inward": "590.91",
+      "consumption": "1752.67",
+      "fc": "33",
+      "moistLossPct": "11.5",
+      "landedCost": "4058.50",
+      "dispatch": "541.02",
+      "closingStock": "561.22"
+    },
+    {
+      "category": "COAL DETAILS",
+      "material": "Coal Dust Fines",
+      "openingStock": "4333.79",
+      "inward": "1532.71",
+      "consumption": "1821.84",
+      "fc": "38",
+      "moistLossPct": "15.9",
+      "landedCost": "4636.97",
+      "dispatch": "523.70",
+      "closingStock": "4744.01"
+    }
+  ]
+}

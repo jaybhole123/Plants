@@ -1,0 +1,52 @@
+{
+  "rows": [
+    {
+      "entryType": "outgoing",
+      "partyName": "SECL Korba",
+      "materialName": "Sponge iron",
+      "vehicleNo": "MP28 HB 1197",
+      "qty": "170.074",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Agrawal Coke",
+      "materialName": "Gasi fire ash",
+      "vehicleNo": "MH10 ON 3079",
+      "qty": "142.592",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Shri Bageshwar Enterprises",
+      "materialName": "Coal",
+      "vehicleNo": "CG04 NI 6428",
+      "qty": "398.187",
+      "rate": "240"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Shri Maa Durga Traders",
+      "materialName": "Coke breeze",
+      "vehicleNo": "CG17 YY 8691",
+      "qty": "262.535",
+      "rate": "880"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Jindal Steel",
+      "materialName": "Raw coal",
+      "vehicleNo": "CG07 LZ 8681",
+      "qty": "303.498",
+      "rate": "880"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "SHRI Maa Durga Traders",
+      "materialName": "Coal",
+      "vehicleNo": "CG01 PU 6660",
+      "qty": "11.684",
+      "rate": ""
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "reportDate": "2026-09-12",
+  "rows": [
+    {
+      "category": "COAL STOCK",
+      "material": "SECL Gevra Coal G-9",
+      "openingStock": "4745.6",
+      "inward": "918.4",
+      "consumption": "1923.9",
+      "fc": "37",
+      "moistLossPct": "10.5%",
+      "landedCost": "8822.8",
+      "dispatch": "2340.2",
+      "closingStock": "1552.0"
+    },
+    {
+      "category": "COAL STOCK",
+      "material": "MCL Talcher Coal G-11",
+      "openingStock": "3731.2",
+      "inward": "1681.6",
+      "consumption": "942.0",
+      "fc": "36",
+      "moistLossPct": "17.9%",
+      "landedCost": "3366.5",
+      "dispatch": "366.2",
+      "closingStock": "2631.3"
+    },
+    {
+      "category": "COAL STOCK",
+      "material": "Imported Indonesian Coal",
+      "openingStock": "4372.1",
+      "inward": "1065.5",
+      "consumption": "119.7",
+      "fc": "31",
+      "moistLossPct": "6.4%",
+      "landedCost": "7814.1",
+      "dispatch": "1366.4",
+      "closingStock": "3815.4"
+    },
+    {
+      "category": "COAL STOCK",
+      "material": "South African Coal RB3",
+      "openingStock": "5804.4",
+      "inward": "1032.1",
+      "consumption": "2448.4",
+      "fc": "41",
+      "moistLossPct": "15.7%",
+      "landedCost": "4838.6",
+      "dispatch": "1331.1",
+      "closingStock": "2909.6"
+    },
+    {
+      "category": "COAL STOCK",
+      "material": "WCL Chandrapur Coal",
+      "openingStock": "5654.2",
+      "inward": "446.4",
+      "consumption": "2371.6",
+      "fc": "38",
+      "moistLossPct": "9.6%",
+      "landedCost": "7713.7",
+      "dispatch": "291.2",
+      "closingStock": "5669.4"
+    }
+  ]
+}

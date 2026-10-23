@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "entryType": "outgoing",
+      "partyName": "Godawari Power",
+      "materialName": "Char",
+      "vehicleNo": "",
+      "qty": "284.400",
+      "rate": "530"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Hira Ferro Alloys",
+      "materialName": "Gasi fire ash",
+      "vehicleNo": "",
+      "qty": "268.993",
+      "rate": ""
+    }
+  ]
+}

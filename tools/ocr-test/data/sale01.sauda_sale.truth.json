@@ -1,0 +1,48 @@
+{
+ "rows": [
+  {
+   "date": "2026-08-04",
+   "mainHeading": "Char",
+   "itemName": "Dolochar",
+   "partyName": "Vishal Alloys Ltd",
+   "saudaQuantity": "115",
+   "rateAmt": "5250",
+   "prvPending": "115",
+   "qtyDispatch": "92",
+   "balPending": "23"
+  },
+  {
+   "date": "2026-08-10",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Fire Ash Lumps",
+   "partyName": "Anand Minerals(Nagpur)",
+   "saudaQuantity": "235",
+   "rateAmt": "800",
+   "prvPending": "235",
+   "qtyDispatch": "117",
+   "balPending": "118"
+  },
+  {
+   "date": "2026-08-11",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Ash Fines",
+   "partyName": "Gupta Brothers(Korba)",
+   "saudaQuantity": "1215",
+   "rateAmt": "6450",
+   "prvPending": "932",
+   "qtyDispatch": "0",
+   "balPending": "932"
+  },
+  {
+   "date": "2026-08-04",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Fire Ash Lumps",
+   "partyName": "Ganesh Enterprises(Jabalpur)",
+   "saudaQuantity": "665",
+   "rateAmt": "4600",
+   "prvPending": "665",
+   "qtyDispatch": "0",
+   "balPending": "665"
+  }
+ ]
+}

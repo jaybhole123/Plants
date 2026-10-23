@@ -1,0 +1,122 @@
+{
+  "reportDate": "2026-09-13",
+  "rows": [
+    {
+      "category": "RAW IRON ORE",
+      "material": "Iron Ore Calibrated 10-40",
+      "openingStock": "8319",
+      "inward": "2123",
+      "consumption": "1886",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "",
+      "production": "2019",
+      "dispatch": "",
+      "closingStock": "7664"
+    },
+    {
+      "category": "RAW IRON ORE",
+      "material": "Iron Ore Lump - Koira",
+      "openingStock": "1365",
+      "inward": "1368",
+      "consumption": "1983",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "",
+      "production": "12",
+      "dispatch": "",
+      "closingStock": "5397"
+    },
+    {
+      "category": "RAW IRON ORE",
+      "material": "BHQ Ore Lump",
+      "openingStock": "1839",
+      "inward": "3114",
+      "consumption": "1837",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "",
+      "production": "1849",
+      "dispatch": "",
+      "closingStock": "6662"
+    },
+    {
+      "category": "RAW IRON ORE",
+      "material": "Iron Ore Slimes",
+      "openingStock": "3613",
+      "inward": "3034",
+      "consumption": "3366",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "",
+      "production": "209",
+      "dispatch": "",
+      "closingStock": "7664"
+    },
+    {
+      "category": "RAW PELLET ORE",
+      "material": "Pellet Ore - Kiriburu",
+      "openingStock": "366",
+      "inward": "1621",
+      "consumption": "1958",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "",
+      "production": "452",
+      "dispatch": "",
+      "closingStock": "3550"
+    },
+    {
+      "category": "RAW PELLET ORE",
+      "material": "Pellet Ore - Meghahatuburu",
+      "openingStock": "7060",
+      "inward": "",
+      "consumption": "2876",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "",
+      "production": "1316",
+      "dispatch": "",
+      "closingStock": "5301"
+    },
+    {
+      "category": "RAW PELLET ORE",
+      "material": "Pellet Ore - Gua",
+      "openingStock": "416",
+      "inward": "1916",
+      "consumption": "2585",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "",
+      "production": "1616",
+      "dispatch": "",
+      "closingStock": "5236"
+    },
+    {
+      "category": "DOLOMITE",
+      "material": "Dolomite 5-20",
+      "openingStock": "4724",
+      "inward": "2596",
+      "consumption": "1081",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "",
+      "production": "681",
+      "dispatch": "",
+      "closingStock": "3297"
+    },
+    {
+      "category": "DOLOMITE",
+      "material": "Dolomite Sized 10-30",
+      "openingStock": "7221",
+      "inward": "3243",
+      "consumption": "1914",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "",
+      "production": "1581",
+      "dispatch": "",
+      "closingStock": "4225"
+    }
+  ]
+}

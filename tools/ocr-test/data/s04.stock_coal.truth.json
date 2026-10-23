@@ -1,0 +1,53 @@
+{
+  "reportDate": "2026-10-21",
+  "rows": [
+    {
+      "category": "COAL DETAILS",
+      "material": "WCL Chandrapur Coal",
+      "openingStock": "4548.819",
+      "inward": "1576.550",
+      "consumption": "56.124",
+      "fc": "30",
+      "moistLossPct": "7.1",
+      "landedCost": "8248.605",
+      "dispatch": "1335.332",
+      "closingStock": "143.740"
+    },
+    {
+      "category": "COAL DETAILS",
+      "material": "Imported Indonesian Coal",
+      "openingStock": "1311.226",
+      "inward": "1570.013",
+      "consumption": "107.632",
+      "fc": "36",
+      "moistLossPct": "7.3",
+      "landedCost": "5276.738",
+      "dispatch": "1772.975",
+      "closingStock": "3310.156"
+    },
+    {
+      "category": "COAL DETAILS",
+      "material": "Coal Dust Fines",
+      "openingStock": "3223.032",
+      "inward": "1504.629",
+      "consumption": "838.543",
+      "fc": "41",
+      "moistLossPct": "7.4",
+      "landedCost": "6210.586",
+      "dispatch": "1754.515",
+      "closingStock": "3397.000"
+    },
+    {
+      "category": "COAL DETAILS",
+      "material": "Washed Coal Dhanbad",
+      "openingStock": "830.076",
+      "inward": "1430.242",
+      "consumption": "2427.461",
+      "fc": "33",
+      "moistLossPct": "7.7",
+      "landedCost": "4509.793",
+      "dispatch": "396.333",
+      "closingStock": "4484.956"
+    }
+  ]
+}

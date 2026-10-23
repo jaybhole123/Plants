@@ -1,0 +1,28 @@
+{
+  "rows": [
+    {
+      "entryType": "outgoing",
+      "partyName": "shri Bageshwar Enterprises",
+      "materialName": "Gasi fire ash",
+      "vehicleNo": "MH12 TL 9332",
+      "qty": "364.929",
+      "rate": "790"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Godawari Power",
+      "materialName": "Char",
+      "vehicleNo": "MP27 SL 8339",
+      "qty": "167.303",
+      "rate": ""
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Rolling mil sms",
+      "materialName": "Fly ash",
+      "vehicleNo": "CG06 YD 8948",
+      "qty": "356.442",
+      "rate": ""
+    }
+  ]
+}

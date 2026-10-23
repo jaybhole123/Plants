@@ -1,0 +1,290 @@
+{
+ "rows": [
+  {
+   "date": "2026-08-12",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Vishal Alloys Ltd",
+   "saudaQuantity": "1.36",
+   "rateAmt": "4000",
+   "prvPending": "1.36",
+   "qtyDispatch": "1.36",
+   "balPending": "0.00"
+  },
+  {
+   "date": "2026-08-18",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 100mm",
+   "partyName": "Maa Durga Steel & Power(Raipur)",
+   "saudaQuantity": "25.35",
+   "rateAmt": "55700",
+   "prvPending": "25.35",
+   "qtyDispatch": "0.00",
+   "balPending": "25.35"
+  },
+  {
+   "date": "2026-08-18",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Radhe Refractories",
+   "saudaQuantity": "39.97",
+   "rateAmt": "22900",
+   "prvPending": "8.85",
+   "qtyDispatch": "7.08",
+   "balPending": "1.77"
+  },
+  {
+   "date": "2026-08-03",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 100mm",
+   "partyName": "Rathi Steel Corp",
+   "saudaQuantity": "7.71",
+   "rateAmt": "7600",
+   "prvPending": "3.92",
+   "qtyDispatch": "1.96",
+   "balPending": "1.96"
+  },
+  {
+   "date": "2026-08-06",
+   "mainHeading": "Billet",
+   "itemName": "MS Billet 120mm",
+   "partyName": "Singhal Fly Ash Bricks(Satna)",
+   "saudaQuantity": "33.80",
+   "rateAmt": "57400",
+   "prvPending": "33.80",
+   "qtyDispatch": "10.14",
+   "balPending": "23.66"
+  },
+  {
+   "date": "2026-08-06",
+   "mainHeading": "Char",
+   "itemName": "Dolochar",
+   "partyName": "Shree Balaji Traders",
+   "saudaQuantity": "35.14",
+   "rateAmt": "4000",
+   "prvPending": "35.14",
+   "qtyDispatch": "0.00",
+   "balPending": "35.14"
+  },
+  {
+   "date": "2026-08-17",
+   "mainHeading": "Char",
+   "itemName": "Char Fines",
+   "partyName": "Sharma Minerals & Co.",
+   "saudaQuantity": "24.41",
+   "rateAmt": "9050",
+   "prvPending": "16.89",
+   "qtyDispatch": "16.89",
+   "balPending": "0.00"
+  },
+  {
+   "date": "2026-08-19",
+   "mainHeading": "Char",
+   "itemName": "Dolochar",
+   "partyName": "Rathi Steel Corp",
+   "saudaQuantity": "5.05",
+   "rateAmt": "6350",
+   "prvPending": "5.05",
+   "qtyDispatch": "1.51",
+   "balPending": "3.54"
+  },
+  {
+   "date": "2026-08-01",
+   "mainHeading": "Slag",
+   "itemName": "Slag Grit",
+   "partyName": "Shiv Shakti Metaliks(Durg)",
+   "saudaQuantity": "38.15",
+   "rateAmt": "2000",
+   "prvPending": "18.04",
+   "qtyDispatch": "0.00",
+   "balPending": "18.04"
+  },
+  {
+   "date": "2026-08-12",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Siddhi Vinayak Metals",
+   "saudaQuantity": "31.29",
+   "rateAmt": "8100",
+   "prvPending": "31.29",
+   "qtyDispatch": "25.03",
+   "balPending": "6.26"
+  },
+  {
+   "date": "2026-08-08",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Vishal Alloys Ltd",
+   "saudaQuantity": "3.17",
+   "rateAmt": "350",
+   "prvPending": "3.17",
+   "qtyDispatch": "0.00",
+   "balPending": "3.17"
+  },
+  {
+   "date": "2026-08-16",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Bajrang Coke Industries",
+   "saudaQuantity": "7.06",
+   "rateAmt": "450",
+   "prvPending": "7.06",
+   "qtyDispatch": "0.00",
+   "balPending": "7.06"
+  },
+  {
+   "date": "2026-08-07",
+   "mainHeading": "Slag",
+   "itemName": "Slag Aggregate",
+   "partyName": "Gupta Brothers(Korba)",
+   "saudaQuantity": "37.63",
+   "rateAmt": "5900",
+   "prvPending": "27.94",
+   "qtyDispatch": "0.00",
+   "balPending": "27.94"
+  },
+  {
+   "date": "2026-08-02",
+   "mainHeading": "Mill Scale",
+   "itemName": "Scale Fines",
+   "partyName": "Maa Durga Steel & Power(Raipur)",
+   "saudaQuantity": "39.60",
+   "rateAmt": "1150",
+   "prvPending": "16.18",
+   "qtyDispatch": "0.00",
+   "balPending": "16.18"
+  },
+  {
+   "date": "2026-08-10",
+   "mainHeading": "Mill Scale",
+   "itemName": "Scale Fines",
+   "partyName": "Singhal Fly Ash Bricks(Satna)",
+   "saudaQuantity": "6.21",
+   "rateAmt": "9350",
+   "prvPending": "6.21",
+   "qtyDispatch": "0.00",
+   "balPending": "6.21"
+  },
+  {
+   "date": "2026-08-09",
+   "mainHeading": "Mill Scale",
+   "itemName": "Scale Fines",
+   "partyName": "Maa Durga Steel & Power(Raipur)",
+   "saudaQuantity": "11.13",
+   "rateAmt": "7650",
+   "prvPending": "11.13",
+   "qtyDispatch": "8.90",
+   "balPending": "2.23"
+  },
+  {
+   "date": "2026-08-20",
+   "mainHeading": "Mill Scale",
+   "itemName": "Scale Fines",
+   "partyName": "Gupta Brothers(Korba)",
+   "saudaQuantity": "35.20",
+   "rateAmt": "8650",
+   "prvPending": "35.20",
+   "qtyDispatch": "17.60",
+   "balPending": "17.60"
+  },
+  {
+   "date": "2026-08-15",
+   "mainHeading": "Mill Scale",
+   "itemName": "Mill Scale",
+   "partyName": "Narmada Infra Products",
+   "saudaQuantity": "13.11",
+   "rateAmt": "4600",
+   "prvPending": "9.38",
+   "qtyDispatch": "9.38",
+   "balPending": "0.00"
+  },
+  {
+   "date": "2026-08-19",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Ash Fines",
+   "partyName": "Patel Bricks & Blocks(Anuppur)",
+   "saudaQuantity": "29.59",
+   "rateAmt": "8500",
+   "prvPending": "29.59",
+   "qtyDispatch": "29.59",
+   "balPending": "0.00"
+  },
+  {
+   "date": "2026-08-19",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Gasifier Fire Ash",
+   "partyName": "Mahalaxmi Foundry",
+   "saudaQuantity": "39.17",
+   "rateAmt": "4250",
+   "prvPending": "39.17",
+   "qtyDispatch": "39.17",
+   "balPending": "0.00"
+  },
+  {
+   "date": "2026-08-17",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Ash Fines",
+   "partyName": "Agarwal Coal Carriers",
+   "saudaQuantity": "22.70",
+   "rateAmt": "9000",
+   "prvPending": "22.70",
+   "qtyDispatch": "11.35",
+   "balPending": "11.35"
+  },
+  {
+   "date": "2026-08-15",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Gasifier Fire Ash",
+   "partyName": "Jai Ambe Ispat Pvt Ltd",
+   "saudaQuantity": "33.40",
+   "rateAmt": "6050",
+   "prvPending": "33.40",
+   "qtyDispatch": "16.70",
+   "balPending": "16.70"
+  },
+  {
+   "date": "2026-08-07",
+   "mainHeading": "Gasi Fire Ash",
+   "itemName": "Ash Fines",
+   "partyName": "Radhe Refractories",
+   "saudaQuantity": "21.57",
+   "rateAmt": "6500",
+   "prvPending": "8.35",
+   "qtyDispatch": "8.35",
+   "balPending": "0.00"
+  },
+  {
+   "date": "2026-08-12",
+   "mainHeading": "Sponge Iron",
+   "itemName": "DRI 3-20mm",
+   "partyName": "Maa Durga Steel & Power(Raipur)",
+   "saudaQuantity": "4.00",
+   "rateAmt": "37500",
+   "prvPending": "3.96",
+   "qtyDispatch": "1.18",
+   "balPending": "2.78"
+  },
+  {
+   "date": "2026-08-01",
+   "mainHeading": "Sponge Iron",
+   "itemName": "DRI 3-20mm",
+   "partyName": "Laxmi Narayan Ispat(Raigarh)",
+   "saudaQuantity": "34.64",
+   "rateAmt": "20800",
+   "prvPending": "34.64",
+   "qtyDispatch": "27.71",
+   "balPending": "6.93"
+  },
+  {
+   "date": "2026-08-14",
+   "mainHeading": "Sponge Iron",
+   "itemName": "DRI 3-20mm",
+   "partyName": "Balaji Cement Agency(Rewa)",
+   "saudaQuantity": "10.04",
+   "rateAmt": "54200",
+   "prvPending": "3.32",
+   "qtyDispatch": "3.32",
+   "balPending": "0.00"
+  }
+ ]
+}

@@ -1,0 +1,41 @@
+{
+  "reportDate": "2026-10-22",
+  "rows": [
+    {
+      "category": "COAL DETAILS",
+      "material": "WCL Chandrapur Coal",
+      "openingStock": "3320.00",
+      "inward": "1934.19",
+      "consumption": "1942.39",
+      "fc": "42",
+      "moistLossPct": "16.7",
+      "landedCost": "7743.21",
+      "dispatch": "954.82",
+      "closingStock": "3852.99"
+    },
+    {
+      "category": "COAL DETAILS",
+      "material": "SECL Gevra Coal G-9",
+      "openingStock": "5664.60",
+      "inward": "9.58",
+      "consumption": "2020.31",
+      "fc": "35",
+      "moistLossPct": "17.4",
+      "landedCost": "7917.03",
+      "dispatch": "1612.48",
+      "closingStock": "4105.13"
+    },
+    {
+      "category": "COAL DETAILS",
+      "material": "Coal Dust Fines",
+      "openingStock": "4127.86",
+      "inward": "211.37",
+      "consumption": "84.48",
+      "fc": "37",
+      "moistLossPct": "9.0",
+      "landedCost": "5772.11",
+      "dispatch": "628.48",
+      "closingStock": "2491.89"
+    }
+  ]
+}

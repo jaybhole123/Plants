@@ -1,0 +1,109 @@
+{
+  "reportDate": "2026-10-14",
+  "rows": [
+    {
+      "category": "RAW IRON ORE",
+      "material": "Iron Ore Lump - Koira",
+      "openingStock": "4407.00",
+      "inward": "2716.68",
+      "consumption": "2350.65",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "563.07",
+      "production": "",
+      "dispatch": "2999.99",
+      "closingStock": "6247.67"
+    },
+    {
+      "category": "RAW IRON ORE",
+      "material": "Iron Ore Slimes",
+      "openingStock": "3346.55",
+      "inward": "1713.85",
+      "consumption": "3317.57",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "1273.68",
+      "production": "",
+      "dispatch": "2639.93",
+      "closingStock": "1107.34"
+    },
+    {
+      "category": "RAW IRON ORE",
+      "material": "Iron Ore Calibrated 10-40",
+      "openingStock": "1451.25",
+      "inward": "",
+      "consumption": "2894.61",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "986.89",
+      "production": "",
+      "dispatch": "1138.43",
+      "closingStock": "4030.69"
+    },
+    {
+      "category": "RAW IRON ORE",
+      "material": "Iron Ore Fines - Noamundi",
+      "openingStock": "1521.25",
+      "inward": "839.15",
+      "consumption": "182.87",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "1636.60",
+      "production": "",
+      "dispatch": "645.40",
+      "closingStock": "3227.59"
+    },
+    {
+      "category": "RAW IRON ORE",
+      "material": "Iron Ore Lump - Joda",
+      "openingStock": "762.81",
+      "inward": "289.50",
+      "consumption": "3129.89",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "678.56",
+      "production": "",
+      "dispatch": "1448.63",
+      "closingStock": "4150.07"
+    },
+    {
+      "category": "IRON FINES (0-3)",
+      "material": "Fines 0-3 Stockyard",
+      "openingStock": "8248.58",
+      "inward": "3381.73",
+      "consumption": "2059.70",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "2101.90",
+      "production": "",
+      "dispatch": "",
+      "closingStock": "6761.44"
+    },
+    {
+      "category": "IRON FINES (0-3)",
+      "material": "Fines 0-3 Jigging",
+      "openingStock": "6595.94",
+      "inward": "1367.83",
+      "consumption": "3420.58",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "1304.69",
+      "production": "",
+      "dispatch": "",
+      "closingStock": "1124.21"
+    },
+    {
+      "category": "DOLOMITE",
+      "material": "Dolomite Sized 10-30",
+      "openingStock": "1057.25",
+      "inward": "2250.84",
+      "consumption": "2425.70",
+      "crushing": "",
+      "fines3": "",
+      "fines3Qty": "979.15",
+      "production": "",
+      "dispatch": "1678.45",
+      "closingStock": "8288.85"
+    }
+  ]
+}

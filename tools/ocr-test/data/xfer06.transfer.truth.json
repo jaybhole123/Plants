@@ -1,0 +1,60 @@
+{
+  "rows": [
+    {
+      "entryType": "incoming",
+      "partyName": "Kamal Sponge",
+      "materialName": "Iron ore",
+      "vehicleNo": "CG18 WE 8285",
+      "qty": "356.469",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "SECL Korba",
+      "materialName": "Coke breeze",
+      "vehicleNo": "OD19 MX 1936",
+      "qty": "286.117",
+      "rate": "585"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Sharda Energy",
+      "materialName": "Fly ash",
+      "vehicleNo": "OD20 ZS 1341",
+      "qty": "377.768",
+      "rate": "500"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "shri Maa Durga Traders",
+      "materialName": "Coke breeze",
+      "vehicleNo": "CG04 AP 5043",
+      "qty": "126.841",
+      "rate": "680"
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "SECL Korba",
+      "materialName": "Raw coal",
+      "vehicleNo": "CG17 BZ 3104",
+      "qty": "5.709",
+      "rate": ""
+    },
+    {
+      "entryType": "incoming",
+      "partyName": "Hira Ferro Alloys",
+      "materialName": "Dolomite",
+      "vehicleNo": "CG13 TM 6439",
+      "qty": "334.442",
+      "rate": "470"
+    },
+    {
+      "entryType": "outgoing",
+      "partyName": "Godawari Power",
+      "materialName": "Sponge iron",
+      "vehicleNo": "CG02 HP 7341",
+      "qty": "104.981",
+      "rate": "355"
+    }
+  ]
+}
