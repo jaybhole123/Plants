@@ -45,6 +45,11 @@ const formatNumber = (value) => {
   return Number(value).toFixed(3)
 }
 
+const formatRoundNumber = (value) => {
+  if (value === undefined || value === null || isNaN(value)) return '0'
+  return Math.round(Number(value)).toString()
+}
+
 const parsePercentValue = (value) => {
   if (value === undefined || value === null) return 0
   const stringValue = String(value).replace('%', '').trim()
@@ -1575,16 +1580,16 @@ const Stock = () => {
                           {/* Subtotal Row */}
                           <tr className="bg-slate-50 font-bold text-slate-700 border-t border-slate-200">
                             <td className="px-4 py-2 text-[11px] uppercase text-emerald-800">Total {catName}</td>
-                            <td className="px-4 py-2 text-right">{formatNumber(totalOp)}</td>
-                            <td className="px-4 py-2 text-right">{formatNumber(totalInw)}</td>
-                            <td className="px-4 py-2 text-right">{formatNumber(totalCons)}</td>
+                            <td className="px-4 py-2 text-right">{groupItems[0]?.type !== 'coal_detail' ? formatRoundNumber(totalOp) : formatNumber(totalOp)}</td>
+                            <td className="px-4 py-2 text-right">{groupItems[0]?.type !== 'coal_detail' ? formatRoundNumber(totalInw) : formatNumber(totalInw)}</td>
+                            <td className="px-4 py-2 text-right">{groupItems[0]?.type !== 'coal_detail' ? formatRoundNumber(totalCons) : formatNumber(totalCons)}</td>
                             {groupItems[0]?.type !== 'coal_detail' ? (
                               <>
                                 <td className="px-4 py-2 text-right"></td>
                                 <td className="px-4 py-2 text-right"></td>
-                                <td className="px-4 py-2 text-right">{formatNumber(totalFinesQ)}</td>
-                                <td className="px-4 py-2 text-right">{formatNumber(totalProd)}</td>
-                                <td className="px-4 py-2 text-right">{formatNumber(totalDis)}</td>
+                                <td className="px-4 py-2 text-right">{formatRoundNumber(totalFinesQ)}</td>
+                                <td className="px-4 py-2 text-right">{formatRoundNumber(totalProd)}</td>
+                                <td className="px-4 py-2 text-right">{formatRoundNumber(totalDis)}</td>
                               </>
                             ) : (
                               <>
@@ -1594,7 +1599,7 @@ const Stock = () => {
                                 <td className="px-4 py-2 text-right"></td>
                               </>
                             )}
-                            <td className="px-4 py-2 text-right text-emerald-700 font-bold">{formatNumber(totalClosing)}</td>
+                            <td className="px-4 py-2 text-right text-emerald-700 font-bold">{groupItems[0]?.type !== 'coal_detail' ? formatRoundNumber(totalClosing) : formatNumber(totalClosing)}</td>
                           </tr>
                         </React.Fragment>
                       )
@@ -1765,16 +1770,16 @@ const Stock = () => {
                       {/* 3. CATEGORY TOTALS ROW */}
                       <tr className="bg-slate-50 font-bold text-slate-800 border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.02)]">
                         <td className="px-4 py-4 break-words text-[11px] uppercase tracking-wider text-indigo-600">Total {group.label}</td>
-                        <td className="px-4 py-4 text-right">{formatNumber(group.totals.opening)}</td>
-                        <td className="px-4 py-4 text-right">{formatNumber(group.totals.inward)}</td>
-                        <td className="px-4 py-4 text-right">{formatNumber(group.totals.consumption)}</td>
+                        <td className="px-4 py-4 text-right">{activeTab === 'raw_material' ? formatRoundNumber(group.totals.opening) : formatNumber(group.totals.opening)}</td>
+                        <td className="px-4 py-4 text-right">{activeTab === 'raw_material' ? formatRoundNumber(group.totals.inward) : formatNumber(group.totals.inward)}</td>
+                        <td className="px-4 py-4 text-right">{activeTab === 'raw_material' ? formatRoundNumber(group.totals.consumption) : formatNumber(group.totals.consumption)}</td>
                         {activeTab === 'raw_material' ? (
                           <>
                             <td className="px-4 py-4 text-right"></td>
-                            <td className="px-4 py-4 text-right">{formatNumber(group.totals.fines3)}</td>
-                            <td className="px-4 py-4 text-right">{formatNumber(group.totals.fines3Qty)}</td>
-                            <td className="px-4 py-4 text-right">{formatNumber(group.totals.production)}</td>
-                            <td className="px-4 py-4 text-right">{formatNumber(group.totals.dispatch)}</td>
+                            <td className="px-4 py-4 text-right">{formatRoundNumber(group.totals.fines3)}</td>
+                            <td className="px-4 py-4 text-right">{formatRoundNumber(group.totals.fines3Qty)}</td>
+                            <td className="px-4 py-4 text-right">{formatRoundNumber(group.totals.production)}</td>
+                            <td className="px-4 py-4 text-right">{formatRoundNumber(group.totals.dispatch)}</td>
                           </>
                         ) : (
                           <>
@@ -1784,7 +1789,7 @@ const Stock = () => {
                             <td className="px-4 py-4 text-right">{formatNumber(group.totals.dispatch)}</td>
                           </>
                         )}
-                        <td className="px-4 py-4 text-right text-indigo-700 bg-indigo-50/50">{formatNumber(group.totals.closing)}</td>
+                        <td className="px-4 py-4 text-right text-indigo-700 bg-indigo-50/50">{activeTab === 'raw_material' ? formatRoundNumber(group.totals.closing) : formatNumber(group.totals.closing)}</td>
                         <td className="px-4 py-4 text-center"></td>
                         <td className="px-4 py-4 text-center"></td>
                       </tr>
