@@ -5,6 +5,8 @@ import { FilterBar } from '../components/FilterBar'
 import DateFilter from '../components/DateFilter'
 import OCRImageUploader from '../components/OCRImageUploader'
 import { clean } from '../utils/aiOcr'
+import { useTransferStore } from '../store/useStore'
+
 const initialUnifiedForm = {
   type: 'incoming', // 'incoming' or 'outgoing'
   mainHeading: '',
@@ -39,84 +41,20 @@ const formatNumber = (value) => {
 }
 
 const ItemTransfer = () => {
-  // --- State Management ---
+  // --- Persistent Store Management ---
+  const storeIncomingList = useTransferStore((state) => state.incomingList)
+  const storeOutgoingList = useTransferStore((state) => state.outgoingList)
+  const setStoreIncomingList = useTransferStore((state) => state.setIncomingList)
+  const setStoreOutgoingList = useTransferStore((state) => state.setOutgoingList)
+  const clearAllTransfers = useTransferStore((state) => state.clearAll)
+
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [search, setSearch] = useState('')
-  
-  const [incomingList, setIncomingList] = useState([])
-  const [outgoingList, setOutgoingList] = useState([])
   const [isLoading, setIsLoading] = useState(false)
 
-  const fetchTransfers = async () => {
-    setIsLoading(true)
-    const data = []
-    const error = null
-      
-    if (error) {
-      console.error('Error fetching transfers:', error)
-      showToast('Error loading data', 'error')
-    } else if (data) {
-      const incoming = data.filter(d => d.entry_type === 'incoming').map(item => ({
-        id: item.id,
-        mainHeading: '',
-        partyName: item.party_name,
-        materialName: item.material_name,
-        vehicleNo: item.vehicle_no,
-        qty: item.qty,
-        rate: item.rate
-      }))
-      const outgoing = data.filter(d => d.entry_type === 'outgoing').map(item => ({
-        id: item.id,
-        mainHeading: '',
-        partyName: item.party_name,
-        materialName: item.material_name,
-        vehicleNo: item.vehicle_no,
-        qty: item.qty,
-        rate: item.rate
-      }))
-      setIncomingList(incoming)
-      setOutgoingList(outgoing)
-    }
-    setIsLoading(false)
-  }
-
-  useEffect(() => {
-    if (date !== '') {
-      fetchTransfers()
-    } else {
-      // If date is all, maybe we want to fetch all or we don't support all.
-      // We will adjust fetch to not filter by date if date is empty
-      const fetchAll = async () => {
-        setIsLoading(true)
-        const data = []
-        const error = null
-        if (data) {
-          const incoming = data.filter(d => d.entry_type === 'incoming').map(item => ({
-            id: item.id,
-            mainHeading: '',
-            partyName: item.party_name,
-            materialName: item.material_name,
-            vehicleNo: item.vehicle_no,
-            qty: item.qty,
-            rate: item.rate
-          }))
-          const outgoing = data.filter(d => d.entry_type === 'outgoing').map(item => ({
-            id: item.id,
-            mainHeading: '',
-            partyName: item.party_name,
-            materialName: item.material_name,
-            vehicleNo: item.vehicle_no,
-            qty: item.qty,
-            rate: item.rate
-          }))
-          setIncomingList(incoming)
-          setOutgoingList(outgoing)
-        }
-        setIsLoading(false)
-      }
-      fetchAll()
-    }
-  }, [date])
+  // Filter list by selected date if date is provided
+  const incomingList = (storeIncomingList || []).filter(item => !date || !item.reportDate || item.reportDate === date)
+  const outgoingList = (storeOutgoingList || []).filter(item => !date || !item.reportDate || item.reportDate === date)
   
   const [unifiedForm, setUnifiedForm] = useState(initialUnifiedForm)
   const [editingIncomingId, setEditingIncomingId] = useState(null)
@@ -174,23 +112,45 @@ const ItemTransfer = () => {
 
     setIsLoading(true)
     if (editingId) {
-      const error = null
-      if (error) {
-        showToast('Failed to update entry', 'error')
-        console.error(error)
+      if (unifiedForm.type === 'incoming') {
+        setStoreIncomingList(prev => prev.map(item => item.id === editingId ? {
+          ...item,
+          partyName: unifiedForm.partyName,
+          materialName: unifiedForm.materialName,
+          vehicleNo: unifiedForm.vehicleNo || '',
+          qty: Number(unifiedForm.qty) || 0,
+          rate: Number(unifiedForm.rate) || 0,
+          reportDate: date,
+        } : item))
       } else {
-        showToast('Entry updated successfully.')
-        await fetchTransfers()
+        setStoreOutgoingList(prev => prev.map(item => item.id === editingId ? {
+          ...item,
+          partyName: unifiedForm.partyName,
+          materialName: unifiedForm.materialName,
+          vehicleNo: unifiedForm.vehicleNo || '',
+          qty: Number(unifiedForm.qty) || 0,
+          rate: Number(unifiedForm.rate) || 0,
+          reportDate: date,
+        } : item))
       }
+      showToast('Entry updated successfully.')
     } else {
-      const error = null
-      if (error) {
-        showToast('Failed to add entry', 'error')
-        console.error(error)
-      } else {
-        showToast(`${unifiedForm.type === 'incoming' ? 'Incoming' : 'Outgoing'} entry added successfully.`)
-        await fetchTransfers()
+      const newItem = {
+        id: Date.now() + Math.random(),
+        mainHeading: unifiedForm.mainHeading || '',
+        partyName: unifiedForm.partyName,
+        materialName: unifiedForm.materialName,
+        vehicleNo: unifiedForm.vehicleNo || '',
+        qty: Number(unifiedForm.qty) || 0,
+        rate: Number(unifiedForm.rate) || 0,
+        reportDate: date,
       }
+      if (unifiedForm.type === 'incoming') {
+        setStoreIncomingList(prev => [newItem, ...prev])
+      } else {
+        setStoreOutgoingList(prev => [newItem, ...prev])
+      }
+      showToast(`${unifiedForm.type === 'incoming' ? 'Incoming' : 'Outgoing'} entry added successfully.`)
     }
     setIsLoading(false)
     
@@ -225,16 +185,9 @@ const ItemTransfer = () => {
 
   const handleDeleteIncoming = async (id) => {
     if (window.confirm('Delete this incoming entry?')) {
-      setIsLoading(true)
-      const error = null
-      if (error) {
-        showToast('Failed to delete entry', 'error')
-      } else {
-        showToast('Incoming entry removed.')
-        await fetchTransfers()
-        if (editingId === id) resetUnifiedForm()
-      }
-      setIsLoading(false)
+      setStoreIncomingList(prev => prev.filter(item => item.id !== id))
+      showToast('Incoming entry removed.')
+      if (editingId === id) resetUnifiedForm()
     }
   }
 
@@ -257,16 +210,9 @@ const ItemTransfer = () => {
 
   const handleDeleteOutgoing = async (id) => {
     if (window.confirm('Delete this outgoing entry?')) {
-      setIsLoading(true)
-      const error = null
-      if (error) {
-        showToast('Failed to delete entry', 'error')
-      } else {
-        showToast('Outgoing entry removed.')
-        await fetchTransfers()
-        if (editingId === id) resetUnifiedForm()
-      }
-      setIsLoading(false)
+      setStoreOutgoingList(prev => prev.filter(item => item.id !== id))
+      showToast('Outgoing entry removed.')
+      if (editingId === id) resetUnifiedForm()
     }
   }
 
@@ -528,8 +474,7 @@ const ItemTransfer = () => {
         <button 
           onClick={() => {
             if (window.confirm('Are you sure you want to reset all Transfer (Incoming & Outgoing) entries? This action cannot be undone.')) {
-              setIncomingList([])
-              setOutgoingList([])
+              clearAllTransfers()
               showToast('Transfer data reset successfully.')
             }
           }}
@@ -690,25 +635,22 @@ const ItemTransfer = () => {
                 Preview Incoming Data
               </h2>
               <div className="flex gap-1.5">
-                <button onClick={async () => { 
+                <button onClick={() => { 
                   setIsLoading(true);
-                  const payloads = incomingCsvPreview.map(r => ({
-                    report_date: date,
+                  const newItems = incomingCsvPreview.map((r, i) => ({
+                    id: Date.now() + i + Math.random(),
+                    reportDate: date,
                     entry_type: 'incoming',
-                    party_name: r.partyName,
-                    material_name: r.materialName,
-                    vehicle_no: r.vehicleNo || null,
+                    mainHeading: r.mainHeading || '',
+                    partyName: r.partyName,
+                    materialName: r.materialName,
+                    vehicleNo: r.vehicleNo || null,
                     qty: Number(r.qty) || 0,
                     rate: Number(r.rate) || 0
                   }));
-                  const error = null;
-                  if (error) {
-                    showToast('Failed to save incoming data', 'error');
-                  } else {
-                    setIncomingCsvPreview([]); 
-                    showToast('Data saved to incoming successfully.');
-                    await fetchTransfers();
-                  }
+                  setStoreIncomingList(prev => [...newItems, ...prev]);
+                  setIncomingCsvPreview([]); 
+                  showToast('Data saved to incoming successfully.');
                   setIsLoading(false);
                 }} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md transition-all shadow-sm active:scale-[0.98]">Save Data</button>
                 <button onClick={() => setIncomingCsvPreview([])} className="px-5 py-2.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-100 font-medium rounded-md transition-all active:scale-[0.98]">Cancel</button>
@@ -752,25 +694,22 @@ const ItemTransfer = () => {
                 Preview Outgoing Data
               </h2>
               <div className="flex gap-1.5">
-                <button onClick={async () => { 
+                <button onClick={() => { 
                   setIsLoading(true);
-                  const payloads = outgoingCsvPreview.map(r => ({
-                    report_date: date,
+                  const newItems = outgoingCsvPreview.map((r, i) => ({
+                    id: Date.now() + i + Math.random(),
+                    reportDate: date,
                     entry_type: 'outgoing',
-                    party_name: r.partyName,
-                    material_name: r.materialName,
-                    vehicle_no: r.vehicleNo || null,
+                    mainHeading: r.mainHeading || '',
+                    partyName: r.partyName,
+                    materialName: r.materialName,
+                    vehicleNo: r.vehicleNo || null,
                     qty: Number(r.qty) || 0,
                     rate: Number(r.rate) || 0
                   }));
-                  const error = null;
-                  if (error) {
-                    showToast('Failed to save outgoing data', 'error');
-                  } else {
-                    setOutgoingCsvPreview([]); 
-                    showToast('Data saved to outgoing successfully.');
-                    await fetchTransfers();
-                  }
+                  setStoreOutgoingList(prev => [...newItems, ...prev]);
+                  setOutgoingCsvPreview([]); 
+                  showToast('Data saved to outgoing successfully.');
                   setIsLoading(false);
                 }} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-md transition-all shadow-sm active:scale-[0.98]">Save Data</button>
                 <button onClick={() => setOutgoingCsvPreview([])} className="px-5 py-2.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-100 font-medium rounded-md transition-all active:scale-[0.98]">Cancel</button>

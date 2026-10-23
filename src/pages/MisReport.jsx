@@ -6,7 +6,8 @@ import {
   useProductionStore,
   useProduction2Store,
   useSaudaPurchaseStore,
-  useSaudaScaleStore
+  useSaudaScaleStore,
+  useTransferStore
 } from '../store/useStore'
 import { FilterBar } from '../components/FilterBar'
 
@@ -40,9 +41,11 @@ const MisReport = () => {
   const storeStockItems = useStockStore(state => state.items)
   const storeSaudaPurchases = useSaudaPurchaseStore(state => state.entries)
   const storeSaudaSales = useSaudaScaleStore(state => state.entries)
+  const storeIncomingList = useTransferStore(state => state.incomingList)
+  const storeOutgoingList = useTransferStore(state => state.outgoingList)
   
-  const [incomingList, setIncomingList] = useState([])
-  const [outgoingList, setOutgoingList] = useState([])
+  const incomingList = (storeIncomingList || []).filter(item => !reportDate || !item.reportDate || item.reportDate === reportDate)
+  const outgoingList = (storeOutgoingList || []).filter(item => !reportDate || !item.reportDate || item.reportDate === reportDate)
 
   const stockItems = useMemo(() => {
     return storeStockItems.map(item => ({
