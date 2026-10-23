@@ -6,6 +6,7 @@ import { FilterBar } from '../components/FilterBar'
 import DateFilter from '../components/DateFilter'
 import OCRImageUploader from '../components/OCRImageUploader'
 import { clean, toIsoDate } from '../utils/aiOcr'
+import ConfirmModal from '../components/ConfirmModal'
 
 
 const initialForm = {
@@ -127,6 +128,7 @@ const Stock = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
 
   const [stockPreview, setStockPreview] = useState([])
   const [coalRows, setCoalRows] = useState([{ material: '', openingStock: '', inward: '', consumption: '', fc: '', moistLossPct: '', dispatch: '', landedCost: '', closingStock: '' }])
@@ -872,12 +874,7 @@ const Stock = () => {
           </button>
 
           <button
-            onClick={() => {
-              if (window.confirm("Kya aap sach me Stock ka saara data reset (clear) karna chahte hain?")) {
-                storeClearAllItems();
-                setToast({ type: 'success', message: 'Stock data reset ho gaya!' });
-              }
-            }}
+            onClick={() => setIsResetConfirmOpen(true)}
             className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-semibold rounded-lg shadow-sm transition-all flex items-center gap-1.5 active:scale-95 text-sm h-10"
             title="Reset All Stock Data"
           >
@@ -886,6 +883,18 @@ const Stock = () => {
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={isResetConfirmOpen}
+        onClose={() => setIsResetConfirmOpen(false)}
+        title="Reset Stock Data"
+        message="Kya aap sach me Stock (Raw Material & Coal) ka saara data reset (delete) karna chahte hain? Yeh action undo nahi kiya ja sakta."
+        confirmText="Yes, Reset Stock Data"
+        onConfirm={() => {
+          storeClearAllItems();
+          setToast({ type: 'success', message: 'Stock data successfully reset!' });
+        }}
+      />
       
       <FilterBar 
         searchQuery={search} 

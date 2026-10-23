@@ -1,7 +1,7 @@
 // Client side of the AI image reader. The OpenAI key never reaches the browser:
 // we only POST the image to our own /api/ocr endpoint (see server/ocrHandler.js).
 
-const MAX_SIDE = 2400
+const MAX_SIDE = 3600
 
 // Downscale big phone photos so the upload stays small; keeps text readable.
 const toDataUrl = (file) =>
@@ -13,9 +13,12 @@ const toDataUrl = (file) =>
       const canvas = document.createElement('canvas')
       canvas.width = Math.round(img.width * scale)
       canvas.height = Math.round(img.height * scale)
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+      const ctx = canvas.getContext('2d')
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
       URL.revokeObjectURL(url)
-      resolve(canvas.toDataURL('image/jpeg', 0.92))
+      resolve(canvas.toDataURL('image/jpeg', 0.96))
     }
     img.onerror = () => {
       URL.revokeObjectURL(url)

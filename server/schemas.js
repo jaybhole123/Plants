@@ -22,9 +22,28 @@ export const PAGES = {
       },
       { reportDate: str }
     ),
-    hint: `Daily RAW MATERIAL STOCK sheet. Columns left to right: Material, Opening Stock, Inward, Consumption, Crushing %, Fines(-3) %, Fines qty, Production, Dispatch, Closing Stock.
-Group headings (e.g. RAW IRON ORE, RAW PELLET ORE, PROCESSED IRON ORE (3-18), IRON FINES (0-3), DOLOMITE, NON MAG) go in "category" for the rows beneath them; they are not rows themselves.
-Stop before any COAL DETAILS section. Skip TOTAL / SUB TOTAL rows. "reportDate" is the sheet date as YYYY-MM-DD.`,
+    hint: `Daily RAW MATERIAL STOCK sheet. Columns left to right:
+1. MATERIAL: Name of the material item (e.g. Lloyds Metals (10-40), Pellet Ore, BACHELI (10-20), NMDC BACHELI (10-150), Bacheli Fines, Drclo Fines (62), Lloyds Metals Fines, Pellet Fines).
+2. OPENING STOCK: Very important! Pay close attention to 4-digit numbers with decimals. E.g. for "Lloyds Metals Fines" it is "3157.529" (NOT 317.529). Copy every digit and decimal carefully!
+3. INWARD: Values in inward column (e.g. "337.390", "500.000", "125.000").
+4. CONS. / CONSUMPTION: E.g. "625.000", "240.660".
+5. CRUSHING / SCREEN (+3): E.g. "500.000".
+6. FINES(-3) %: E.g. "20%", "1%".
+7. FINES(-3) QTY: E.g. "125.000", "0.000".
+8. PROD. / PRODUCTION: E.g. "0.000".
+9. DIS. / DISPATCH: E.g. "0.000".
+10. CLOSING STOCK: E.g. "5315.633", "392.113", "637.220", "152.429", "139.465", "3282.529", "38.856".
+
+CRITICAL CATEGORY RULES:
+- Group headings in the table:
+  * "RAW IRON ORE"
+  * "RAW PELLET ORE"
+  * "PROCESSED IRON ORE (3-18)"
+  * "IRON FINES (0-3)"
+- Put every material row into its exact parent "category" (e.g. Bacheli Fines, Drclo Fines (62), Lloyds Metals Fines, Pellet Fines ALL belong to "IRON FINES (0-3)").
+- Stop before "COAL DETAILS".
+- Skip "TOTAL", "SUB TOTAL", and "TOTAL IRON ORE" summary rows.
+- "reportDate": extract the AS ON DATE header date as YYYY-MM-DD (e.g. "2026-10-22").`,
   },
   stock_coal: {
     schema: table(

@@ -57,6 +57,7 @@ Rules:
 
 const VERIFY_SYSTEM = `You are a strict checker. You get an image and data that another reader extracted from it.
 Compare EVERY value against the image, cell by cell. Fix any value that does not match what is printed.
+Double check digits: watch out for missing digits in numbers with decimals (e.g. check if a 4-digit number was accidentally extracted with 3 digits like "317.529" instead of "3157.529").
 If a value cannot be read confidently, set it to "" and list it in "unreadable". Never invent or calculate numbers.
 Return the full corrected data in "data", and one entry in "corrections" for every value you changed.`
 

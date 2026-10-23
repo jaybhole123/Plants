@@ -4,6 +4,7 @@ import { CsvDropzone } from '../components/CsvDropzone'
 import { ImageOcrUploader } from '../components/ImageOcrUploader'
 import OCRImageUploader from '../components/OCRImageUploader'
 import { clean } from '../utils/aiOcr'
+import ConfirmModal from '../components/ConfirmModal'
 const initialFormState = {
   metricName: 'Sponge Prod. (Mt)',
   percentValue: '',
@@ -36,6 +37,7 @@ const Production = () => {
   const [editDownTimeRemarks, setEditDownTimeRemarks] = useState("")
   const [toast, setToast] = useState(null)
   const [downTimeRemarks, setDownTimeRemarks] = useState('')
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -288,12 +290,7 @@ const Production = () => {
 
           <button
             type="button"
-            onClick={() => {
-              if (window.confirm("Kya aap Production ka saara saved data delete (reset) karna chahte hain?")) {
-                clearAll();
-                showToast("Production data reset ho gaya!");
-              }
-            }}
+            onClick={() => setIsResetConfirmOpen(true)}
             className="px-5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-medium rounded-md transition flex items-center gap-1 active:scale-95"
             title="Reset All Stored Production Data"
           >
@@ -302,6 +299,18 @@ const Production = () => {
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={isResetConfirmOpen}
+        onClose={() => setIsResetConfirmOpen(false)}
+        title="Reset Production Data"
+        message="Kya aap sach me Production ka saara saved data delete (reset) karna chahte hain? Yeh action undo nahi kiya ja sakta."
+        confirmText="Yes, Reset Production Data"
+        onConfirm={() => {
+          clearAll()
+          showToast("Production data reset ho gaya!")
+        }}
+      />
 
       <form id="productionForm" onSubmit={handleSubmit} className="w-full">
         

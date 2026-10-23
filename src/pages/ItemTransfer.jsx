@@ -6,6 +6,7 @@ import DateFilter from '../components/DateFilter'
 import OCRImageUploader from '../components/OCRImageUploader'
 import { clean } from '../utils/aiOcr'
 import { useTransferStore } from '../store/useStore'
+import ConfirmModal from '../components/ConfirmModal'
 
 const initialUnifiedForm = {
   type: 'incoming', // 'incoming' or 'outgoing'
@@ -51,6 +52,7 @@ const ItemTransfer = () => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
 
   // Filter list by selected date if date is provided
   const incomingList = (storeIncomingList || []).filter(item => !date || !item.reportDate || item.reportDate === date)
@@ -472,12 +474,7 @@ const ItemTransfer = () => {
         />
 
         <button 
-          onClick={() => {
-            if (window.confirm('Are you sure you want to reset all Transfer (Incoming & Outgoing) entries? This action cannot be undone.')) {
-              clearAllTransfers()
-              showToast('Transfer data reset successfully.')
-            }
-          }}
+          onClick={() => setIsResetConfirmOpen(true)}
           className="px-4 py-3 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 hover:border-rose-300 font-bold rounded-lg transition-all shadow-sm flex items-center gap-2 active:scale-[0.98]"
           title="Reset All Transfer Data"
         >
@@ -487,6 +484,18 @@ const ItemTransfer = () => {
           <span className="hidden sm:inline">Reset Data</span>
         </button>
       </div>
+
+      <ConfirmModal
+        isOpen={isResetConfirmOpen}
+        onClose={() => setIsResetConfirmOpen(false)}
+        title="Reset Transfer Data"
+        message="Kya aap sach me Incoming aur Outgoing ka saara data reset (delete) karna chahte hain? Yeh action undo nahi kiya ja sakta."
+        confirmText="Yes, Reset Transfers"
+        onConfirm={() => {
+          clearAllTransfers()
+          showToast('Transfer data successfully reset.')
+        }}
+      />
 
       {isUnifiedModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
