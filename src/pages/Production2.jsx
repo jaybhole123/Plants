@@ -514,7 +514,16 @@ export default function Production2Page() {
 
   const handleSavePendingToStorage = () => {
     if (pendingFiles.length === 0) return;
-    setFilesData((prev) => [...prev, ...pendingFiles]);
+    const nowIso = new Date().toISOString();
+    const saveTargetDate = date || nowIso.split('T')[0];
+    const filesToSave = pendingFiles.map(f => ({
+      ...f,
+      date: saveTargetDate,
+      submittedDate: saveTargetDate,
+      createdAt: nowIso,
+      ocrDate: f.date || null
+    }));
+    setFilesData((prev) => [...prev, ...filesToSave]);
     const count = pendingFiles.length;
     setPendingFiles([]);
     setSaveSuccessMsg(`${count} entry/file(s) successfully saved to Local Storage!`);
@@ -650,6 +659,13 @@ export default function Production2Page() {
   };
 
   const filteredFiles = filesData.filter((f) => {
+    if (date) {
+      const fileCreatedDate = f.submittedDate || (f.createdAt ? new Date(f.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : '');
+      const targetFileDate = fileCreatedDate || f.date;
+      if (targetFileDate && targetFileDate !== date) {
+        return false;
+      }
+    }
     if (search && !f.fileName.toLowerCase().includes(search.toLowerCase()) && !(f.date && f.date.toLowerCase().includes(search.toLowerCase()))) {
       return false;
     }
@@ -682,7 +698,7 @@ export default function Production2Page() {
           <div className="flex flex-col items-center sm:items-end">
             <label className="text-emerald-100 text-[10px] uppercase tracking-wider font-semibold mb-1">Report Date</label>
             <div className="p-1 flex items-center gap-2">
-              <DateFilter date={headerDate} onChange={setHeaderDate} />
+              <DateFilter date={date} onChange={setDate} />
               <ImageOcrUploader
                 aiPage="production"
                 onAiResult={handleAiResult}
@@ -1088,22 +1104,6 @@ export default function Production2Page() {
                           </td>
                           <td colSpan="2"></td>
                         </tr>
-                        {(() => {
-                          const expectedTotal = filteredItems.reduce((acc, curr) => acc + (curr.kiln1 || 0), 0) + filteredItems.reduce((acc, curr) => acc + (curr.kiln2 || 0), 0);
-                          const actualTotal = filteredItems.reduce((acc, curr) => acc + (curr.total || 0), 0);
-                          const isCorrect = Math.abs(expectedTotal - actualTotal) < 0.001;
-                          return (
-                            <tr className={isCorrect ? "bg-emerald-50/40" : "bg-rose-50/40"}>
-                              <td colSpan="3" className={`border-b border-slate-100 px-3 py-1 text-right text-[10px] font-semibold italic ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                {isCorrect ? 'Calculation Verified' : 'Calculation Mismatch'}
-                              </td>
-                              <td className={`border-b border-slate-100 px-3 py-1 text-center font-bold text-[10px] ${isCorrect ? 'text-emerald-700 bg-emerald-100/50' : 'text-rose-600 bg-rose-100/50'}`}>
-                                {isCorrect ? 'Correct' : `Expected: ${fmt(expectedTotal)}`}
-                              </td>
-                              <td colSpan="2" className="border-b border-slate-100"></td>
-                            </tr>
-                          );
-                        })()}
                       </tbody>
                     </table>
                   </div>

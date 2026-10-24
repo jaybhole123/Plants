@@ -1803,28 +1803,6 @@ const Stock = () => {
                         <td className="px-4 py-4 text-center"></td>
                       </tr>
 
-                      {/* Verification Row */}
-                      {(() => {
-                        let expectedClosing = 0;
-                        if (activeTab === 'raw_material') {
-                          expectedClosing = group.totals.opening + group.totals.inward - group.totals.consumption - group.totals.fines3Qty + group.totals.production - group.totals.dispatch;
-                        } else {
-                          expectedClosing = group.totals.opening + group.totals.inward - group.totals.consumption - group.totals.moistLossQty - group.totals.dispatch;
-                        }
-                        const isCorrect = Math.abs(expectedClosing - group.totals.closing) < 0.001;
-                        const colSpan1 = activeTab === 'raw_material' ? 9 : 8;
-                        return (
-                          <tr className={isCorrect ? "bg-emerald-50/40" : "bg-rose-50/40"}>
-                            <td colSpan={colSpan1} className={`px-4 py-1.5 text-right text-[10px] font-semibold italic ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
-                              {isCorrect ? 'Calculation Verified' : 'Calculation Mismatch'}
-                            </td>
-                            <td className={`px-4 py-1.5 text-right font-bold text-[10px] ${isCorrect ? 'text-emerald-700 bg-emerald-100/50' : 'text-rose-600 bg-rose-100/50'}`}>
-                              {isCorrect ? 'Correct' : `Expected: ${formatNumber(expectedClosing)}`}
-                            </td>
-                            <td colSpan="2" className="px-4 py-1.5 text-center"></td>
-                          </tr>
-                        );
-                      })()}
                     </React.Fragment>
                   )
                 })}

@@ -63,13 +63,23 @@ const SaudaPurchase = () => {
   }, [form.orderQuantity, form.qtyReceived])
 
   const filteredEntries = useMemo(() => {
-    return entries.filter(item => 
-      !search || 
-      item.partyName?.toLowerCase().includes(search.toLowerCase()) || 
-      item.itemName?.toLowerCase().includes(search.toLowerCase()) ||
-      item.mainHeading?.toLowerCase().includes(search.toLowerCase())
-    )
-  }, [entries, search])
+    return entries.filter(item => {
+      if (headerDate) {
+        const itemCreatedDate = item.submittedDate || (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : '')
+        const targetItemDate = itemCreatedDate || item.date
+        if (targetItemDate && targetItemDate !== headerDate) return false
+      }
+      if (search) {
+        const q = search.toLowerCase()
+        const matches = 
+          item.partyName?.toLowerCase().includes(q) || 
+          item.itemName?.toLowerCase().includes(q) ||
+          item.mainHeading?.toLowerCase().includes(q)
+        if (!matches) return false
+      }
+      return true
+    })
+  }, [entries, search, headerDate])
 
   // --- Form Submit Handler ---
   const handleSubmit = async (e) => {
@@ -79,9 +89,14 @@ const SaudaPurchase = () => {
       return
     }
 
+    const nowIso = new Date().toISOString()
+    const todayStr = headerDate || nowIso.split('T')[0]
+
     const payload = {
       id: editingId || Date.now() + Math.random(),
-      date: form.date,
+      date: form.date || todayStr,
+      submittedDate: todayStr,
+      createdAt: nowIso,
       mainHeading: form.mainHeading,
       itemName: form.itemName,
       sizeMm: form.sizeMm || null,
@@ -769,23 +784,6 @@ MAIN HEADING, DATE, MATERIAL, PARTY NAME, QUANTITY IN MT, RATE/MT IN RS, TCS, BH
                       <td className="px-2 py-1.5 text-right text-slate-900 font-bold border border-slate-400">{formatNumber(subBal)}</td>
                       <td className="border border-slate-400"></td>
                     </tr>
-                    
-                    {/* Subtotal Verification Row */}
-                    {(() => {
-                      const expectedSubBal = subOrder - subReceived;
-                      const isCorrect = Math.abs(expectedSubBal - subBal) < 0.001;
-                      return (
-                        <tr className={isCorrect ? "bg-emerald-50/40" : "bg-rose-50/40"}>
-                          <td colSpan="7" className={`border border-slate-400 px-2 py-1 text-right text-[10px] font-semibold italic ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {isCorrect ? 'Calculation Verified' : 'Calculation Mismatch'}
-                          </td>
-                          <td className={`border border-slate-400 px-2 py-1 text-right font-bold text-[10px] ${isCorrect ? 'text-emerald-700 bg-emerald-100/50' : 'text-rose-600 bg-rose-100/50'}`}>
-                            {isCorrect ? 'Correct' : `Expected: ${formatNumber(expectedSubBal)}`}
-                          </td>
-                          <td colSpan="6" className="border border-slate-400"></td>
-                        </tr>
-                      );
-                    })()}
                   </React.Fragment>
                 )
               })}
@@ -834,9 +832,14 @@ MAIN HEADING, DATE, MATERIAL, PARTY NAME, QUANTITY IN MT, RATE/MT IN RS, TCS, BH
             <div className="flex gap-1">
               <button 
                 onClick={async () => {
+                  const nowIso = new Date().toISOString()
+                  const saveTargetDate = headerDate || nowIso.split('T')[0]
                   const payloads = csvPreview.map(item => ({
                     id: Date.now() + Math.random(),
-                    date: item.date,
+                    date: saveTargetDate,
+                    submittedDate: saveTargetDate,
+                    createdAt: nowIso,
+                    ocrDate: item.date || null,
                     mainHeading: item.mainHeading,
                     itemName: item.itemName,
                     sizeMm: item.sizeMm || null,

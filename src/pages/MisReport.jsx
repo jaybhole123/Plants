@@ -48,15 +48,47 @@ const MisReport = () => {
   const outgoingList = (storeOutgoingList || []).filter(item => !reportDate || !item.reportDate || item.reportDate === reportDate)
 
   const stockItems = useMemo(() => {
-    return storeStockItems.map(item => ({
-      type: item.type === 'coal_detail' ? 'coal_detail' : 'raw_material',
-      category: item.category,
-      material: item.material,
-      closingStock: item.closingStock || item.closing_stock || 0
-    }))
-  }, [storeStockItems])
+    return (storeStockItems || [])
+      .filter(item => {
+        if (!reportDate) return true
+        const itemDate = item.reportDate || item.report_date || (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : '')
+        return !itemDate || itemDate === reportDate
+      })
+      .map(item => ({
+        type: item.type === 'coal_detail' ? 'coal_detail' : 'raw_material',
+        category: item.category,
+        material: item.material,
+        closingStock: item.closingStock || item.closing_stock || 0
+      }))
+  }, [storeStockItems, reportDate])
 
-  const production2FilesData = useProduction2Store(state => state.filesData)
+  const storeProduction2Files = useProduction2Store(state => state.filesData)
+  const production2FilesData = useMemo(() => {
+    return (storeProduction2Files || []).filter(f => {
+      if (!reportDate) return true
+      const fileCreatedDate = f.submittedDate || (f.createdAt ? new Date(f.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : '')
+      const targetDate = fileCreatedDate || f.date
+      return !targetDate || targetDate === reportDate
+    })
+  }, [storeProduction2Files, reportDate])
+
+  const saudaSales = useMemo(() => {
+    return (storeSaudaSales || []).filter(item => {
+      if (!reportDate) return true
+      const itemCreatedDate = item.submittedDate || (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : '')
+      const targetDate = itemCreatedDate || item.date
+      return !targetDate || targetDate === reportDate
+    })
+  }, [storeSaudaSales, reportDate])
+
+  const saudaPurchases = useMemo(() => {
+    return (storeSaudaPurchases || []).filter(item => {
+      if (!reportDate) return true
+      const itemCreatedDate = item.submittedDate || (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : '')
+      const targetDate = itemCreatedDate || item.date
+      return !targetDate || targetDate === reportDate
+    })
+  }, [storeSaudaPurchases, reportDate])
 
   // 1. STOCK AGGREGATION — split into Raw Material and Coal Detail
   const rawMaterialSummary = useMemo(() => {
@@ -213,7 +245,7 @@ const MisReport = () => {
   // 5. SAUDA SALE AGGREGATION (Grouped by Main Heading)
   const saudaSaleSummary = useMemo(() => {
     const summary = {}
-    storeSaudaSales.forEach(item => {
+    saudaSales.forEach(item => {
       const heading = (item.mainHeading || item.itemName)?.toUpperCase().trim() || 'OTHERS'
       summary[heading] = (summary[heading] || 0) + (Number(item.balPending) || 0)
     })
@@ -221,12 +253,12 @@ const MisReport = () => {
       itemName,
       balPending
     }))
-  }, [storeSaudaSales])
+  }, [saudaSales])
 
   // 6. SAUDA PURCHASE AGGREGATION (Grouped by Main Heading and Total Balance in MT)
   const saudaPurchaseSummary = useMemo(() => {
     const summary = {}
-    storeSaudaPurchases.forEach(item => {
+    saudaPurchases.forEach(item => {
       // Main Heading prioritization
       const heading = (item.mainHeading || item.itemName)?.toUpperCase().trim() || 'OTHERS'
       if (!summary[heading]) summary[heading] = 0
@@ -237,7 +269,7 @@ const MisReport = () => {
       itemName,
       balPending
     }))
-  }, [storeSaudaPurchases])
+  }, [saudaPurchases])
 
   // Filtered Lists for Hiding Rows and Search
   const matchesSearch = (str) => !search || str.toLowerCase().includes(search.toLowerCase())
