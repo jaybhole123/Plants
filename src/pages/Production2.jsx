@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useProduction2Store } from '../store/useStore';
+import { useProduction2Store, useUploadedImageStore } from '../store/useStore';
 import { ImageOcrUploader } from '../components/ImageOcrUploader';
 import AiResultModal from '../components/AiResultModal';
+import ImageZoomModal from '../components/ImageZoomModal';
 import { extractFromImage, clean, toIsoDate } from '../utils/aiOcr';
 import { FilterBar } from '../components/FilterBar';
 import './Production2.css';
@@ -203,9 +204,30 @@ export default function Production2Page() {
     });
   }, []);
 
+  const setPageImage = useUploadedImageStore((state) => state.setPageImage);
+  const imagesByPageAndDate = useUploadedImageStore((state) => state.imagesByPageAndDate || {});
+  const imagesByPage = useUploadedImageStore((state) => state.imagesByPage || {});
+  const [pastedImageUrl, setPastedImageUrl] = useState(null);
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
+
+  // Strictly read selected date's image so changing date shows that date's image only
+  const currentProductionImage = 
+    (date && imagesByPageAndDate[`production__${date}`]) || 
+    (pastedImageUrl && !date ? pastedImageUrl : null);
+
   // Process image file via OCR
   const processImageFile = async (file) => {
     if (!file || !file.type.startsWith('image/')) return;
+    
+    // Save to persistent image store
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      setPageImage('production', date, dataUrl);
+      setPastedImageUrl(dataUrl);
+    };
+    reader.readAsDataURL(file);
+
     setProgressMsg(`Reading image ${file.name || ''}...`);
     setErrorMsg("");
 
@@ -679,8 +701,18 @@ export default function Production2Page() {
       {aiResult && (
         <AiResultModal
           result={aiResult}
+          imageUrl={currentProductionImage}
           onClose={() => setAiResult(null)}
           onApply={(data) => { setAiResult(null); handleAiResult(data); }}
+        />
+      )}
+
+      {currentProductionImage && (
+        <ImageZoomModal
+          isOpen={isZoomModalOpen}
+          src={currentProductionImage}
+          title={`Production 2 - Uploaded Document Preview (${date || "All"})`}
+          onClose={() => setIsZoomModalOpen(false)}
         />
       )}
       
@@ -693,37 +725,39 @@ export default function Production2Page() {
           <p className="text-emerald-100 text-[10px] font-semibold uppercase tracking-wider mb-0.5">Module</p>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Production 2</h1>
         </div>
-
-        <div className="z-10 flex flex-col sm:flex-row items-center sm:items-end gap-3">
-          <div className="flex flex-col items-center sm:items-end">
-            <label className="text-emerald-100 text-[10px] uppercase tracking-wider font-semibold mb-1">Report Date</label>
-            <div className="p-1 flex items-center gap-2">
-              <DateFilter date={date} onChange={setDate} />
-              <ImageOcrUploader
-                aiPage="production"
-                onAiResult={handleAiResult}
-                onTextExtracted={handleOcrResult}
-                className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 font-bold rounded-md transition-all shadow-sm flex items-center gap-1.5 active:scale-95 text-sm h-10 backdrop-blur-sm"
-              />
-            </div>
-          </div>
-        </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6">
         <FilterBar 
           searchQuery={search} 
           setSearchQuery={setSearch} 
           selectedDate={date} 
           setSelectedDate={setDate} 
+          className="mb-0"
         />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ImageOcrUploader
             aiPage="production"
+            selectedDate={date}
+            hideViewButton={true}
             onAiResult={handleAiResult}
             onTextExtracted={handleOcrResult}
             className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-semibold rounded-lg transition-all shadow-sm flex items-center gap-1.5 active:scale-95 text-sm h-[42px]"
           />
+          {currentProductionImage && (
+            <button
+              type="button"
+              onClick={() => setIsZoomModalOpen(true)}
+              className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 text-indigo-700 font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5 active:scale-95 text-sm h-[42px] whitespace-nowrap animate-fadeIn"
+              title="Click to view and zoom uploaded document image"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <span>View Image</span>
+            </button>
+          )}
           <button
             onClick={() => setIsResetConfirmOpen(true)}
             className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-semibold rounded-lg shadow-sm transition-all flex items-center gap-1.5 active:scale-95 text-sm h-[42px]"
@@ -807,6 +841,20 @@ export default function Production2Page() {
             </div>
 
             <div className="flex items-center gap-3">
+              {currentProductionImage && (
+                <button
+                  type="button"
+                  onClick={() => setIsZoomModalOpen(true)}
+                  className="px-4 py-2 text-xs font-bold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-300 rounded-lg shadow-sm transition-all active:scale-95 flex items-center gap-1.5"
+                  title="View uploaded document"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span>View Image</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={clearPendingFiles}
@@ -915,7 +963,7 @@ export default function Production2Page() {
                   <button className="text-xs text-rose-500 hover:text-rose-700 font-semibold px-2 py-1 rounded hover:bg-rose-50 transition-colors" onClick={() => removeFile(i)}>Remove</button>
                 </div>
                 <div className="overflow-auto max-h-[60vh]">
-                  <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
+                  <table className="w-full min-w-[320px] text-xs text-left border-collapse whitespace-nowrap">
                     <thead className="sticky top-0 z-10 bg-slate-100 shadow-sm">
                       <tr className="bg-slate-100 text-slate-500 uppercase tracking-wider font-semibold">
                         <th className="px-3 py-2 border-b border-slate-200">Item</th>
@@ -942,9 +990,9 @@ export default function Production2Page() {
           )}
         </div>
 
-        <div className="flex justify-between items-center mb-4 mt-10">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 mt-10">
           <h2 className="text-xl font-bold text-slate-800 tracking-tight">Sponge Production Summary</h2>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-md transition-colors" onClick={() => document.getElementById('summaryContainer').scrollBy({ left: -800, behavior: 'smooth' })} title="Scroll Left">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
             </button>
@@ -1048,7 +1096,7 @@ export default function Production2Page() {
                     </div>
                   </div>
                   <div className="overflow-auto max-h-[60vh]">
-                    <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
+                    <table className="w-full min-w-[500px] text-xs text-left border-collapse whitespace-nowrap">
                       <thead className="sticky top-0 z-10 bg-slate-100 shadow-sm">
                         <tr className="bg-slate-100 text-slate-500 uppercase tracking-wider font-semibold">
                           <th className="px-3 py-2 border-b border-slate-200">Item</th>

@@ -305,6 +305,7 @@ const OCRImageUploader = ({ onTextExtracted, aiPage, onAiResult, buttonLabel = '
       {aiResult && (
         <AiResultModal
           result={aiResult}
+          imageUrl={previewUrl}
           onClose={() => setAiResult(null)}
           onApply={(data) => { setAiResult(null); onAiResult?.(data); closeModal() }}
         />

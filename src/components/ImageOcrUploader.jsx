@@ -1,14 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Tesseract from 'tesseract.js';
 import { extractFromImage } from '../utils/aiOcr';
 import AiResultModal from './AiResultModal';
+import ImageZoomModal from './ImageZoomModal';
+import { useUploadedImageStore } from '../store/useStore';
 
 // With `aiPage` set, the image is read + verified by the AI endpoint and the structured
 // result goes to `onAiResult(data)`. Without it, the old Tesseract text flow is used.
-export const ImageOcrUploader = ({ onTextExtracted, aiPage, onAiResult, className, children }) => {
+export const ImageOcrUploader = ({ onTextExtracted, aiPage, onAiResult, selectedDate, hideViewButton = false, className, children }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [aiResult, setAiResult] = useState(null);
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
   const fileInputRef = useRef(null);
   
   // Use a unique ID for each instance to prevent label conflicts
@@ -17,18 +20,44 @@ export const ImageOcrUploader = ({ onTextExtracted, aiPage, onAiResult, classNam
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
 
+  const imagesByPageAndDate = useUploadedImageStore((state) => state.imagesByPageAndDate || {});
+  const imagesByPage = useUploadedImageStore((state) => state.imagesByPage || {});
+  const setPageImage = useUploadedImageStore((state) => state.setPageImage);
+
+  // Strictly match selectedDate's image so that each date displays only its own uploaded image
+  const dateKey = selectedDate || new Date().toISOString().split('T')[0];
+  const storedImage = aiPage 
+    ? (imagesByPageAndDate[`${aiPage}__${dateKey}`] || null) 
+    : null;
+
+  const [localImageUrl, setLocalImageUrl] = useState(null);
+  const activeImageUrl = storedImage || localImageUrl;
+
   const processFile = async (file) => {
     if (!file || !file.type.startsWith('image/')) {
       alert('Please select or drop an image file (JPG, PNG, WebP, etc.)');
       return;
     }
 
+    // Convert file to Data URL so it can be stored persistently in useUploadedImageStore
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      if (aiPage) {
+        setPageImage(aiPage, dateKey, dataUrl);
+      } else {
+        setLocalImageUrl(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+
     setIsProcessing(true);
     setProgress(0);
 
     if (aiPage) {
       try {
-        setAiResult(await extractFromImage(file, aiPage));
+        const res = await extractFromImage(file, aiPage);
+        setAiResult(res);
       } catch (error) {
         console.error('AI read error:', error);
         alert(error.message || 'Failed to read the image.');
@@ -128,7 +157,7 @@ export const ImageOcrUploader = ({ onTextExtracted, aiPage, onAiResult, classNam
     <div 
       ref={containerRef}
       tabIndex={0}
-      className="relative inline-block w-full sm:w-auto outline-none"
+      className="relative inline-flex items-center gap-2 outline-none"
     >
       <input
         type="file"
@@ -177,11 +206,41 @@ export const ImageOcrUploader = ({ onTextExtracted, aiPage, onAiResult, classNam
           )
         )}
       </label>
+
+      {/* Persistent 'View Image' button if an image has been uploaded */}
+      {!hideViewButton && activeImageUrl && (
+        <button
+          type="button"
+          onClick={() => setIsZoomModalOpen(true)}
+          title="Click to view and zoom uploaded document image"
+          className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 text-indigo-700 font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5 active:scale-95 text-sm h-10 animate-fadeIn whitespace-nowrap cursor-pointer z-10"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          <span>View Image</span>
+        </button>
+      )}
+
+      {/* Dedicated Zoom Modal when clicking 'View Image' */}
+      <ImageZoomModal
+        isOpen={isZoomModalOpen}
+        src={activeImageUrl}
+        title="Uploaded Document Preview"
+        onClose={() => setIsZoomModalOpen(false)}
+      />
+
+      {/* Verification & AI Result Modal */}
       {aiResult && (
         <AiResultModal
           result={aiResult}
+          imageUrl={activeImageUrl}
           onClose={() => setAiResult(null)}
-          onApply={(data) => { setAiResult(null); onAiResult?.(data); }}
+          onApply={(data) => {
+            setAiResult(null);
+            onAiResult?.(data);
+          }}
         />
       )}
     </div>

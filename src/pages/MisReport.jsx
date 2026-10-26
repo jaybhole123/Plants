@@ -384,48 +384,79 @@ const MisReport = () => {
 
   // UI based on image provided
   return (
-    <div className="w-full my-8 pb-10 bg-white min-h-screen text-slate-800 font-sans shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded overflow-hidden border border-slate-400">
+    <div className="space-y-6 pb-12 px-2 sm:px-4 w-full text-slate-800">
       
-      {/* Date Header */}
-      <div className="p-5 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-400 flex justify-between items-center print:hidden shadow-sm">
-        <h1 className="text-xl font-bold text-slate-800">MIS Report Settings</h1>
-        <div className="flex gap-1">
+      {/* Top Banner (Modern Gradient) */}
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 rounded p-4 sm:p-5 mb-6 shadow-md relative overflow-hidden flex flex-col sm:flex-row items-center justify-between text-white print:hidden">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-28 h-40 bg-white opacity-10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-28 h-40 bg-white opacity-10 rounded-full blur-3xl"></div>
+        
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 relative z-10">
+          <div className="bg-white/10 p-3 rounded-lg backdrop-blur-sm border border-white/20">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-blue-100 uppercase tracking-widest mb-0.5 flex items-center gap-1">Module</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">MIS Report Sheet</h1>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 mt-4 sm:mt-0 relative z-10 w-full sm:w-auto">
           <button 
             onClick={downloadPDF} 
             disabled={isDownloading}
-            className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 shadow flex items-center gap-1 font-medium disabled:opacity-70"
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg shadow-sm transition-all flex items-center gap-2 active:scale-95 text-sm h-[42px] disabled:opacity-70"
+            title="Download PDF format"
           >
             {isDownloading ? (
               <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
             )}
-            Download PDF
+            <span>Download PDF</span>
           </button>
+          
+          <button 
+            onClick={() => window.print()} 
+            className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white border border-white/30 font-semibold rounded-lg shadow-sm transition-all flex items-center gap-2 active:scale-95 text-sm h-[42px] backdrop-blur-sm"
+            title="Print this sheet"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            <span>Print Report</span>
+          </button>
+
           {hiddenRows.size > 0 && (
-            <button onClick={() => setHiddenRows(new Set())} className="bg-rose-100 text-rose-600 px-4 py-2 rounded-md hover:bg-rose-200 shadow flex items-center gap-1 font-medium print:hidden">
+            <button 
+              onClick={() => setHiddenRows(new Set())} 
+              className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-semibold rounded-lg shadow-sm transition-all flex items-center gap-1.5 active:scale-95 text-sm h-[42px]"
+            >
               Show All Rows
             </button>
           )}
-          <button onClick={() => window.print()} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 shadow flex items-center gap-1 font-medium">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-            Print Report
-          </button>
         </div>
       </div>
 
-      <div className="px-5 pt-5 print:hidden">
+      {/* Filter and Search Bar */}
+      <div className="print:hidden">
         <FilterBar 
           searchQuery={search} 
           setSearchQuery={setSearch} 
           selectedDate={reportDate} 
           setSelectedDate={setReportDate} 
+          className="mb-4"
         />
       </div>
 
-      {/* The Report (Printable Area) */}
-      <div className="p-1 sm:p-8" ref={reportRef}>
-        <table className="w-full border-collapse border-2 border-black text-[13px] font-bold text-black bg-white">
+      {/* The Report (Printable Sheet Canvas) */}
+      <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden print:border-none print:shadow-none p-3 sm:p-6">
+        <div className="overflow-x-auto w-full" ref={reportRef}>
+        <table className="w-full min-w-[650px] border-collapse border-2 border-black text-[13px] font-bold text-black bg-white">
           
           {/* Main Header */}
           <thead>
@@ -666,6 +697,7 @@ const MisReport = () => {
 
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

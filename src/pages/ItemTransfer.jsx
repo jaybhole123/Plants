@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react'
+  import { useState, useEffect } from 'react'
 import { CsvDropzone } from '../components/CsvDropzone'
 import { ImageOcrUploader } from '../components/ImageOcrUploader'
 import { FilterBar } from '../components/FilterBar'
-import DateFilter from '../components/DateFilter'
 import OCRImageUploader from '../components/OCRImageUploader'
 import { clean } from '../utils/aiOcr'
-import { useTransferStore } from '../store/useStore'
+import { useTransferStore, useUploadedImageStore } from '../store/useStore'
 import ConfirmModal from '../components/ConfirmModal'
+import ImageZoomModal from '../components/ImageZoomModal'
 
 const initialUnifiedForm = {
   type: 'incoming', // 'incoming' or 'outgoing'
@@ -53,6 +53,9 @@ const ItemTransfer = () => {
   const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false)
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false)
+  const imagesByPageAndDate = useUploadedImageStore((state) => state.imagesByPageAndDate || {})
+  const transferImage = (date && imagesByPageAndDate[`transfer__${date}`]) || null
 
   // Filter list by selected date if date is provided
   const incomingList = (storeIncomingList || []).filter(item => !date || !item.reportDate || item.reportDate === date)
@@ -370,8 +373,8 @@ const ItemTransfer = () => {
             </h4>
             <span className="text-xs font-semibold text-slate-500 bg-white px-3 py-1.5 rounded-full border border-slate-400 shadow-sm">{list.length} Entries</span>
           </div>
-          <div className="overflow-hidden">
-            <table className="w-full text-xs text-left border-collapse">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full min-w-[700px] text-xs text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider font-semibold">
                   <th className="px-2 py-1.5 w-16 border border-slate-400">#</th>
@@ -431,7 +434,7 @@ const ItemTransfer = () => {
     <div className="space-y-8 pb-12 pt-4 px-4 sm:px-6 w-full text-slate-800">
       
       {/* Date Header (Modern Gradient Box) */}
-      <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 rounded p-1 md:px-8 md:py-4 shadow-lg relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-1">
+      <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 rounded p-4 md:px-8 md:py-4 shadow-lg relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-1">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white opacity-10 blur-3xl pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 rounded-full bg-indigo-400 opacity-20 blur-2xl pointer-events-none"></div>
         
@@ -440,10 +443,6 @@ const ItemTransfer = () => {
           <h2 className="text-2xl md:text-3xl font-black text-white tracking-wide drop-shadow-md">
             {formatDate(date)}
           </h2>
-        </div>
-        
-        <div className="relative z-10 p-1">
-          <DateFilter date={date} onChange={setDate} />
         </div>
       </div>
 
@@ -615,35 +614,52 @@ const ItemTransfer = () => {
 
       {/* --- Incoming Section --- */}
       <div className="space-y-2">
-        <div className="flex items-center gap-1.5 px-2 mb-2">
-          <h2 className="text-2xl font-bold text-slate-800">Incoming Setup</h2>
-          <div className="h-px bg-slate-200 flex-1"></div>
-          <CsvDropzone
-            onUpload={(e) => handleCsvUpload(e, 'incoming')}
-            disabled={incomingCsvPreview.length > 0}
-            className={`px-5 py-2 border font-bold rounded-lg transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] ${incomingCsvPreview.length > 0 ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700 hover:border-emerald-300'}`}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            <span>Upload CSV</span>
-          </CsvDropzone>
-          <ImageOcrUploader
-            aiPage="transfer"
-            onAiResult={(data) => handleAiResult(data, 'incoming')}
-            onTextExtracted={(text) => handleOcrResult(text, 'incoming')}
-            className={`px-5 py-2 border font-bold rounded-lg transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700 hover:border-indigo-300`}
-          />
+        <div className="flex flex-wrap items-center justify-between gap-2 px-2 mb-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Incoming Setup</h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <CsvDropzone
+              onUpload={(e) => handleCsvUpload(e, 'incoming')}
+              disabled={incomingCsvPreview.length > 0}
+              className={`px-5 py-2 border font-bold rounded-lg transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] ${incomingCsvPreview.length > 0 ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700 hover:border-emerald-300'}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span>Upload CSV</span>
+            </CsvDropzone>
+            <ImageOcrUploader
+              aiPage="transfer"
+              selectedDate={date}
+              onAiResult={(data) => handleAiResult(data, 'incoming')}
+              onTextExtracted={(text) => handleOcrResult(text, 'incoming')}
+              className={`px-5 py-2 border font-bold rounded-lg transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700 hover:border-indigo-300`}
+            />
+          </div>
         </div>
         
         {incomingCsvPreview.length > 0 && (
-          <div className="bg-emerald-50 border border-emerald-100 rounded p-6 mb-6 shadow-sm print:hidden">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-emerald-50 border border-emerald-100 rounded p-4 sm:p-6 mb-6 shadow-sm print:hidden">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
               <h2 className="text-lg font-bold text-emerald-800 flex items-center gap-1.5">
                 <span className="bg-emerald-500 text-white w-8 h-8 rounded-md flex items-center justify-center text-xs shadow-sm">{incomingCsvPreview.length}</span>
                 Preview Incoming Data
               </h2>
-              <div className="flex gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+                {transferImage && (
+                  <button
+                    type="button"
+                    onClick={() => setIsZoomModalOpen(true)}
+                    className="px-4 py-2 bg-white hover:bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold rounded-md transition-all shadow-sm flex items-center gap-1 text-sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    <span>View Image</span>
+                  </button>
+                )}
                 <button onClick={() => { 
                   setIsLoading(true);
                   const newItems = incomingCsvPreview.map((r, i) => ({
@@ -674,35 +690,52 @@ const ItemTransfer = () => {
 
       {/* --- Outgoing Section --- */}
       <div className="space-y-2 mt-12">
-        <div className="flex items-center gap-1.5 px-2 mb-2">
-          <h2 className="text-2xl font-bold text-slate-800">Outgoing Setup</h2>
-          <div className="h-px bg-slate-200 flex-1"></div>
-          <CsvDropzone
-            onUpload={(e) => handleCsvUpload(e, 'outgoing')}
-            disabled={outgoingCsvPreview.length > 0}
-            className={`px-5 py-2 border font-bold rounded-lg transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] ${outgoingCsvPreview.length > 0 ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700 hover:border-emerald-300'}`}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            <span>Upload CSV</span>
-          </CsvDropzone>
-          <ImageOcrUploader
-            aiPage="transfer"
-            onAiResult={(data) => handleAiResult(data, 'outgoing')}
-            onTextExtracted={(text) => handleOcrResult(text, 'outgoing')}
-            className={`px-5 py-2 border font-bold rounded-lg transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700 hover:border-indigo-300`}
-          />
+        <div className="flex flex-wrap items-center justify-between gap-2 px-2 mb-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Outgoing Setup</h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <CsvDropzone
+              onUpload={(e) => handleCsvUpload(e, 'outgoing')}
+              disabled={outgoingCsvPreview.length > 0}
+              className={`px-5 py-2 border font-bold rounded-lg transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] ${outgoingCsvPreview.length > 0 ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700 hover:border-emerald-300'}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span>Upload CSV</span>
+            </CsvDropzone>
+            <ImageOcrUploader
+              aiPage="transfer"
+              selectedDate={date}
+              onAiResult={(data) => handleAiResult(data, 'outgoing')}
+              onTextExtracted={(text) => handleOcrResult(text, 'outgoing')}
+              className={`px-5 py-2 border font-bold rounded-lg transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700 hover:border-indigo-300`}
+            />
+          </div>
         </div>
         
         {outgoingCsvPreview.length > 0 && (
-          <div className="bg-emerald-50 border border-emerald-100 rounded p-6 mb-6 shadow-sm print:hidden">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-emerald-50 border border-emerald-100 rounded p-4 sm:p-6 mb-6 shadow-sm print:hidden">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
               <h2 className="text-lg font-bold text-emerald-800 flex items-center gap-1.5">
                 <span className="bg-emerald-500 text-white w-8 h-8 rounded-md flex items-center justify-center text-xs shadow-sm">{outgoingCsvPreview.length}</span>
                 Preview Outgoing Data
               </h2>
-              <div className="flex gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+                {transferImage && (
+                  <button
+                    type="button"
+                    onClick={() => setIsZoomModalOpen(true)}
+                    className="px-4 py-2 bg-white hover:bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold rounded-md transition-all shadow-sm flex items-center gap-1 text-sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    <span>View Image</span>
+                  </button>
+                )}
                 <button onClick={() => { 
                   setIsLoading(true);
                   const newItems = outgoingCsvPreview.map((r, i) => ({
@@ -786,6 +819,16 @@ S.NO, PARTY NAME, MATERIAL NAME, VEHICLE NO, QTY, RATE 18%
         <div className={`fixed right-4 bottom-4 z-50 rounded-md px-2 py-1.5 shadow-lg border max-w-[90%] sm:max-w-md ${toast.type === 'success' ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-rose-500 text-white border-rose-600'}`}>
           <p className="text-xs font-semibold">{toast.message}</p>
         </div>
+      )}
+
+      {/* Dedicated Zoom Modal for Transfer Image */}
+      {transferImage && (
+        <ImageZoomModal
+          isOpen={isZoomModalOpen}
+          src={transferImage}
+          title="Incoming & Outgoing - Document Image Preview"
+          onClose={() => setIsZoomModalOpen(false)}
+        />
       )}
     </div>
   )

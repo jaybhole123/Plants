@@ -115,3 +115,57 @@ export const useProduction2Store = create(
     { name: 'traders-production2-storage' }
   )
 )
+
+export const useUploadedImageStore = create(
+  persist(
+    (set, get) => ({
+      imagesByPageAndDate: {}, // { `${pageKey}__${date}`: dataUrl, [pageKey]: dataUrl }
+      imagesByPage: {},
+      setPageImage: (pageKey, dateKeyOrDataUrl, maybeDataUrl) =>
+        set((state) => {
+          let dateKey = null
+          let dataUrl = null
+          if (maybeDataUrl !== undefined) {
+            dateKey = dateKeyOrDataUrl
+            dataUrl = maybeDataUrl
+          } else {
+            dataUrl = dateKeyOrDataUrl
+          }
+          if (!dataUrl) return state
+
+          const newImagesByPageAndDate = {
+            ...(state.imagesByPageAndDate || {}),
+            [pageKey]: dataUrl, // fallback to latest
+          }
+          if (dateKey) {
+            newImagesByPageAndDate[`${pageKey}__${dateKey}`] = dataUrl
+          }
+          const newImagesByPage = {
+            ...(state.imagesByPage || {}),
+            [pageKey]: dataUrl,
+          }
+          return {
+            imagesByPageAndDate: newImagesByPageAndDate,
+            imagesByPage: newImagesByPage,
+          }
+        }),
+      getPageImage: (pageKey, dateKey) => {
+        const { imagesByPageAndDate, imagesByPage } = get()
+        if (dateKey && imagesByPageAndDate?.[`${pageKey}__${dateKey}`]) {
+          return imagesByPageAndDate[`${pageKey}__${dateKey}`]
+        }
+        return imagesByPageAndDate?.[pageKey] || imagesByPage?.[pageKey] || null
+      },
+      clearPageImage: (pageKey, dateKey) =>
+        set((state) => {
+          const newMap = { ...(state.imagesByPageAndDate || {}) }
+          const newOldMap = { ...(state.imagesByPage || {}) }
+          if (dateKey) delete newMap[`${pageKey}__${dateKey}`]
+          delete newMap[pageKey]
+          delete newOldMap[pageKey]
+          return { imagesByPageAndDate: newMap, imagesByPage: newOldMap }
+        }),
+    }),
+    { name: 'traders-uploaded-images-storage' }
+  )
+)

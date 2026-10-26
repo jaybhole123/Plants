@@ -832,56 +832,67 @@ const Stock = () => {
         </div>
       </div>
 
-      {/* Tabs & Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 border-b border-slate-400 pt-2 pb-3 justify-between items-center">
-        <div className="flex gap-6">
-          <button 
-            onClick={() => setActiveTab('raw_material')}
-            className={`pb-3 px-1 text-[15px] font-semibold border-b-2 transition-colors ${activeTab === 'raw_material' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-400'}`}
-          >
-            Raw Material Stock (NSPL)
-          </button>
-          <button 
-            onClick={() => setActiveTab('coal_detail')}
-            className={`pb-3 px-1 text-[15px] font-semibold border-b-2 transition-colors ${activeTab === 'coal_detail' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-400'}`}
-          >
-            Coal Detail
-          </button>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <DateFilter date={reportDate} onChange={setReportDate} />
-          
-          <CsvDropzone
-            onUpload={activeTab === 'raw_material' ? handleCsvUpload : handleCoalCsvUpload}
-            className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-sm text-emerald-700 font-medium rounded-lg transition-all flex items-center gap-1.5 active:scale-95 text-sm h-10"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-            </svg>
-            <span className="hidden sm:inline">CSV</span>
-          </CsvDropzone>
+      {/* Tabs */}
+      <div className="flex gap-6 border-b border-slate-200">
+        <button 
+          onClick={() => setActiveTab('raw_material')}
+          className={`pb-3 px-1 text-[15px] font-semibold border-b-2 transition-colors ${activeTab === 'raw_material' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}
+        >
+          Raw Material Stock (NSPL)
+        </button>
+        <button 
+          onClick={() => setActiveTab('coal_detail')}
+          className={`pb-3 px-1 text-[15px] font-semibold border-b-2 transition-colors ${activeTab === 'coal_detail' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}`}
+        >
+          Coal Detail
+        </button>
+      </div>
 
-          <ImageOcrUploader
-            aiPage={activeTab === 'raw_material' ? 'stock_raw' : 'stock_coal'}
-            onAiResult={(data) => handleAiResult(data, activeTab)}
-            onTextExtracted={(text) => handleOcrResult(text, activeTab)}
-            className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-lg transition-all shadow-sm flex items-center gap-1.5 active:scale-95 text-sm h-10"
-          />
+      {/* Filter Bar */}
+      <FilterBar 
+        searchQuery={search} 
+        setSearchQuery={setSearch} 
+        selectedDate={reportDate} 
+        setSelectedDate={setReportDate} 
+        className="mb-4"
+      />
 
-          <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow shadow-indigo-500/30 transition-all flex items-center gap-2 h-10">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Add Stock Entry
-          </button>
+      {/* Action Toolbar */}
+      <div className="flex items-center gap-2.5 flex-wrap mb-6">
+        <button 
+          onClick={() => { resetForm(); setIsModalOpen(true); }} 
+          className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow shadow-indigo-500/30 transition-all flex items-center gap-2 h-[42px] active:scale-95 whitespace-nowrap"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+          <span>Add Stock Entry</span>
+        </button>
 
-          <button
-            onClick={() => setIsResetConfirmOpen(true)}
-            className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-semibold rounded-lg shadow-sm transition-all flex items-center gap-1.5 active:scale-95 text-sm h-10"
-            title="Reset All Stock Data"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            Reset Data
-          </button>
-        </div>
+        <CsvDropzone
+          onUpload={activeTab === 'raw_material' ? handleCsvUpload : handleCoalCsvUpload}
+          className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 shadow-sm text-emerald-700 font-medium rounded-lg transition-all flex items-center gap-1.5 active:scale-95 text-sm h-[42px] whitespace-nowrap"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+          </svg>
+          <span className="hidden sm:inline">CSV</span>
+        </CsvDropzone>
+
+        <ImageOcrUploader
+          aiPage={activeTab === 'raw_material' ? 'stock_raw' : 'stock_coal'}
+          selectedDate={reportDate}
+          onAiResult={(data) => handleAiResult(data, activeTab)}
+          onTextExtracted={(text) => handleOcrResult(text, activeTab)}
+          className="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-lg transition-all shadow-sm flex items-center gap-1.5 active:scale-95 text-sm h-[42px] whitespace-nowrap"
+        />
+
+        <button
+          onClick={() => setIsResetConfirmOpen(true)}
+          className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-semibold rounded-lg shadow-sm transition-all flex items-center gap-1.5 active:scale-95 text-sm h-[42px] whitespace-nowrap"
+          title="Reset All Stock Data"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          <span>Reset Data</span>
+        </button>
       </div>
 
       <ConfirmModal
@@ -894,13 +905,6 @@ const Stock = () => {
           storeClearAllItems();
           setToast({ type: 'success', message: 'Stock data successfully reset!' });
         }}
-      />
-      
-      <FilterBar 
-        searchQuery={search} 
-        setSearchQuery={setSearch} 
-        selectedDate={reportDate} 
-        setSelectedDate={setReportDate} 
       />
 
       {isModalOpen && (
@@ -1235,6 +1239,7 @@ const Stock = () => {
             
             <ImageOcrUploader
               aiPage="stock_raw"
+              selectedDate={reportDate}
               onAiResult={(data) => handleAiResult(data, 'raw_material')}
               onTextExtracted={(text) => handleOcrResult(text, 'raw_material')}
               className={`px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-md transition-all duration-300 flex items-center gap-1 active:scale-95`}
@@ -1365,6 +1370,7 @@ const Stock = () => {
 
               <ImageOcrUploader
                 aiPage="stock_coal"
+                selectedDate={reportDate}
                 onAiResult={(data) => handleAiResult(data, 'coal_detail')}
                 onTextExtracted={(text) => handleOcrResult(text, 'coal')}
                 className={`px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium rounded-md transition-all duration-300 flex items-center gap-1 active:scale-95`}
@@ -1505,8 +1511,8 @@ const Stock = () => {
           </div>
 
           <div className="bg-white rounded-xl border border-emerald-100 overflow-hidden shadow-sm">
-            <div className="overflow-x-auto max-h-[60vh]">
-              <table className="w-full text-xs text-left border-collapse">
+            <div className="overflow-x-auto max-h-[60vh] w-full">
+              <table className="w-full min-w-[850px] text-xs text-left border-collapse">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold sticky top-0 z-10">
                   <tr>
                     <th className="px-4 py-3">Material</th>
@@ -1645,8 +1651,8 @@ const Stock = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto overflow-y-auto max-h-[70vh] rounded-xl border border-slate-200 shadow-sm">
-          <table className="w-full text-xs text-left border-collapse relative">
+        <div className="overflow-x-auto overflow-y-auto max-h-[70vh] rounded-xl border border-slate-200 shadow-sm w-full">
+          <table className="w-full min-w-[900px] text-xs text-left border-collapse relative">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] uppercase tracking-wider font-bold sticky top-0 z-20 shadow-sm">
               <tr>
                 <th className="px-4 py-3 break-words">Material</th>

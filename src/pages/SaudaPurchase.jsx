@@ -464,7 +464,7 @@ const SaudaPurchase = () => {
 
   // --- Render Form Section (Modal Theme) ---
   const renderForm = () => (
-    <div className="mb-6 flex gap-2">
+    <div className="mb-6 flex flex-wrap items-center gap-2">
       <button 
         onClick={() => { resetForm(); setIsModalOpen(true); }}
         className="px-5 py-2.5 rounded-md text-white font-medium shadow-sm active:scale-[0.98] transition-all flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"
@@ -486,6 +486,7 @@ const SaudaPurchase = () => {
 
       <ImageOcrUploader
         aiPage="sauda_purchase"
+        selectedDate={headerDate}
         onAiResult={handleAiResult}
         onTextExtracted={handleOcrResult}
         className="px-4 py-2.5 bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 font-medium rounded-md transition-all shadow-sm flex items-center gap-2 active:scale-[0.98]"
@@ -694,7 +695,7 @@ MAIN HEADING, DATE, MATERIAL, PARTY NAME, QUANTITY IN MT, RATE/MT IN RS, TCS, BH
     return (
       <div className="w-full max-w-full bg-white border border-slate-400 rounded shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
         <div className="overflow-auto w-full max-w-full max-h-[65vh]">
-          <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
+          <table className="w-full min-w-[950px] text-xs text-left border-collapse whitespace-nowrap">
             <thead className="sticky top-0 z-10 shadow-sm">
               <tr className="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider font-semibold">
                 <th className="px-2 py-1.5 break-words border border-slate-400">Date</th>
@@ -734,7 +735,7 @@ MAIN HEADING, DATE, MATERIAL, PARTY NAME, QUANTITY IN MT, RATE/MT IN RS, TCS, BH
                   <React.Fragment key={`group-${groupIdx}`}>
                     {/* Group Header Row */}
                     <tr className="bg-slate-50">
-                      <td colSpan="14" className="px-2 py-1.5 text-left font-bold text-slate-800 text-[11px] uppercase tracking-widest text-indigo-600 border border-slate-400">
+                      <td colSpan="14" className="px-2 py-1.5 text-center font-bold text-slate-800 text-[11px] uppercase tracking-widest text-indigo-600 border border-slate-400">
                         {mainHeadingName}
                       </td>
                     </tr>

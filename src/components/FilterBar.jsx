@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 
-export function FilterBar({ searchQuery, setSearchQuery, selectedDate, setSelectedDate }) {
+export function FilterBar({ searchQuery, setSearchQuery, selectedDate, setSelectedDate, className = "mb-6" }) {
   const dateInputRef = useRef(null);
 
   const handlePrevDay = () => {
@@ -28,7 +28,7 @@ export function FilterBar({ searchQuery, setSearchQuery, selectedDate, setSelect
   };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3 items-center mb-6">
+    <div className={`flex flex-col sm:flex-row gap-3 items-center ${className}`}>
       <div className="relative w-full sm:w-72">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <svg className="h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
