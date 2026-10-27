@@ -24,13 +24,19 @@ export const ImageOcrUploader = ({ onTextExtracted, aiPage, onAiResult, selected
   const imagesByPage = useUploadedImageStore((state) => state.imagesByPage || {});
   const setPageImage = useUploadedImageStore((state) => state.setPageImage);
 
-  // Strictly match selectedDate's image so that each date displays only its own uploaded image
+  // Strictly match selectedDate only — do not show image on dates where no image was uploaded
   const dateKey = selectedDate || new Date().toISOString().split('T')[0];
-  const storedImage = aiPage 
+  const storedImage = (aiPage && dateKey) 
     ? (imagesByPageAndDate[`${aiPage}__${dateKey}`] || null) 
     : null;
 
   const [localImageUrl, setLocalImageUrl] = useState(null);
+  
+  // Clear local memory image when switching dates so previous date doesn't retain it
+  React.useEffect(() => {
+    setLocalImageUrl(null);
+  }, [dateKey]);
+
   const activeImageUrl = storedImage || localImageUrl;
 
   const processFile = async (file) => {
@@ -206,30 +212,6 @@ export const ImageOcrUploader = ({ onTextExtracted, aiPage, onAiResult, selected
           )
         )}
       </label>
-
-      {/* Persistent 'View Image' button if an image has been uploaded */}
-      {!hideViewButton && activeImageUrl && (
-        <button
-          type="button"
-          onClick={() => setIsZoomModalOpen(true)}
-          title="Click to view and zoom uploaded document image"
-          className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 text-indigo-700 font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5 active:scale-95 text-sm h-10 animate-fadeIn whitespace-nowrap cursor-pointer z-10"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
-          <span>View Image</span>
-        </button>
-      )}
-
-      {/* Dedicated Zoom Modal when clicking 'View Image' */}
-      <ImageZoomModal
-        isOpen={isZoomModalOpen}
-        src={activeImageUrl}
-        title="Uploaded Document Preview"
-        onClose={() => setIsZoomModalOpen(false)}
-      />
 
       {/* Verification & AI Result Modal */}
       {aiResult && (

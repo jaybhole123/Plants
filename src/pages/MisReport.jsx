@@ -16,6 +16,12 @@ const formatNumber = (value) => {
   return Math.round(Number(value)).toFixed(3)
 }
 
+const isZeroValue = (val) => {
+  if (val === undefined || val === null || val === '') return true
+  const num = Number(val)
+  return isNaN(num) || Math.round(num) === 0
+}
+
 const MisReport = () => {
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0])
   const [search, setSearch] = useState('')
@@ -343,12 +349,13 @@ const MisReport = () => {
     setIsDownloading(true)
     try {
       const canvas = await html2canvas(element, { 
-        scale: 2, 
+        scale: 3, 
         useCORS: true, 
-        logging: false 
+        logging: false,
+        backgroundColor: '#ffffff'
       })
       
-      const imgData = canvas.toDataURL('image/png')
+      const imgData = canvas.toDataURL('image/png', 1.0)
       
       const pdf = new jsPDF('p', 'mm', 'a4')
       const pdfWidth = pdf.internal.pageSize.getWidth()
@@ -456,15 +463,15 @@ const MisReport = () => {
       {/* The Report (Printable Sheet Canvas) */}
       <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden print:border-none print:shadow-none p-3 sm:p-6">
         <div className="overflow-x-auto w-full" ref={reportRef}>
-        <table className="w-full min-w-[650px] border-collapse border-2 border-black text-[13px] font-bold text-black bg-white">
+        <table className="w-full min-w-[700px] border-collapse border border-black text-[15px] font-bold text-black bg-white" style={{ borderSpacing: 0 }}>
           
           {/* Main Header */}
           <thead>
             <tr>
-              <th contentEditable suppressContentEditableWarning colSpan="2" className="bg-[#FFFF00] text-black py-2 px-2 text-center font-extrabold text-[16px] border-2 border-black uppercase tracking-wide">
+              <th contentEditable suppressContentEditableWarning colSpan="2" className="bg-[#1e495f] text-white py-2.5 px-3 text-center font-extrabold text-[17px] border border-black uppercase tracking-wide">
                 HINDUSTAN DHAATU REPORT (SPONGE)
               </th>
-              <th contentEditable suppressContentEditableWarning className="bg-[#FFFF00] text-black py-2 px-2 text-right font-extrabold text-[16px] border-2 border-black w-[150px]">
+              <th contentEditable suppressContentEditableWarning className="bg-[#1e495f] text-white py-2.5 px-3 text-right font-extrabold text-[16px] border border-black w-[160px]">
                 {formattedDate}
               </th>
             </tr>
@@ -472,217 +479,253 @@ const MisReport = () => {
           
           <tbody>
             {/* STOCK SECTION */}
-            {orderedRawStock.map(([material, qty], idx) => (
-              <tr key={`rawstock-${material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'rawstock')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'rawstock', orderedRawStock, setOrderedRawStock)}>
-                {idx === 0 && (
-                  <td contentEditable suppressContentEditableWarning rowSpan={orderedRawStock.length + orderedCoalStock.length} className="font-bold border-2 border-black p-1 align-top w-[140px] uppercase">
-                    STOCK
+            {orderedRawStock.map(([material, qty], idx) => {
+              const isZero = isZeroValue(qty)
+              const fontClass = isZero ? "font-normal" : "font-bold"
+              return (
+                <tr key={`rawstock-${material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'rawstock')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'rawstock', orderedRawStock, setOrderedRawStock)}>
+                  {idx === 0 && (
+                    <td contentEditable suppressContentEditableWarning rowSpan={orderedRawStock.length + orderedCoalStock.length} className="font-bold border border-black p-1 align-top w-[140px] uppercase">
+                      STOCK
+                    </td>
+                  )}
+                  <td contentEditable suppressContentEditableWarning className={`${fontClass} border border-black p-1 uppercase relative w-[60%]`}>
+                    <HideButton rowKey={`rawstock-${material}`} />
+                    {material}
                   </td>
-                )}
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 uppercase relative w-[60%]">
-                  <HideButton rowKey={`rawstock-${material}`} />
-                  {material}
-                </td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-right">{formatNumber(qty)}</td>
-              </tr>
-            ))}
+                  <td contentEditable suppressContentEditableWarning className={`${fontClass} border border-black p-1 text-right`}>{formatNumber(qty)}</td>
+                </tr>
+              )
+            })}
             
-            {orderedCoalStock.map(([material, qty], idx) => (
-              <tr key={`coalstock-${material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'coalstock')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'coalstock', orderedCoalStock, setOrderedCoalStock)}>
-                {orderedRawStock.length === 0 && idx === 0 && (
-                  <td contentEditable suppressContentEditableWarning rowSpan={orderedCoalStock.length} className="font-bold border-2 border-black p-1 align-top w-[140px] uppercase">
-                    STOCK
+            {orderedCoalStock.map(([material, qty], idx) => {
+              const isZero = isZeroValue(qty)
+              const fontClass = isZero ? "font-normal" : "font-bold"
+              return (
+                <tr key={`coalstock-${material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'coalstock')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'coalstock', orderedCoalStock, setOrderedCoalStock)}>
+                  {orderedRawStock.length === 0 && idx === 0 && (
+                    <td contentEditable suppressContentEditableWarning rowSpan={orderedCoalStock.length} className="font-bold border border-black p-1 align-top w-[140px] uppercase">
+                      STOCK
+                    </td>
+                  )}
+                  <td contentEditable suppressContentEditableWarning className={`${fontClass} border border-black p-1 uppercase relative w-[60%]`}>
+                    <HideButton rowKey={`coalstock-${material}`} />
+                    {material}
                   </td>
-                )}
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 uppercase relative w-[60%]">
-                  <HideButton rowKey={`coalstock-${material}`} />
-                  {material}
-                </td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-right">{formatNumber(qty)}</td>
-              </tr>
-            ))}
+                  <td contentEditable suppressContentEditableWarning className={`${fontClass} border border-black p-1 text-right`}>{formatNumber(qty)}</td>
+                </tr>
+              )
+            })}
             
             {orderedRawStock.length === 0 && orderedCoalStock.length === 0 && (
               <tr>
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 align-top w-[140px] uppercase">STOCK</td>
-                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 uppercase"></td>
-                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right">0.000</td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border border-black p-1 align-top w-[140px] uppercase">STOCK</td>
+                <td contentEditable suppressContentEditableWarning className="font-normal border border-black p-1 uppercase"></td>
+                <td contentEditable suppressContentEditableWarning className="font-normal border border-black p-1 text-right">0.000</td>
               </tr>
             )}
 
             {/* SEPARATOR */}
             <tr>
-              <td colSpan="3" className="border-2 border-black bg-slate-300 h-[6px]"></td>
+              <td colSpan="3" className="border border-black bg-slate-300 h-[6px]"></td>
             </tr>
 
             {/* YESTERDAY INCOMING MATERIALS */}
             <tr>
-              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-[#FFFF00] text-black font-bold text-center p-1 border-2 border-black uppercase">
+              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-[#bfe5f7] text-black font-bold text-center p-1 border border-black uppercase">
                 YESTERDAY INCOMING MATERIALS
               </td>
             </tr>
-            {orderedIncoming.map((item, idx) => (
-              <tr key={`inc-${item.material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'incoming')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'incoming', orderedIncoming, setOrderedIncoming)}>
-                <td contentEditable suppressContentEditableWarning colSpan="2" className="border-2 border-black p-1 font-bold uppercase relative">
-                  <HideButton rowKey={`inc-${item.material}`} />
-                  {item.material}
-                </td>
-                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right font-bold">{formatNumber(item.qty)}</td>
-              </tr>
-            ))}
+            {orderedIncoming.map((item, idx) => {
+              const isZero = isZeroValue(item.qty)
+              const fontClass = isZero ? "font-normal" : "font-bold"
+              return (
+                <tr key={`inc-${item.material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'incoming')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'incoming', orderedIncoming, setOrderedIncoming)}>
+                  <td contentEditable suppressContentEditableWarning colSpan="2" className={`border border-black p-1 ${fontClass} uppercase relative`}>
+                    <HideButton rowKey={`inc-${item.material}`} />
+                    {item.material}
+                  </td>
+                  <td contentEditable suppressContentEditableWarning className={`border border-black p-1 text-right ${fontClass}`}>{formatNumber(item.qty)}</td>
+                </tr>
+              )
+            })}
             {orderedIncoming.length === 0 && (
               <tr>
-                <td contentEditable suppressContentEditableWarning colSpan="2" className="border-2 border-black p-1 font-bold uppercase">NO INCOMING</td>
-                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right font-bold">0.000</td>
+                <td contentEditable suppressContentEditableWarning colSpan="2" className="border border-black p-1 font-normal uppercase">NO INCOMING</td>
+                <td contentEditable suppressContentEditableWarning className="border border-black p-1 text-right font-normal">0.000</td>
               </tr>
             )}
 
             {/* SEPARATOR */}
             <tr>
-              <td colSpan="3" className="border-2 border-black bg-slate-300 h-[6px]"></td>
+              <td colSpan="3" className="border border-black bg-slate-300 h-[6px]"></td>
             </tr>
 
             {/* YESTERDAY OUTGOING MATERIALS */}
             <tr>
-              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-[#FFFF00] text-black font-bold text-center p-1 border-2 border-black uppercase">
+              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-[#bfe5f7] text-black font-bold text-center p-1 border border-black uppercase">
                 YESTERDAY OUTGOING MATERIALS
               </td>
             </tr>
-            {orderedOutgoing.map((item, idx) => (
-              <tr key={`out-${item.material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'outgoing')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'outgoing', orderedOutgoing, setOrderedOutgoing)}>
-                <td contentEditable suppressContentEditableWarning colSpan="2" className="border-2 border-black p-1 font-bold uppercase relative">
-                  <HideButton rowKey={`out-${item.material}`} />
-                  {item.material}
-                </td>
-                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right font-bold">{formatNumber(item.qty)}</td>
-              </tr>
-            ))}
+            {orderedOutgoing.map((item, idx) => {
+              const isZero = isZeroValue(item.qty)
+              const fontClass = isZero ? "font-normal" : "font-bold"
+              return (
+                <tr key={`out-${item.material}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'outgoing')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'outgoing', orderedOutgoing, setOrderedOutgoing)}>
+                  <td contentEditable suppressContentEditableWarning colSpan="2" className={`border border-black p-1 ${fontClass} uppercase relative`}>
+                    <HideButton rowKey={`out-${item.material}`} />
+                    {item.material}
+                  </td>
+                  <td contentEditable suppressContentEditableWarning className={`border border-black p-1 text-right ${fontClass}`}>{formatNumber(item.qty)}</td>
+                </tr>
+              )
+            })}
             {orderedOutgoing.length === 0 && (
               <tr>
-                <td contentEditable suppressContentEditableWarning colSpan="2" className="border-2 border-black p-1 font-bold uppercase">NO OUTGOING</td>
-                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right font-bold">0.000</td>
+                <td contentEditable suppressContentEditableWarning colSpan="2" className="border border-black p-1 font-normal uppercase">NO OUTGOING</td>
+                <td contentEditable suppressContentEditableWarning className="border border-black p-1 text-right font-normal">0.000</td>
               </tr>
             )}
 
             {/* SEPARATOR */}
             <tr>
-              <td colSpan="3" className="border-2 border-black bg-slate-300 h-[6px]"></td>
+              <td colSpan="3" className="border border-black bg-slate-300 h-[6px]"></td>
             </tr>
 
             {/* TOTAL PRODUCTION IN 24HR */}
             <tr>
-              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-[#FFFF00] text-black font-bold text-center p-1 border-2 border-black uppercase">
+              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-[#bfe5f7] text-black font-bold text-center p-1 border border-black uppercase">
                 TOTAL PRODUCTION IN 24HR
               </td>
             </tr>
             {orderedProduction.map(([metric, values], idx) => {
-              let gradeStr = metric.replace(/"/g, '')
-              let matStr = "SPONGE IRON"
-              if (gradeStr.includes(' GRADE')) {
-                const parts = gradeStr.split(' GRADE')
-                gradeStr = parts[0] + ' Grade'
-                matStr = parts[1] || 'SPONGE IRON'
+              // Extract percentage if present, e.g. '"A" GRADE (85.07%)' -> grade: 'A GRADE', pct: '(85.07%)'
+              let cleanMetric = metric.replace(/"/g, '').trim()
+              let pctStr = ''
+              const pctMatch = cleanMetric.match(/\(([^)]+%)\)/)
+              if (pctMatch) {
+                pctStr = ` ${pctMatch[0]}`
+                cleanMetric = cleanMetric.replace(pctMatch[0], '').trim()
               }
+              const gradeStr = `${cleanMetric}${pctStr}`
+              const matStr = "SPONGE IRON"
+              
+              const isZero = isZeroValue(values.total)
+              const fontClass = isZero ? "font-normal" : "font-bold"
               return (
                 <tr key={`prod-${metric}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'production')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'production', orderedProduction, setOrderedProduction)}>
-                  <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 uppercase text-center relative w-[140px]">
+                  <td contentEditable suppressContentEditableWarning className={`border border-black p-1 uppercase text-center relative w-[180px] ${fontClass}`}>
                     <HideButton rowKey={`prod-${metric}`} />
                     {gradeStr}
                   </td>
-                  <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 uppercase relative w-[60%]">
+                  <td contentEditable suppressContentEditableWarning className={`border border-black p-1 uppercase relative w-[60%] ${fontClass}`}>
                     {matStr}
                   </td>
-                  <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right font-bold">{formatNumber(values.total)}</td>
+                  <td contentEditable suppressContentEditableWarning className={`border border-black p-1 text-right ${fontClass}`}>{formatNumber(values.total)}</td>
                 </tr>
               )
             })}
             {orderedProduction.length === 0 && (
               <tr>
-                <td contentEditable suppressContentEditableWarning colSpan="2" className="border-2 border-black p-1 text-center font-bold uppercase">NO PRODUCTION</td>
-                <td contentEditable suppressContentEditableWarning className="border-2 border-black p-1 text-right font-bold">0.000</td>
+                <td contentEditable suppressContentEditableWarning colSpan="2" className="border border-black p-1 text-center font-normal uppercase">NO PRODUCTION</td>
+                <td contentEditable suppressContentEditableWarning className="border border-black p-1 text-right font-normal">0.000</td>
               </tr>
             )}
             {/* Total Row */}
             <tr>
-              <td contentEditable suppressContentEditableWarning colSpan="2" className="border-2 border-black font-bold p-1 text-center uppercase">TOTAL</td>
-              <td contentEditable suppressContentEditableWarning className="bg-[#FFFF00] border-2 border-black font-bold p-1 text-right">
+              <td contentEditable suppressContentEditableWarning colSpan="2" className="border border-black font-bold p-1 text-center uppercase">TOTAL</td>
+              <td contentEditable suppressContentEditableWarning className="bg-[#bfe5f7] border border-black font-bold p-1 text-right">
                 {formatNumber(prodTotalAllFiltered)}
               </td>
             </tr>
 
             {/* SEPARATOR */}
             <tr>
-              <td colSpan="3" className="border-2 border-black bg-slate-300 h-[6px]"></td>
+              <td colSpan="3" className="border border-black bg-slate-300 h-[6px]"></td>
             </tr>
 
             {/* BALANCE PENDING OUTGOING (SAUDA SALE) */}
             <tr>
-              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-[#FFFF00] text-black font-bold text-center p-1 border-2 border-black uppercase">
+              <td contentEditable suppressContentEditableWarning colSpan="2" className="bg-[#bfe5f7] text-black font-bold text-center p-1 border border-black uppercase">
                 BALANCE PENDING OUTGOING (SAUDA SALE)
               </td>
+              <td contentEditable suppressContentEditableWarning className="bg-[#bfe5f7] text-black font-bold text-center p-1 border border-black uppercase">
+                QTY OUT
+              </td>
             </tr>
-            {orderedSaudaSale.map((item, idx) => (
-              <tr key={`sale-${item.itemName || idx}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'saudaSale')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'saudaSale', orderedSaudaSale, setOrderedSaudaSale)}>
-                <td className="border-2 border-black p-1"></td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 uppercase relative">
-                  <HideButton rowKey={`sale-${item.itemName || idx}`} />
-                  {item.itemName}
-                </td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-right">{formatNumber(item.balPending)}</td>
-              </tr>
-            ))}
+            {orderedSaudaSale.map((item, idx) => {
+              const isZero = isZeroValue(item.balPending)
+              const fontClass = isZero ? "font-normal" : "font-bold"
+              return (
+                <tr key={`sale-${item.itemName || idx}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'saudaSale')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'saudaSale', orderedSaudaSale, setOrderedSaudaSale)}>
+                  <td className="border border-black p-1"></td>
+                  <td contentEditable suppressContentEditableWarning className={`${fontClass} border border-black p-1 uppercase relative`}>
+                    <HideButton rowKey={`sale-${item.itemName || idx}`} />
+                    {item.itemName}
+                  </td>
+                  <td contentEditable suppressContentEditableWarning className={`${fontClass} border border-black p-1 text-right`}>{formatNumber(item.balPending)}</td>
+                </tr>
+              )
+            })}
             {orderedSaudaSale.length > 0 && (
               <tr>
-                <td className="border-2 border-black p-1"></td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-center uppercase">TOTAL</td>
-                <td contentEditable suppressContentEditableWarning className="bg-[#FFFF00] border-2 border-black font-bold p-1 text-right">
+                <td className="border border-black p-1"></td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border border-black p-1 text-center uppercase">TOTAL</td>
+                <td contentEditable suppressContentEditableWarning className="bg-[#bfe5f7] border border-black font-bold p-1 text-right">
                   {formatNumber(orderedSaudaSale.reduce((sum, item) => sum + Number(item.balPending), 0))}
                 </td>
               </tr>
             )}
             {orderedSaudaSale.length === 0 && (
               <tr>
-                <td className="border-2 border-black p-1"></td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 uppercase"></td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-right">0.000</td>
+                <td className="border border-black p-1"></td>
+                <td contentEditable suppressContentEditableWarning className="font-normal border border-black p-1 uppercase"></td>
+                <td contentEditable suppressContentEditableWarning className="font-normal border border-black p-1 text-right">0.000</td>
               </tr>
             )}
 
             {/* SEPARATOR */}
             <tr>
-              <td colSpan="3" className="border-2 border-black bg-slate-300 h-[6px]"></td>
+              <td colSpan="3" className="border border-black bg-slate-300 h-[6px]"></td>
             </tr>
 
             {/* BALANCE PENDING INCOMING (SAUDA PURCHASE) */}
             <tr>
-              <td contentEditable suppressContentEditableWarning colSpan="3" className="bg-[#FFFF00] text-black font-bold text-center p-1 border-2 border-black uppercase">
+              <td contentEditable suppressContentEditableWarning colSpan="2" className="bg-[#bfe5f7] text-black font-bold text-center p-1 border border-black uppercase">
                 BALANCE PENDING INCOMING (SAUDA PURCHASE)
               </td>
+              <td contentEditable suppressContentEditableWarning className="bg-[#bfe5f7] text-black font-bold text-center p-1 border border-black uppercase">
+                QTY IN
+              </td>
             </tr>
-            {orderedSaudaPurchase.map((item, idx) => (
-              <tr key={`pur-${item.itemName || idx}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'saudaPurchase')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'saudaPurchase', orderedSaudaPurchase, setOrderedSaudaPurchase)}>
-                <td className="border-2 border-black p-1"></td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 uppercase relative">
-                  <HideButton rowKey={`pur-${item.itemName || idx}`} />
-                  {item.itemName}
-                </td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-right">{formatNumber(item.balPending)}</td>
-              </tr>
-            ))}
+            {orderedSaudaPurchase.map((item, idx) => {
+              const isZero = isZeroValue(item.balPending)
+              const fontClass = isZero ? "font-normal" : "font-bold"
+              return (
+                <tr key={`pur-${item.itemName || idx}`} className="group cursor-move" draggable onDragStart={(e) => handleDragStart(e, idx, 'saudaPurchase')} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, idx, 'saudaPurchase', orderedSaudaPurchase, setOrderedSaudaPurchase)}>
+                  <td className="border border-black p-1"></td>
+                  <td contentEditable suppressContentEditableWarning className={`${fontClass} border border-black p-1 uppercase relative`}>
+                    <HideButton rowKey={`pur-${item.itemName || idx}`} />
+                    {item.itemName}
+                  </td>
+                  <td contentEditable suppressContentEditableWarning className={`${fontClass} border border-black p-1 text-right`}>{formatNumber(item.balPending)}</td>
+                </tr>
+              )
+            })}
             {orderedSaudaPurchase.length > 0 && (
               <tr>
-                <td className="border-2 border-black p-1"></td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-center uppercase">TOTAL</td>
-                <td contentEditable suppressContentEditableWarning className="bg-[#FFFF00] border-2 border-black font-bold p-1 text-right">
+                <td className="border border-black p-1"></td>
+                <td contentEditable suppressContentEditableWarning className="font-bold border border-black p-1 text-center uppercase">TOTAL</td>
+                <td contentEditable suppressContentEditableWarning className="bg-[#bfe5f7] border border-black font-bold p-1 text-right">
                   {formatNumber(orderedSaudaPurchase.reduce((sum, item) => sum + Number(item.balPending), 0))}
                 </td>
               </tr>
             )}
             {orderedSaudaPurchase.length === 0 && (
               <tr>
-                <td className="border-2 border-black p-1"></td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 uppercase"></td>
-                <td contentEditable suppressContentEditableWarning className="font-bold border-2 border-black p-1 text-right">0.000</td>
+                <td className="border border-black p-1"></td>
+                <td contentEditable suppressContentEditableWarning className="font-normal border border-black p-1 uppercase"></td>
+                <td contentEditable suppressContentEditableWarning className="font-normal border border-black p-1 text-right">0.000</td>
                </tr>
             )}
 
